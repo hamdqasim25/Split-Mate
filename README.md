@@ -48,4 +48,20 @@ GitHub Actions
 The following diagram illustrates the planned architecture of SplitMate
 and the communication between the frontend, backend and database.
 
+See the full system architecture documentation:
+[Architecture Design](docs/architecture.md)
+
 ![SplitMate System Architecture](docs/system-architecture.png)
+
+## Database Design
+
+SplitMate uses PostgreSQL to store users, groups, expenses,
+participants and repayments.
+
+The database follows a relational structure with foreign keys
+used to maintain relationships between users, groups and expenses.
+
+See the full database design documentation:
+[Database Design](docs/database-design.md)
+
+![SplitMate Database ERD](docs/database-erd.png)

@@ -40,12 +40,12 @@ PostgreSQL
 Deployment:
 Docker / Cloud infrastructure
 
+CI/CD:
+GitHub Actions
+
 ## System Architecture
 
 The following diagram illustrates the planned architecture of SplitMate
 and the communication between the frontend, backend and database.
 
 ![SplitMate System Architecture](docs/system-architecture.png)
-
-CI/CD:
-GitHub Actions

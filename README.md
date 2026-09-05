@@ -65,3 +65,26 @@ See the full database design documentation:
 [Database Design](docs/database-design.md)
 
 ![SplitMate Database ERD](docs/images/database-erd.png)
+
+## Current Progress
+
+SPLITMate is currently in the database implementation stage.
+
+Completed:
+- Project requirements and feature planning
+- Initial system design
+- Database ERD
+- Database schema design
+- Next.js project setup
+- Initial dashboard and group creation pages
+
+Currently working on:
+- Building the PostgreSQL database
+- Creating tables and relationships using SQL
+- Adding primary keys, foreign keys, and constraints
+- Testing the database structure
+
+Next:
+- Connect the Next.js application to the database
+- Implement user and group creation
+- Add expense and payment functionality

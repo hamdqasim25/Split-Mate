@@ -19,6 +19,8 @@ This structure keeps the data normalised and separates the original expense from
 
 ## Entity Relationship Diagram
 
+![SPLITMate Database ERD](./database-erd.png)
+
 The ERD contains six main tables:
 
 1. `USERS`
@@ -27,8 +29,6 @@ The ERD contains six main tables:
 4. `EXPENSES`
 5. `EXPENSE_PARTICIPANTS`
 6. `PAYMENTS`
-
-> **Diagram note:** `PAYMENTS.group_id` is a foreign key to `GROUPS.id`. This relationship should also be shown on the ERD even though the current diagram does not include the connector line.
 
 ---
 

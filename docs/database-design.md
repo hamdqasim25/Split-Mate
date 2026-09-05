@@ -19,7 +19,7 @@ This structure keeps the data normalised and separates the original expense from
 
 ## Entity Relationship Diagram
 
-![SPLITMate Database ERD](./database-erd.png)
+![SPLITMate Database ERD](./images/database-erd.png)
 
 The ERD contains six main tables:
 

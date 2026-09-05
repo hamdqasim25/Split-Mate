@@ -3,11 +3,17 @@
 SplitMate is a group expense management application designed to
 simplify tracking shared expenses and repayments between friends.
 
+See the current development roadmap progress:
+[Development Roadmap](docs/dev-roadmap.md)
+
 ## Problem
 
 When a large group participates in an activity, one person may pay
 for everyone. Tracking who owes what through WhatsApp messages,
 notes or spreadsheets can become difficult.
+
+See the user stories:
+[User Stories](docs/user-stories.md)
 
 ## Solution
 
@@ -42,6 +48,9 @@ Docker / Cloud infrastructure
 
 CI/CD:
 GitHub Actions
+
+See the planned application requirements:
+[Requirements](docs/requirements.md)
 
 ## System Architecture
 

@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+node_modules/
+dist/
+.env
+
+# Prisma AI/tooling skills
+.agents/
+.claude/
+.cursor/
+.devin/

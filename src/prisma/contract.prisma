@@ -1,0 +1,85 @@
+// use prisma-next
+
+model User {
+  id            Int                  @id @default(autoincrement())
+  name          String
+  email         String               @unique
+  passwordHash  String
+  createdAt     TimestamptzString    @default(now())
+
+  groupsCreated Group[]              @relation("GroupCreator")
+  memberships   GroupMember[]
+  expensesPaid  Expense[]            @relation("ExpensePayer")
+  expenseShares ExpenseParticipant[]
+  paymentsSent  Payment[]            @relation("PaymentPayer")
+  paymentsReceived Payment[]          @relation("PaymentReceiver")
+}
+
+model Group {
+  id          Int               @id @default(autoincrement())
+  name        String
+  description String?
+  currency    String
+  createdBy   Int
+  createdAt   TimestamptzString @default(now())
+
+  creator     User              @relation("GroupCreator", fields: [createdBy], references: [id])
+  members     GroupMember[]
+  expenses    Expense[]
+  payments    Payment[]
+}
+
+model GroupMember {
+  id        Int               @id @default(autoincrement())
+  groupId   Int
+  userId    Int
+  role      String
+  joinedAt  TimestamptzString @default(now())
+
+  group     Group             @relation(fields: [groupId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+model Expense {
+  id          Int               @id @default(autoincrement())
+  groupId     Int
+  description String
+  amount      Decimal
+  paidBy      Int
+  splitMethod String
+  createdAt   TimestamptzString @default(now())
+
+  group       Group             @relation(fields: [groupId], references: [id])
+  payer       User              @relation("ExpensePayer", fields: [paidBy], references: [id])
+  participants ExpenseParticipant[]
+}
+
+model ExpenseParticipant {
+  id         Int               @id @default(autoincrement())
+  expenseId  Int
+  userId     Int
+  amountOwed Decimal
+  createdAt  TimestamptzString @default(now())
+
+  expense    Expense           @relation(fields: [expenseId], references: [id])
+  user       User              @relation(fields: [userId], references: [id])
+
+  @@unique([expenseId, userId])
+}
+
+model Payment {
+  id          Int               @id @default(autoincrement())
+  groupId     Int
+  payerId     Int
+  receiverId  Int
+  amount      Decimal
+  status      String
+  createdAt   TimestamptzString @default(now())
+  confirmedAt TimestamptzString?
+
+  group       Group             @relation(fields: [groupId], references: [id])
+  payer       User              @relation("PaymentPayer", fields: [payerId], references: [id])
+  receiver    User              @relation("PaymentReceiver", fields: [receiverId], references: [id])
+}

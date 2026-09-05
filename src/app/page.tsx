@@ -25,7 +25,7 @@ export default function Home() {
           </Link>
           <div className="flex items-center gap-8">
             <a href="#how-it-works" className="hidden text-sm font-medium text-slate-600 hover:text-emerald-800 sm:block">How it works</a>
-            <Link href="/groups" className={primaryLink}>Get started <span aria-hidden="true">↗</span></Link>
+            <Link href="/dashboard" className={primaryLink}>Get started <span aria-hidden="true">↗</span></Link>
           </div>
         </nav>
       </header>
@@ -40,7 +40,7 @@ export default function Home() {
           </h1>
           <p className="mt-6 max-w-md text-lg leading-8 text-slate-600">Weekend trips. Shared bills. One more round. Keep group expenses organised and see who owes what with SPLITMate.</p>
           <div className="mt-8 flex flex-wrap items-center gap-6">
-            <Link href="/groups" className={primaryLink}>Get started <span aria-hidden="true">→</span></Link>
+            <Link href="/dashboard" className={primaryLink}>Get started <span aria-hidden="true">→</span></Link>
             <a href="#how-it-works" className="text-sm font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-emerald-800">See how it works</a>
           </div>
           <p className="mt-7 text-xs font-medium tracking-wide text-slate-500">Less chasing payments. More making plans.</p>

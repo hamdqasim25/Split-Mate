@@ -1,5 +1,7 @@
 # SplitMate System Architecture
 
+![SPLITMate System Architecture](images/system-architecture.png)
+
 ## Overview
 
 SplitMate will use a client-server architecture consisting of a web frontend, REST API backend and relational PostgreSQL database.

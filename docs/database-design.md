@@ -247,3 +247,27 @@ The current schema is intentionally focused on the first version of SPLITMate. P
 - support for multiple currencies and exchange rates.
 
 These features can be added later without significantly changing the core database structure.
+
+## Database Implementation
+
+The database design has now moved from the planning stage into implementation.
+
+The schema is being created using SQL and follows the relationships defined in the ERD.
+
+The main tables include:
+
+- Users
+- Groups
+- Group Members
+- Expenses
+- Expense Splits
+- Payments
+
+Primary keys are used to uniquely identify records, while foreign keys maintain relationships between tables.
+
+Constraints will also be used to protect data integrity, including:
+
+- NOT NULL constraints
+- UNIQUE constraints
+- Foreign key constraints
+- CHECK constraints where appropriate

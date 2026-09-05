@@ -51,7 +51,7 @@ and the communication between the frontend, backend and database.
 See the full system architecture documentation:
 [Architecture Design](docs/architecture.md)
 
-![SplitMate System Architecture](docs/system-architecture.png)
+![SplitMate System Architecture](docs/images/system-architecture.png)
 
 ## Database Design
 
@@ -64,4 +64,4 @@ used to maintain relationships between users, groups and expenses.
 See the full database design documentation:
 [Database Design](docs/database-design.md)
 
-![SplitMate Database ERD](docs/database-erd.png)
+![SplitMate Database ERD](docs/images/database-erd.png)

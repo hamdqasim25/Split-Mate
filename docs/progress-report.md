@@ -1,4 +1,3 @@
-````markdown
 # SPLITMate Progress Report
 
 This file tracks the main development milestones, technical decisions, and lessons learned while building SPLITMate.
@@ -444,4 +443,3 @@ git push
 ```
 
 Use clear commit messages that describe the milestone being completed.
-````

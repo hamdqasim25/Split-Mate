@@ -22,12 +22,12 @@ const groups = [
 const activity = [
   {
     title: "Dinner together",
-    detail: "Alex paid",
+    detail: "Yamin paid",
     amount: "£75.00",
   },
   {
     title: "Train tickets",
-    detail: "Sam paid",
+    detail: "Mohammed paid",
     amount: "£45.00",
   },
 ];

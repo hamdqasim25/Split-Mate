@@ -57,14 +57,14 @@ export default function CreateGroupPage() {
               <input
                 name="member1"
                 type="text"
-                placeholder="e.g. Alex"
+                placeholder="e.g. Yamin"
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
               />
 
               <input
                 name="member2"
                 type="text"
-                placeholder="e.g. Sam"
+                placeholder="e.g. Mohammed"
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3"
               />
             </div>

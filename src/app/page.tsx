@@ -8,8 +8,8 @@ const steps = [
 
 const expenses = [
   { initial: "S", title: "Somewhere to stay", detail: "You paid · Split equally", amount: "£120.00" },
-  { initial: "D", title: "Dinner together", detail: "Alex paid · Split equally", amount: "£75.00" },
-  { initial: "T", title: "Train tickets", detail: "Sam paid · Split equally", amount: "£45.00" },
+  { initial: "D", title: "Dinner together", detail: "Yamin paid · Split equally", amount: "£75.00" },
+  { initial: "T", title: "Train tickets", detail: "Mohammed paid · Split equally", amount: "£45.00" },
 ];
 
 const primaryLink = "inline-flex items-center justify-center gap-3 rounded-full bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700";
@@ -53,7 +53,7 @@ export default function Home() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Your group</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight">Weekend trip</h2>
-                <p className="mt-1 text-sm text-slate-500">You, Alex, and Sam</p>
+                <p className="mt-1 text-sm text-slate-500">You, Yamin, and Mohammed</p>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">Example</span>
             </div>

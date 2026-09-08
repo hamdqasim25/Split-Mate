@@ -77,23 +77,35 @@ See the full database design documentation:
 
 ## Current Progress
 
-SPLITMate is currently in the database implementation stage.
+SPLITMate is currently in the backend authentication stage.
 
 Completed:
+
 - Project requirements and feature planning
 - Initial system design
 - Database ERD
 - Database schema design
 - Next.js project setup
 - Initial dashboard and group creation pages
+- Prisma and PostgreSQL setup
+- Prisma data contract generation
+- Initial database migration created and applied
+- Database tables, relationships, indexes, and constraints created
+- Database migration status verified
+- Next.js successfully connected to PostgreSQL through Prisma
+- Test user successfully created and retrieved from the database
+- `bcryptjs` installed for password hashing
 
 Currently working on:
-- Building the PostgreSQL database
-- Creating tables and relationships using SQL
-- Adding primary keys, foreign keys, and constraints
-- Testing the database structure
+
+- Building the user registration API
+- Validating registration data
+- Hashing user passwords securely
+- Saving registered users to PostgreSQL
 
 Next:
-- Connect the Next.js application to the database
-- Implement user and group creation
-- Add expense and payment functionality
+
+- Implement user login and authentication
+- Connect group creation to the database
+- Add group member functionality
+- Begin expense and payment functionality

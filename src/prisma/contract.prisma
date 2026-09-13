@@ -1,85 +1,139 @@
 // use prisma-next
 
 model User {
-  id            Int                  @id @default(autoincrement())
-  name          String
-  email         String               @unique
-  passwordHash  String
-  createdAt     TimestamptzString    @default(now())
+  id           Int               @id @default(autoincrement())
+  name         String
+  email        String            @unique
+  passwordHash String
+  createdAt    TimestamptzString @default(now())
 
-  groupsCreated Group[]              @relation("GroupCreator")
+  groupsCreated Group[]       @relation("GroupCreator")
   memberships   GroupMember[]
-  expensesPaid  Expense[]            @relation("ExpensePayer")
-  expenseShares ExpenseParticipant[]
-  paymentsSent  Payment[]            @relation("PaymentPayer")
-  paymentsReceived Payment[]          @relation("PaymentReceiver")
 }
 
 model Group {
-  id          Int               @id @default(autoincrement())
-  name        String
-  description String?
-  currency    String
-  createdBy   Int
-  createdAt   TimestamptzString @default(now())
+  id               Int               @id @default(autoincrement())
+  name             String
+  description      String?
+  currency         String
+  createdBy        Int
+  shareToken       String            @unique
+  shareLinkEnabled Boolean           @default(true)
+  createdAt        TimestamptzString @default(now())
 
-  creator     User              @relation("GroupCreator", fields: [createdBy], references: [id])
-  members     GroupMember[]
-  expenses    Expense[]
-  payments    Payment[]
+  creator        User            @relation("GroupCreator", fields: [createdBy], references: [id])
+  members        GroupMember[]
+  expenses       Expense[]
+  payments       Payment[]
+  activityEvents ActivityEvent[]
+
+  @@index([createdBy])
 }
 
 model GroupMember {
-  id        Int               @id @default(autoincrement())
-  groupId   Int
-  userId    Int
-  role      String
-  joinedAt  TimestamptzString @default(now())
+  id           Int                @id @default(autoincrement())
+  groupId      Int
+  userId       Int?
+  name         String
+  role         String
+  claimedAt    TimestamptzString?
+  lastActiveAt TimestamptzString?
+  isActive     Boolean            @default(true)
+  addedAt      TimestamptzString  @default(now())
 
-  group     Group             @relation(fields: [groupId], references: [id])
-  user      User              @relation(fields: [userId], references: [id])
+  group Group @relation(fields: [groupId], references: [id])
+  user  User? @relation(fields: [userId], references: [id])
 
-  @@unique([groupId, userId])
+  expensesPaid     Expense[]            @relation("ExpensePayer")
+  expenseShares    ExpenseParticipant[]
+  paymentsSent     Payment[]            @relation("PaymentPayer")
+  paymentsReceived Payment[]            @relation("PaymentReceiver")
+  activityEvents   ActivityEvent[]
+  guestSessions    GuestSession[]
+
+  @@index([groupId])
+  @@index([userId])
 }
 
 model Expense {
-  id          Int               @id @default(autoincrement())
-  groupId     Int
-  description String
-  amount      Decimal
-  paidBy      Int
-  splitMethod String
-  createdAt   TimestamptzString @default(now())
+  id             Int               @id @default(autoincrement())
+  groupId        Int
+  description    String
+  amount         Decimal
+  paidByMemberId Int
+  splitMethod    String
+  createdAt      TimestamptzString @default(now())
 
-  group       Group             @relation(fields: [groupId], references: [id])
-  payer       User              @relation("ExpensePayer", fields: [paidBy], references: [id])
+  group        Group                @relation(fields: [groupId], references: [id])
+  payer        GroupMember          @relation("ExpensePayer", fields: [paidByMemberId], references: [id])
   participants ExpenseParticipant[]
+
+  @@index([groupId])
+  @@index([paidByMemberId])
 }
 
 model ExpenseParticipant {
   id         Int               @id @default(autoincrement())
   expenseId  Int
-  userId     Int
+  memberId   Int
   amountOwed Decimal
   createdAt  TimestamptzString @default(now())
 
-  expense    Expense           @relation(fields: [expenseId], references: [id])
-  user       User              @relation(fields: [userId], references: [id])
+  expense Expense     @relation(fields: [expenseId], references: [id])
+  member  GroupMember @relation(fields: [memberId], references: [id])
 
-  @@unique([expenseId, userId])
+  @@unique([expenseId, memberId])
+  @@index([expenseId])
+  @@index([memberId])
 }
 
 model Payment {
-  id          Int               @id @default(autoincrement())
-  groupId     Int
-  payerId     Int
-  receiverId  Int
-  amount      Decimal
-  status      String
-  createdAt   TimestamptzString @default(now())
-  confirmedAt TimestamptzString?
+  id               Int                @id @default(autoincrement())
+  groupId          Int
+  payerMemberId    Int
+  receiverMemberId Int
+  amount           Decimal
+  status           String
+  createdAt        TimestamptzString  @default(now())
+  sentAt           TimestamptzString?
+  confirmedAt      TimestamptzString?
 
-  group       Group             @relation(fields: [groupId], references: [id])
-  payer       User              @relation("PaymentPayer", fields: [payerId], references: [id])
-  receiver    User              @relation("PaymentReceiver", fields: [receiverId], references: [id])
+  group    Group       @relation(fields: [groupId], references: [id])
+  payer    GroupMember @relation("PaymentPayer", fields: [payerMemberId], references: [id])
+  receiver GroupMember @relation("PaymentReceiver", fields: [receiverMemberId], references: [id])
+
+  @@index([groupId])
+  @@index([payerMemberId])
+  @@index([receiverMemberId])
+}
+
+model ActivityEvent {
+  id         Int               @id @default(autoincrement())
+  groupId    Int
+  memberId   Int?
+  eventType  String
+  description String
+  entityType String?
+  entityId   Int?
+  createdAt  TimestamptzString @default(now())
+
+  group  Group        @relation(fields: [groupId], references: [id])
+  member GroupMember? @relation(fields: [memberId], references: [id])
+
+  @@index([groupId, createdAt])
+  @@index([memberId])
+}
+
+model GuestSession {
+  id            Int               @id @default(autoincrement())
+  groupMemberId Int
+  tokenHash     String            @unique
+  createdAt     TimestamptzString @default(now())
+  lastSeenAt    TimestamptzString @default(now())
+  expiresAt     TimestamptzString
+
+  member GroupMember @relation(fields: [groupMemberId], references: [id])
+
+  @@index([groupMemberId])
+  @@index([expiresAt])
 }

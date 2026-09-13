@@ -4,6 +4,10 @@
   "target": "postgres",
   "profileHash": "3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2",
   "roots": {
+    "activityEvent": {
+      "model": "ActivityEvent",
+      "namespace": "public"
+    },
     "expense": {
       "model": "Expense",
       "namespace": "public"
@@ -20,6 +24,10 @@
       "model": "GroupMember",
       "namespace": "public"
     },
+    "guestSession": {
+      "model": "GuestSession",
+      "namespace": "public"
+    },
     "payment": {
       "model": "Payment",
       "namespace": "public"
@@ -33,6 +41,128 @@
     "namespaces": {
       "public": {
         "models": {
+          "ActivityEvent": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "description": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "entityId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "entityType": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "eventType": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "groupId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "memberId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "group": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "groupId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Group",
+                  "namespace": "public"
+                }
+              },
+              "member": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "memberId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "GroupMember",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "description": {
+                  "column": "description"
+                },
+                "entityId": {
+                  "column": "entityId"
+                },
+                "entityType": {
+                  "column": "entityType"
+                },
+                "eventType": {
+                  "column": "eventType"
+                },
+                "groupId": {
+                  "column": "groupId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "memberId": {
+                  "column": "memberId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "activityEvent"
+            }
+          },
           "Expense": {
             "fields": {
               "amount": {
@@ -70,7 +200,7 @@
                   "kind": "scalar"
                 }
               },
-              "paidBy": {
+              "paidByMemberId": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
@@ -120,14 +250,14 @@
                 "cardinality": "N:1",
                 "on": {
                   "localFields": [
-                    "paidBy"
+                    "paidByMemberId"
                   ],
                   "targetFields": [
                     "id"
                   ]
                 },
                 "to": {
-                  "model": "User",
+                  "model": "GroupMember",
                   "namespace": "public"
                 }
               }
@@ -149,8 +279,8 @@
                 "id": {
                   "column": "id"
                 },
-                "paidBy": {
-                  "column": "paidBy"
+                "paidByMemberId": {
+                  "column": "paidByMemberId"
                 },
                 "splitMethod": {
                   "column": "splitMethod"
@@ -190,7 +320,7 @@
                   "kind": "scalar"
                 }
               },
-              "userId": {
+              "memberId": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
@@ -214,18 +344,18 @@
                   "namespace": "public"
                 }
               },
-              "user": {
+              "member": {
                 "cardinality": "N:1",
                 "on": {
                   "localFields": [
-                    "userId"
+                    "memberId"
                   ],
                   "targetFields": [
                     "id"
                   ]
                 },
                 "to": {
-                  "model": "User",
+                  "model": "GroupMember",
                   "namespace": "public"
                 }
               }
@@ -244,8 +374,8 @@
                 "id": {
                   "column": "id"
                 },
-                "userId": {
-                  "column": "userId"
+                "memberId": {
+                  "column": "memberId"
                 }
               },
               "namespaceId": "public",
@@ -295,9 +425,38 @@
                   "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
+              },
+              "shareLinkEnabled": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "shareToken": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
               }
             },
             "relations": {
+              "activityEvents": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "groupId"
+                  ]
+                },
+                "to": {
+                  "model": "ActivityEvent",
+                  "namespace": "public"
+                }
+              },
               "creator": {
                 "cardinality": "N:1",
                 "on": {
@@ -378,6 +537,12 @@
                 },
                 "name": {
                   "column": "name"
+                },
+                "shareLinkEnabled": {
+                  "column": "shareLinkEnabled"
+                },
+                "shareToken": {
+                  "column": "shareToken"
                 }
               },
               "namespaceId": "public",
@@ -386,6 +551,20 @@
           },
           "GroupMember": {
             "fields": {
+              "addedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "claimedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
               "groupId": {
                 "nullable": false,
                 "type": {
@@ -400,10 +579,24 @@
                   "kind": "scalar"
                 }
               },
-              "joinedAt": {
+              "isActive": {
                 "nullable": false,
                 "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "lastActiveAt": {
+                "nullable": true,
+                "type": {
                   "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
@@ -415,7 +608,7 @@
                 }
               },
               "userId": {
-                "nullable": false,
+                "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
                   "kind": "scalar"
@@ -423,6 +616,51 @@
               }
             },
             "relations": {
+              "activityEvents": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "memberId"
+                  ]
+                },
+                "to": {
+                  "model": "ActivityEvent",
+                  "namespace": "public"
+                }
+              },
+              "expenseShares": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "memberId"
+                  ]
+                },
+                "to": {
+                  "model": "ExpenseParticipant",
+                  "namespace": "public"
+                }
+              },
+              "expensesPaid": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "paidByMemberId"
+                  ]
+                },
+                "to": {
+                  "model": "Expense",
+                  "namespace": "public"
+                }
+              },
               "group": {
                 "cardinality": "N:1",
                 "on": {
@@ -435,6 +673,51 @@
                 },
                 "to": {
                   "model": "Group",
+                  "namespace": "public"
+                }
+              },
+              "guestSessions": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "groupMemberId"
+                  ]
+                },
+                "to": {
+                  "model": "GuestSession",
+                  "namespace": "public"
+                }
+              },
+              "paymentsReceived": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "receiverMemberId"
+                  ]
+                },
+                "to": {
+                  "model": "Payment",
+                  "namespace": "public"
+                }
+              },
+              "paymentsSent": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "payerMemberId"
+                  ]
+                },
+                "to": {
+                  "model": "Payment",
                   "namespace": "public"
                 }
               },
@@ -456,14 +739,26 @@
             },
             "storage": {
               "fields": {
+                "addedAt": {
+                  "column": "addedAt"
+                },
+                "claimedAt": {
+                  "column": "claimedAt"
+                },
                 "groupId": {
                   "column": "groupId"
                 },
                 "id": {
                   "column": "id"
                 },
-                "joinedAt": {
-                  "column": "joinedAt"
+                "isActive": {
+                  "column": "isActive"
+                },
+                "lastActiveAt": {
+                  "column": "lastActiveAt"
+                },
+                "name": {
+                  "column": "name"
                 },
                 "role": {
                   "column": "role"
@@ -474,6 +769,93 @@
               },
               "namespaceId": "public",
               "table": "groupMember"
+            }
+          },
+          "GuestSession": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "expiresAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "groupMemberId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "lastSeenAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "tokenHash": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "member": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "groupMemberId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "GroupMember",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "expiresAt": {
+                  "column": "expiresAt"
+                },
+                "groupMemberId": {
+                  "column": "groupMemberId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "lastSeenAt": {
+                  "column": "lastSeenAt"
+                },
+                "tokenHash": {
+                  "column": "tokenHash"
+                }
+              },
+              "namespaceId": "public",
+              "table": "guestSession"
             }
           },
           "Payment": {
@@ -513,17 +895,24 @@
                   "kind": "scalar"
                 }
               },
-              "payerId": {
+              "payerMemberId": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
                   "kind": "scalar"
                 }
               },
-              "receiverId": {
+              "receiverMemberId": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "sentAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
                   "kind": "scalar"
                 }
               },
@@ -555,14 +944,14 @@
                 "cardinality": "N:1",
                 "on": {
                   "localFields": [
-                    "payerId"
+                    "payerMemberId"
                   ],
                   "targetFields": [
                     "id"
                   ]
                 },
                 "to": {
-                  "model": "User",
+                  "model": "GroupMember",
                   "namespace": "public"
                 }
               },
@@ -570,14 +959,14 @@
                 "cardinality": "N:1",
                 "on": {
                   "localFields": [
-                    "receiverId"
+                    "receiverMemberId"
                   ],
                   "targetFields": [
                     "id"
                   ]
                 },
                 "to": {
-                  "model": "User",
+                  "model": "GroupMember",
                   "namespace": "public"
                 }
               }
@@ -599,11 +988,14 @@
                 "id": {
                   "column": "id"
                 },
-                "payerId": {
-                  "column": "payerId"
+                "payerMemberId": {
+                  "column": "payerMemberId"
                 },
-                "receiverId": {
-                  "column": "receiverId"
+                "receiverMemberId": {
+                  "column": "receiverMemberId"
+                },
+                "sentAt": {
+                  "column": "sentAt"
                 },
                 "status": {
                   "column": "status"
@@ -652,36 +1044,6 @@
               }
             },
             "relations": {
-              "expenseShares": {
-                "cardinality": "1:N",
-                "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "userId"
-                  ]
-                },
-                "to": {
-                  "model": "ExpenseParticipant",
-                  "namespace": "public"
-                }
-              },
-              "expensesPaid": {
-                "cardinality": "1:N",
-                "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "paidBy"
-                  ]
-                },
-                "to": {
-                  "model": "Expense",
-                  "namespace": "public"
-                }
-              },
               "groupsCreated": {
                 "cardinality": "1:N",
                 "on": {
@@ -709,36 +1071,6 @@
                 },
                 "to": {
                   "model": "GroupMember",
-                  "namespace": "public"
-                }
-              },
-              "paymentsReceived": {
-                "cardinality": "1:N",
-                "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "receiverId"
-                  ]
-                },
-                "to": {
-                  "model": "Payment",
-                  "namespace": "public"
-                }
-              },
-              "paymentsSent": {
-                "cardinality": "1:N",
-                "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "payerId"
-                  ]
-                },
-                "to": {
-                  "model": "Payment",
                   "namespace": "public"
                 }
               }
@@ -774,6 +1106,125 @@
       "public": {
         "entries": {
           "table": {
+            "activityEvent": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "description": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "entityId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "entityType": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "eventType": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "groupId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "memberId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "groupId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "activityEvent"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "group"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "memberId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "activityEvent"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "groupMember"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "groupId",
+                    "createdAt"
+                  ],
+                  "name": "activityEvent_groupId_createdAt_idx_bac1e421",
+                  "prefix": "activityEvent_groupId_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "groupId"
+                  ],
+                  "name": "activityEvent_groupId_idx_e2fb5578",
+                  "prefix": "activityEvent_groupId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "memberId"
+                  ],
+                  "name": "activityEvent_memberId_idx_76b3c263",
+                  "prefix": "activityEvent_memberId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "expense": {
               "columns": {
                 "amount": {
@@ -809,7 +1260,7 @@
                   "nativeType": "int4",
                   "nullable": false
                 },
-                "paidBy": {
+                "paidByMemberId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
                   "nullable": false
@@ -840,7 +1291,7 @@
                 {
                   "source": {
                     "columns": [
-                      "paidBy"
+                      "paidByMemberId"
                     ],
                     "namespaceId": "public",
                     "tableName": "expense"
@@ -850,7 +1301,7 @@
                       "id"
                     ],
                     "namespaceId": "public",
-                    "tableName": "user"
+                    "tableName": "groupMember"
                   }
                 }
               ],
@@ -865,10 +1316,10 @@
                 },
                 {
                   "columns": [
-                    "paidBy"
+                    "paidByMemberId"
                   ],
-                  "name": "expense_paidBy_idx_c34eb888",
-                  "prefix": "expense_paidBy_idx",
+                  "name": "expense_paidByMemberId_idx_e98587e6",
+                  "prefix": "expense_paidByMemberId_idx",
                   "unique": false
                 }
               ],
@@ -909,7 +1360,7 @@
                   "nativeType": "int4",
                   "nullable": false
                 },
-                "userId": {
+                "memberId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
                   "nullable": false
@@ -935,7 +1386,7 @@
                 {
                   "source": {
                     "columns": [
-                      "userId"
+                      "memberId"
                     ],
                     "namespaceId": "public",
                     "tableName": "expenseParticipant"
@@ -945,7 +1396,7 @@
                       "id"
                     ],
                     "namespaceId": "public",
-                    "tableName": "user"
+                    "tableName": "groupMember"
                   }
                 }
               ],
@@ -960,10 +1411,10 @@
                 },
                 {
                   "columns": [
-                    "userId"
+                    "memberId"
                   ],
-                  "name": "expenseParticipant_userId_idx_a489d58a",
-                  "prefix": "expenseParticipant_userId_idx",
+                  "name": "expenseParticipant_memberId_idx_76b3c263",
+                  "prefix": "expenseParticipant_memberId_idx",
                   "unique": false
                 }
               ],
@@ -976,7 +1427,7 @@
                 {
                   "columns": [
                     "expenseId",
-                    "userId"
+                    "memberId"
                   ]
                 }
               ]
@@ -1020,6 +1471,20 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "shareLinkEnabled": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "shareToken": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
                 }
               },
               "foreignKeys": [
@@ -1055,10 +1520,30 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "shareToken"
+                  ]
+                }
+              ]
             },
             "groupMember": {
               "columns": {
+                "addedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "claimedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
                 "groupId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
@@ -1073,13 +1558,23 @@
                   "nativeType": "int4",
                   "nullable": false
                 },
-                "joinedAt": {
-                  "codecId": "pg/timestamptz-string@1",
+                "isActive": {
+                  "codecId": "pg/bool@1",
                   "default": {
-                    "expression": "now()",
-                    "kind": "function"
+                    "kind": "literal",
+                    "value": true
                   },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "lastActiveAt": {
+                  "codecId": "pg/timestamptz-string@1",
                   "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
                   "nullable": false
                 },
                 "role": {
@@ -1090,7 +1585,7 @@
                 "userId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
-                  "nullable": false
+                  "nullable": true
                 }
               },
               "foreignKeys": [
@@ -1150,11 +1645,98 @@
                   "id"
                 ]
               },
+              "uniques": []
+            },
+            "guestSession": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "expiresAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "groupMemberId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "lastSeenAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "tokenHash": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "groupMemberId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "guestSession"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "groupMember"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "expiresAt"
+                  ],
+                  "name": "guestSession_expiresAt_idx_6b6b8c10",
+                  "prefix": "guestSession_expiresAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "groupMemberId"
+                  ],
+                  "name": "guestSession_groupMemberId_idx_0cf1f04e",
+                  "prefix": "guestSession_groupMemberId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
               "uniques": [
                 {
                   "columns": [
-                    "groupId",
-                    "userId"
+                    "tokenHash"
                   ]
                 }
               ]
@@ -1194,15 +1776,20 @@
                   "nativeType": "int4",
                   "nullable": false
                 },
-                "payerId": {
+                "payerMemberId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
                   "nullable": false
                 },
-                "receiverId": {
+                "receiverMemberId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
                   "nullable": false
+                },
+                "sentAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
                 },
                 "status": {
                   "codecId": "pg/text@1",
@@ -1230,7 +1817,7 @@
                 {
                   "source": {
                     "columns": [
-                      "payerId"
+                      "payerMemberId"
                     ],
                     "namespaceId": "public",
                     "tableName": "payment"
@@ -1240,13 +1827,13 @@
                       "id"
                     ],
                     "namespaceId": "public",
-                    "tableName": "user"
+                    "tableName": "groupMember"
                   }
                 },
                 {
                   "source": {
                     "columns": [
-                      "receiverId"
+                      "receiverMemberId"
                     ],
                     "namespaceId": "public",
                     "tableName": "payment"
@@ -1256,7 +1843,7 @@
                       "id"
                     ],
                     "namespaceId": "public",
-                    "tableName": "user"
+                    "tableName": "groupMember"
                   }
                 }
               ],
@@ -1271,18 +1858,18 @@
                 },
                 {
                   "columns": [
-                    "payerId"
+                    "payerMemberId"
                   ],
-                  "name": "payment_payerId_idx_3d3ae95d",
-                  "prefix": "payment_payerId_idx",
+                  "name": "payment_payerMemberId_idx_c9a3134e",
+                  "prefix": "payment_payerMemberId_idx",
                   "unique": false
                 },
                 {
                   "columns": [
-                    "receiverId"
+                    "receiverMemberId"
                   ],
-                  "name": "payment_receiverId_idx_fe124f44",
-                  "prefix": "payment_receiverId_idx",
+                  "name": "payment_receiverMemberId_idx_0e68368d",
+                  "prefix": "payment_receiverMemberId_idx",
                   "unique": false
                 }
               ],
@@ -1350,7 +1937,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "de17766a725a670b42df86f7142a60b95c6946cce46e15d531123a249cebc2e2"
+    "storageHash": "e6e916145d261bc06db24684433bce16a409065035eaa28ce1eb6238b25badeb"
   },
   "capabilities": {
     "postgres": {

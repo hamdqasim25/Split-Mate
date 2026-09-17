@@ -48,3 +48,6 @@ dist/
 .claude/
 .cursor/
 .devin/
+
+# Local agent instructions (all filename case variants)
+/[aA][gG][eE][nN][tT][sS].[mM][dD]

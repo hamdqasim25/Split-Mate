@@ -1,5 +1,73 @@
 # Database Design
 
+## Implementation and testing notes — 17 September 2026
+
+This section was added during implementation and testing after inspecting [the current Prisma contract](../src/prisma/contract.prisma). It supersedes the original six-table, User-based financial design preserved below. The original ERD image is historical.
+
+### Current contract
+
+There are eight models. Primary keys are auto-incrementing integers. Timestamp fields use `TimestamptzString`, and monetary fields use `Decimal`.
+
+| Model | Current fields and relationships |
+| --- | --- |
+| User | `id`, `name`, unique `email`, `passwordHash`, `createdAt`; creates groups and optionally links to memberships |
+| Group | `id`, `name`, nullable `description`, `currency`, `createdBy → User`, unique `shareToken`, `shareLinkEnabled`, `createdAt` |
+| GroupMember | `id`, `groupId → Group`, nullable `userId → User`, `name`, `role`, nullable `claimedAt` and `lastActiveAt`, `isActive`, `addedAt` |
+| Expense | `id`, `groupId → Group`, `description`, `amount`, `paidByMemberId → GroupMember`, `splitMethod`, `createdAt` |
+| ExpenseParticipant | `id`, `expenseId → Expense`, `memberId → GroupMember`, `amountOwed`, `createdAt`; unique `(expenseId, memberId)` |
+| Payment | `id`, `groupId → Group`, `payerMemberId` and `receiverMemberId → GroupMember`, `amount`, `status`, `createdAt`, nullable `sentAt` and `confirmedAt` |
+| ActivityEvent | `id`, `groupId → Group`, nullable `memberId → GroupMember`, `eventType`, `description`, nullable `entityType` and `entityId`, `createdAt` |
+| GuestSession | `id`, `groupMemberId → GroupMember`, unique `tokenHash`, `createdAt`, `lastSeenAt`, `expiresAt` |
+
+A GroupMember is a group identity with an optional account link. All financial relationships use that identity, allowing guests to pay, participate and receive repayments without registering.
+
+```mermaid
+erDiagram
+    User ||--o{ Group : creates
+    User o|--o{ GroupMember : optionally_links
+    Group ||--o{ GroupMember : contains
+    Group ||--o{ Expense : contains
+    GroupMember ||--o{ Expense : pays
+    Expense ||--o{ ExpenseParticipant : contains
+    GroupMember ||--o{ ExpenseParticipant : participates
+    Group ||--o{ Payment : contains
+    GroupMember ||--o{ Payment : sends
+    GroupMember ||--o{ Payment : receives
+    Group ||--o{ ActivityEvent : records
+    GroupMember o|--o{ ActivityEvent : acts
+    GroupMember ||--o{ GuestSession : identifies
+```
+
+### Constraints and application rules
+
+The contract declares uniqueness for User email, Group share token, GuestSession token hash and the ExpenseParticipant expense/member pair, in addition to primary keys. It does **not** declare unique member names or a unique `(groupId, userId)` pair.
+
+The group-creation service enforces distinct normalized names within the submitted group and adds the owner once. It creates guests with null `userId` and `claimedAt`, and writes GROUP_CREATED with the owner's GroupMember as actor in the same transaction.
+
+Roles, event types, split methods and payment statuses are stored as strings, not database enums. Future expense/payment handlers must enforce valid states, positive amounts, matching group membership and deterministic rounding. The contract's individual foreign keys do not enforce all same-group relationships. The intended payment lifecycle is SENT followed by receiver CONFIRMED; the workflow is not implemented yet.
+
+ActivityEvent `entityType` and `entityId` are descriptive references, not a polymorphic database foreign key. The group-creation service writes `GROUP` and the newly created group ID.
+
+### Migration and verification history
+
+The repository contains:
+
+1. `20260906T2009_initial_schema`
+2. `20260913T2223_guest_members_and_activity`
+
+Project records state that both were applied and that the second migration was verified against the cloud database. The current generated contract storage hash begins `e6e9161`. The backend implementation and this documentation update did not change the contract, migrations or cloud database.
+
+The 32 backend unit tests use a database double. They verify transaction usage and propagated failures; they do not independently verify PostgreSQL constraints, live schema state or rollback.
+
+Use `DATABASE_URL` for application traffic and the direct administrative connection when performing approved migration operations. Connection values remain private. Future schema changes require a new reviewed migration; applied migrations remain immutable.
+
+---
+
+## Original notes — preserved
+
+The following notes are retained as originally written. For current implementation status, use the dated update above.
+
+
 ## Overview
 
 SPLITMate uses a relational database to store users, groups, shared expenses, expense participants, and payments between users.

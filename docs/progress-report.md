@@ -1,5 +1,59 @@
 # SPLITMate Progress Report
 
+## Implementation and testing notes — 17 September 2026
+
+This section was added during implementation and testing. It records the current milestone separately from the original development log below; historical entries describe what was true at their recorded dates.
+
+### Database milestone carried forward — 13 September 2026
+
+The guest-member redesign is recorded in migration `20260913T2223_guest_members_and_activity` and commit `57fb300`. The project records it as applied and verified before this implementation work. This documentation update did not reconnect to the cloud database or independently repeat that verification.
+
+The current contract contains eight models: User, Group, GroupMember, Expense, ExpenseParticipant, Payment, ActivityEvent and GuestSession. GroupMember now supports guests with null `userId`; expense and payment relationships use GroupMember IDs. Groups have reusable share tokens, and guest sessions have a token-hash field.
+
+### Implemented during the group-creation milestone
+
+- Added the internal server-only service in `src/data/groups.ts`, using the existing Prisma client and `tx.orm.public` namespace.
+- Added server validation for group details, GBP currency, guest count, blank names, duplicate names and unsupported fields.
+- Generated a share token using 32 cryptographically random bytes.
+- Created the Group, claimed owner GroupMember, unclaimed guest GroupMembers and GROUP_CREATED activity record inside one transaction.
+- Selected the owner's name from the User record and returned a group summary without the share token.
+- Added 32 unit tests and documented the service's authentication boundary and limitations.
+
+No authentication system or public endpoint was added. The form and dashboard still contain presentation code only. The temporary database test route mentioned in the original notes is already absent.
+
+### Verification performed during implementation
+
+| Check | Result | What it establishes |
+| --- | --- | --- |
+| `node --test tests/create-group.test.mjs` | 32 passed | Input validation, identity assignment, token format, activity actor and error propagation through a transaction double |
+| `npx --no-install tsc --noEmit --incremental false` | Passed | Compatibility with the installed TypeScript and Prisma contract types |
+| `npx --no-install eslint src/data/groups.ts tests/create-group.test.mjs tests/helpers/group-database.mjs` | Passed | Lint for the new implementation and tests |
+| `npm run build` | Passed after allowing the existing Google Fonts download | Existing application production build and TypeScript checks |
+| `npm run lint` | 12 errors and 58 warnings | Existing generated Prisma declarations and bundled tooling are included in the repository-wide lint scan |
+
+On this Windows setup, PowerShell blocked the `npm.ps1` and `npx.ps1` wrappers. The same commands were run with `npm.cmd` and `npx.cmd`.
+
+The database double does not prove PostgreSQL rollback. No live group-creation request, authenticated browser flow or database integration test was performed. The service is not yet imported by a route, so the production build also does not establish a working HTTP creation flow.
+
+### Lessons and remaining work
+
+A transaction keeps related writes together, but the caller still needs real authentication. Looking up an existing User is not proof of the caller's identity. Likewise, a share token gives access to a group; it does not identify a particular member.
+
+The next steps are owner authentication, an authenticated submission boundary with safe errors and request protection, form wiring and database-backed dashboard queries. Request deduplication is still needed: repeated successful service calls currently create separate groups.
+
+The applied migrations and generated contract were preserved. The old `npx prisma@latest` commands below are historical records, not current instructions. Use the locally installed Prisma CLI, review any new migration, and obtain approval before applying it.
+
+### Documentation follow-up
+
+During this implementation and testing cycle, dated updates were added to the README, roadmap, architecture, database design, project structure, requirements and user stories. Their original notes are retained for learning and comparison. See [group-creation.md](group-creation.md) for the backend contract.
+
+---
+
+## Original notes — preserved
+
+The following notes are retained as originally written. For current implementation status, use the dated update above.
+
+
 This file tracks the main development milestones, technical decisions, and lessons learned while building SPLITMate.
 
 ---

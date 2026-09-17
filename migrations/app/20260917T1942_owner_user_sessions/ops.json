@@ -1,0 +1,203 @@
+[
+  {
+    "id": "table.userSession",
+    "label": "Create table \"userSession\"",
+    "summary": "Creates table \"userSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "userSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"userSession\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userSession\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"userSession\"",
+        "sql": "CREATE TABLE \"public\".\"userSession\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"expiresAt\" timestamptz NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"tokenHash\" text NOT NULL,\n  \"userId\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"userSession\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userSession\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.userSession.userSession_tokenHash_key",
+    "label": "Add unique constraint on \"userSession\" (tokenHash)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "userSession_tokenHash_key",
+        "table": "userSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"userSession_tokenHash_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userSession_tokenHash_key",
+          "public",
+          "\"public\".\"userSession\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"userSession_tokenHash_key\"",
+        "sql": "ALTER TABLE \"public\".\"userSession\" ADD CONSTRAINT \"userSession_tokenHash_key\" UNIQUE (\"tokenHash\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"userSession_tokenHash_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userSession_tokenHash_key",
+          "public",
+          "\"public\".\"userSession\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.userSession.userSession_expiresAt_idx_6b6b8c10",
+    "label": "Create index \"userSession_expiresAt_idx_6b6b8c10\" on \"userSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "userSession_expiresAt_idx_6b6b8c10",
+        "table": "userSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"userSession_expiresAt_idx_6b6b8c10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userSession_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"userSession_expiresAt_idx_6b6b8c10\"",
+        "sql": "CREATE INDEX \"userSession_expiresAt_idx_6b6b8c10\" ON \"public\".\"userSession\" (\"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"userSession_expiresAt_idx_6b6b8c10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userSession_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.userSession.userSession_userId_idx_a489d58a",
+    "label": "Create index \"userSession_userId_idx_a489d58a\" on \"userSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "userSession_userId_idx_a489d58a",
+        "table": "userSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"userSession_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userSession_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"userSession_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"userSession_userId_idx_a489d58a\" ON \"public\".\"userSession\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"userSession_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userSession_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.userSession.userSession_userId_fkey",
+    "label": "Add foreign key \"userSession_userId_fkey\" on \"userSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "userSession_userId_fkey",
+        "table": "userSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"userSession_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userSession_userId_fkey",
+          "public",
+          "\"public\".\"userSession\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"userSession_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"userSession\"\nADD CONSTRAINT \"userSession_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"userSession_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userSession_userId_fkey",
+          "public",
+          "\"public\".\"userSession\""
+        ]
+      }
+    ]
+  }
+]

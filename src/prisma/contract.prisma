@@ -9,6 +9,20 @@ model User {
 
   groupsCreated Group[]       @relation("GroupCreator")
   memberships   GroupMember[]
+  sessions      UserSession[]
+}
+
+model UserSession {
+  id        Int               @id @default(autoincrement())
+  userId    Int
+  tokenHash String            @unique
+  createdAt TimestamptzString  @default(now())
+  expiresAt TimestamptzString
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Group {

@@ -9,7 +9,6 @@ import {
   col,
   fn,
   lit,
-  placeholder,
   primaryKey,
 } from '@prisma/orm-postgres/migration';
 
@@ -164,19 +163,11 @@ export default class M extends Migration<Start, End> {
         table: 'expense',
         column: col('paidByMemberId', 'int4', { codecRef: { codecId: 'pg/int4@1' } }),
       }),
-      this.dataTransform(endContract, 'backfill-expense-paidByMemberId', {
-        check: () => placeholder('backfill-expense-paidByMemberId:check'),
-        run: () => placeholder('backfill-expense-paidByMemberId:run'),
-      }),
       this.setNotNull({ schema: 'public', table: 'expense', column: 'paidByMemberId' }),
       this.addColumn({
         schema: 'public',
         table: 'expenseParticipant',
         column: col('memberId', 'int4', { codecRef: { codecId: 'pg/int4@1' } }),
-      }),
-      this.dataTransform(endContract, 'backfill-expenseParticipant-memberId', {
-        check: () => placeholder('backfill-expenseParticipant-memberId:check'),
-        run: () => placeholder('backfill-expenseParticipant-memberId:run'),
       }),
       this.setNotNull({ schema: 'public', table: 'expenseParticipant', column: 'memberId' }),
       this.addColumn({
@@ -184,19 +175,11 @@ export default class M extends Migration<Start, End> {
         table: 'group',
         column: col('shareToken', 'text', { codecRef: { codecId: 'pg/text@1' } }),
       }),
-      this.dataTransform(endContract, 'backfill-group-shareToken', {
-        check: () => placeholder('backfill-group-shareToken:check'),
-        run: () => placeholder('backfill-group-shareToken:run'),
-      }),
       this.setNotNull({ schema: 'public', table: 'group', column: 'shareToken' }),
       this.addColumn({
         schema: 'public',
         table: 'groupMember',
         column: col('name', 'text', { codecRef: { codecId: 'pg/text@1' } }),
-      }),
-      this.dataTransform(endContract, 'backfill-groupMember-name', {
-        check: () => placeholder('backfill-groupMember-name:check'),
-        run: () => placeholder('backfill-groupMember-name:run'),
       }),
       this.setNotNull({ schema: 'public', table: 'groupMember', column: 'name' }),
       this.addColumn({
@@ -204,19 +187,11 @@ export default class M extends Migration<Start, End> {
         table: 'payment',
         column: col('payerMemberId', 'int4', { codecRef: { codecId: 'pg/int4@1' } }),
       }),
-      this.dataTransform(endContract, 'backfill-payment-payerMemberId', {
-        check: () => placeholder('backfill-payment-payerMemberId:check'),
-        run: () => placeholder('backfill-payment-payerMemberId:run'),
-      }),
       this.setNotNull({ schema: 'public', table: 'payment', column: 'payerMemberId' }),
       this.addColumn({
         schema: 'public',
         table: 'payment',
         column: col('receiverMemberId', 'int4', { codecRef: { codecId: 'pg/int4@1' } }),
-      }),
-      this.dataTransform(endContract, 'backfill-payment-receiverMemberId', {
-        check: () => placeholder('backfill-payment-receiverMemberId:check'),
-        run: () => placeholder('backfill-payment-receiverMemberId:run'),
       }),
       this.setNotNull({ schema: 'public', table: 'payment', column: 'receiverMemberId' }),
       this.dropNotNull({ schema: 'public', table: 'groupMember', column: 'userId' }),

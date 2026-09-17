@@ -1,1 +1,2304 @@
-[]
+[
+  {
+    "id": "dropConstraint.expense.expense_paidBy_fkey",
+    "label": "Drop constraint \"expense_paidBy_fkey\" on \"expense\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "expense_paidBy_fkey",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"expense_paidBy_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expense_paidBy_fkey",
+          "public",
+          "\"public\".\"expense\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"expense_paidBy_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"expense\" DROP CONSTRAINT \"expense_paidBy_fkey\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"expense_paidBy_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expense_paidBy_fkey",
+          "public",
+          "\"public\".\"expense\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropIndex.expense.expense_paidBy_idx_c34eb888",
+    "label": "Drop index \"expense_paidBy_idx_c34eb888\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "expense_paidBy_idx_c34eb888",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"expense_paidBy_idx_c34eb888\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"expense_paidBy_idx_c34eb888\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop index \"expense_paidBy_idx_c34eb888\"",
+        "sql": "DROP INDEX \"public\".\"expense_paidBy_idx_c34eb888\"",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"expense_paidBy_idx_c34eb888\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"expense_paidBy_idx_c34eb888\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropColumn.expense.paidBy",
+    "label": "Drop column \"paidBy\" from \"expense\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "paidBy",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"paidBy\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "paidBy"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"paidBy\"",
+        "sql": "ALTER TABLE \"public\".\"expense\" DROP COLUMN \"paidBy\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"paidBy\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "paidBy"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.expenseParticipant.expenseParticipant_userId_fkey",
+    "label": "Drop constraint \"expenseParticipant_userId_fkey\" on \"expenseParticipant\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "expenseParticipant_userId_fkey",
+        "table": "expenseParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"expenseParticipant_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expenseParticipant_userId_fkey",
+          "public",
+          "\"public\".\"expenseParticipant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"expenseParticipant_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"expenseParticipant\" DROP CONSTRAINT \"expenseParticipant_userId_fkey\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"expenseParticipant_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expenseParticipant_userId_fkey",
+          "public",
+          "\"public\".\"expenseParticipant\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropIndex.expenseParticipant.expenseParticipant_userId_idx_a489d58a",
+    "label": "Drop index \"expenseParticipant_userId_idx_a489d58a\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "expenseParticipant_userId_idx_a489d58a",
+        "table": "expenseParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"expenseParticipant_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"expenseParticipant_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop index \"expenseParticipant_userId_idx_a489d58a\"",
+        "sql": "DROP INDEX \"public\".\"expenseParticipant_userId_idx_a489d58a\"",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"expenseParticipant_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"expenseParticipant_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.expenseParticipant.expenseParticipant_expenseId_userId_key",
+    "label": "Drop constraint \"expenseParticipant_expenseId_userId_key\" on \"expenseParticipant\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "expenseParticipant_expenseId_userId_key",
+        "table": "expenseParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"expenseParticipant_expenseId_userId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expenseParticipant_expenseId_userId_key",
+          "public",
+          "\"public\".\"expenseParticipant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"expenseParticipant_expenseId_userId_key\"",
+        "sql": "ALTER TABLE \"public\".\"expenseParticipant\" DROP CONSTRAINT \"expenseParticipant_expenseId_userId_key\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"expenseParticipant_expenseId_userId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expenseParticipant_expenseId_userId_key",
+          "public",
+          "\"public\".\"expenseParticipant\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropColumn.expenseParticipant.userId",
+    "label": "Drop column \"userId\" from \"expenseParticipant\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "userId",
+        "table": "expenseParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"userId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expenseParticipant",
+          "userId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"userId\"",
+        "sql": "ALTER TABLE \"public\".\"expenseParticipant\" DROP COLUMN \"userId\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"userId\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expenseParticipant",
+          "userId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropColumn.groupMember.joinedAt",
+    "label": "Drop column \"joinedAt\" from \"groupMember\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "joinedAt",
+        "table": "groupMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"joinedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "joinedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"joinedAt\"",
+        "sql": "ALTER TABLE \"public\".\"groupMember\" DROP COLUMN \"joinedAt\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"joinedAt\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "joinedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.groupMember.groupMember_groupId_userId_key",
+    "label": "Drop constraint \"groupMember_groupId_userId_key\" on \"groupMember\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "groupMember_groupId_userId_key",
+        "table": "groupMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"groupMember_groupId_userId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "groupMember_groupId_userId_key",
+          "public",
+          "\"public\".\"groupMember\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"groupMember_groupId_userId_key\"",
+        "sql": "ALTER TABLE \"public\".\"groupMember\" DROP CONSTRAINT \"groupMember_groupId_userId_key\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"groupMember_groupId_userId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "groupMember_groupId_userId_key",
+          "public",
+          "\"public\".\"groupMember\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.payment.payment_payerId_fkey",
+    "label": "Drop constraint \"payment_payerId_fkey\" on \"payment\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "payment_payerId_fkey",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"payment_payerId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_payerId_fkey",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"payment_payerId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" DROP CONSTRAINT \"payment_payerId_fkey\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"payment_payerId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_payerId_fkey",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.payment.payment_receiverId_fkey",
+    "label": "Drop constraint \"payment_receiverId_fkey\" on \"payment\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "payment_receiverId_fkey",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"payment_receiverId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_receiverId_fkey",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"payment_receiverId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" DROP CONSTRAINT \"payment_receiverId_fkey\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"payment_receiverId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_receiverId_fkey",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropIndex.payment.payment_payerId_idx_3d3ae95d",
+    "label": "Drop index \"payment_payerId_idx_3d3ae95d\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "payment_payerId_idx_3d3ae95d",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"payment_payerId_idx_3d3ae95d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_payerId_idx_3d3ae95d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop index \"payment_payerId_idx_3d3ae95d\"",
+        "sql": "DROP INDEX \"public\".\"payment_payerId_idx_3d3ae95d\"",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"payment_payerId_idx_3d3ae95d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_payerId_idx_3d3ae95d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropColumn.payment.payerId",
+    "label": "Drop column \"payerId\" from \"payment\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "payerId",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"payerId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "payerId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"payerId\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" DROP COLUMN \"payerId\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"payerId\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "payerId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropIndex.payment.payment_receiverId_idx_fe124f44",
+    "label": "Drop index \"payment_receiverId_idx_fe124f44\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "payment_receiverId_idx_fe124f44",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"payment_receiverId_idx_fe124f44\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_receiverId_idx_fe124f44\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop index \"payment_receiverId_idx_fe124f44\"",
+        "sql": "DROP INDEX \"public\".\"payment_receiverId_idx_fe124f44\"",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"payment_receiverId_idx_fe124f44\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_receiverId_idx_fe124f44\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropColumn.payment.receiverId",
+    "label": "Drop column \"receiverId\" from \"payment\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "receiverId",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"receiverId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "receiverId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"receiverId\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" DROP COLUMN \"receiverId\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"receiverId\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "receiverId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.activityEvent",
+    "label": "Create table \"activityEvent\"",
+    "summary": "Creates table \"activityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "activityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"activityEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"activityEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"activityEvent\"",
+        "sql": "CREATE TABLE \"public\".\"activityEvent\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"description\" text NOT NULL,\n  \"entityId\" int4,\n  \"entityType\" text,\n  \"eventType\" text NOT NULL,\n  \"groupId\" int4 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"memberId\" int4,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"activityEvent\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"activityEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.guestSession",
+    "label": "Create table \"guestSession\"",
+    "summary": "Creates table \"guestSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "guestSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"guestSession\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guestSession\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"guestSession\"",
+        "sql": "CREATE TABLE \"public\".\"guestSession\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"expiresAt\" timestamptz NOT NULL,\n  \"groupMemberId\" int4 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"lastSeenAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"tokenHash\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"guestSession\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guestSession\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.group.shareLinkEnabled",
+    "label": "Add column \"shareLinkEnabled\" to \"group\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "shareLinkEnabled",
+        "table": "group"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"shareLinkEnabled\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "group",
+          "shareLinkEnabled"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"shareLinkEnabled\"",
+        "sql": "ALTER TABLE \"public\".\"group\" ADD COLUMN \"shareLinkEnabled\" bool DEFAULT true NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"shareLinkEnabled\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "group",
+          "shareLinkEnabled"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.groupMember.addedAt",
+    "label": "Add column \"addedAt\" to \"groupMember\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "addedAt",
+        "table": "groupMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"addedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "addedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"addedAt\"",
+        "sql": "ALTER TABLE \"public\".\"groupMember\" ADD COLUMN \"addedAt\" timestamptz DEFAULT (now()) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"addedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "addedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.groupMember.claimedAt",
+    "label": "Add column \"claimedAt\" to \"groupMember\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "claimedAt",
+        "table": "groupMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"claimedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "claimedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"claimedAt\"",
+        "sql": "ALTER TABLE \"public\".\"groupMember\" ADD COLUMN \"claimedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"claimedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "claimedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.groupMember.isActive",
+    "label": "Add column \"isActive\" to \"groupMember\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "isActive",
+        "table": "groupMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"isActive\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "isActive"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"isActive\"",
+        "sql": "ALTER TABLE \"public\".\"groupMember\" ADD COLUMN \"isActive\" bool DEFAULT true NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"isActive\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "isActive"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.groupMember.lastActiveAt",
+    "label": "Add column \"lastActiveAt\" to \"groupMember\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "lastActiveAt",
+        "table": "groupMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"lastActiveAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "lastActiveAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"lastActiveAt\"",
+        "sql": "ALTER TABLE \"public\".\"groupMember\" ADD COLUMN \"lastActiveAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"lastActiveAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "lastActiveAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.payment.sentAt",
+    "label": "Add column \"sentAt\" to \"payment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "sentAt",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"sentAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "sentAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"sentAt\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" ADD COLUMN \"sentAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"sentAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "sentAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.expense.paidByMemberId",
+    "label": "Add column \"paidByMemberId\" to \"expense\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "paidByMemberId",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"paidByMemberId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "paidByMemberId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"paidByMemberId\"",
+        "sql": "ALTER TABLE \"public\".\"expense\" ADD COLUMN \"paidByMemberId\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"paidByMemberId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "paidByMemberId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.expense.paidByMemberId",
+    "label": "Set NOT NULL on \"expense\".\"paidByMemberId\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "paidByMemberId",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"paidByMemberId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "paidByMemberId"
+        ]
+      },
+      {
+        "description": "ensure no NULL values in \"paidByMemberId\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"expense\" WHERE \"paidByMemberId\" IS NULL) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"paidByMemberId\"",
+        "sql": "ALTER TABLE \"public\".\"expense\" ALTER COLUMN \"paidByMemberId\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"paidByMemberId\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "paidByMemberId",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.expenseParticipant.memberId",
+    "label": "Add column \"memberId\" to \"expenseParticipant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "memberId",
+        "table": "expenseParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"memberId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expenseParticipant",
+          "memberId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"memberId\"",
+        "sql": "ALTER TABLE \"public\".\"expenseParticipant\" ADD COLUMN \"memberId\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"memberId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expenseParticipant",
+          "memberId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.expenseParticipant.memberId",
+    "label": "Set NOT NULL on \"expenseParticipant\".\"memberId\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "memberId",
+        "table": "expenseParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"memberId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expenseParticipant",
+          "memberId"
+        ]
+      },
+      {
+        "description": "ensure no NULL values in \"memberId\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"expenseParticipant\" WHERE \"memberId\" IS NULL) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"memberId\"",
+        "sql": "ALTER TABLE \"public\".\"expenseParticipant\" ALTER COLUMN \"memberId\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"memberId\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "expenseParticipant",
+          "memberId",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.group.shareToken",
+    "label": "Add column \"shareToken\" to \"group\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "shareToken",
+        "table": "group"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"shareToken\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "group",
+          "shareToken"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"shareToken\"",
+        "sql": "ALTER TABLE \"public\".\"group\" ADD COLUMN \"shareToken\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"shareToken\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "group",
+          "shareToken"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.group.shareToken",
+    "label": "Set NOT NULL on \"group\".\"shareToken\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "shareToken",
+        "table": "group"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"shareToken\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "group",
+          "shareToken"
+        ]
+      },
+      {
+        "description": "ensure no NULL values in \"shareToken\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"group\" WHERE \"shareToken\" IS NULL) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"shareToken\"",
+        "sql": "ALTER TABLE \"public\".\"group\" ALTER COLUMN \"shareToken\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"shareToken\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "group",
+          "shareToken",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.groupMember.name",
+    "label": "Add column \"name\" to \"groupMember\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "name",
+        "table": "groupMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"name\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "name"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"name\"",
+        "sql": "ALTER TABLE \"public\".\"groupMember\" ADD COLUMN \"name\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"name\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "name"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.groupMember.name",
+    "label": "Set NOT NULL on \"groupMember\".\"name\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "name",
+        "table": "groupMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"name\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "name"
+        ]
+      },
+      {
+        "description": "ensure no NULL values in \"name\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"groupMember\" WHERE \"name\" IS NULL) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"name\"",
+        "sql": "ALTER TABLE \"public\".\"groupMember\" ALTER COLUMN \"name\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"name\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "name",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.payment.payerMemberId",
+    "label": "Add column \"payerMemberId\" to \"payment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "payerMemberId",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"payerMemberId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "payerMemberId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"payerMemberId\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" ADD COLUMN \"payerMemberId\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"payerMemberId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "payerMemberId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.payment.payerMemberId",
+    "label": "Set NOT NULL on \"payment\".\"payerMemberId\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "payerMemberId",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"payerMemberId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "payerMemberId"
+        ]
+      },
+      {
+        "description": "ensure no NULL values in \"payerMemberId\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"payment\" WHERE \"payerMemberId\" IS NULL) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"payerMemberId\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" ALTER COLUMN \"payerMemberId\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"payerMemberId\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "payerMemberId",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.payment.receiverMemberId",
+    "label": "Add column \"receiverMemberId\" to \"payment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "receiverMemberId",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"receiverMemberId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "receiverMemberId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"receiverMemberId\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" ADD COLUMN \"receiverMemberId\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"receiverMemberId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "receiverMemberId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.payment.receiverMemberId",
+    "label": "Set NOT NULL on \"payment\".\"receiverMemberId\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "receiverMemberId",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"receiverMemberId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "receiverMemberId"
+        ]
+      },
+      {
+        "description": "ensure no NULL values in \"receiverMemberId\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"payment\" WHERE \"receiverMemberId\" IS NULL) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"receiverMemberId\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" ALTER COLUMN \"receiverMemberId\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"receiverMemberId\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "payment",
+          "receiverMemberId",
+          "NO"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.dropNotNull.groupMember.userId",
+    "label": "Drop NOT NULL on \"groupMember\".\"userId\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "userId",
+        "table": "groupMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"userId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "userId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop NOT NULL on \"userId\"",
+        "sql": "ALTER TABLE \"public\".\"groupMember\" ALTER COLUMN \"userId\" DROP NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"userId\" is nullable",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "groupMember",
+          "userId",
+          "YES"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.expenseParticipant.expenseParticipant_expenseId_memberId_key",
+    "label": "Add unique constraint on \"expenseParticipant\" (expenseId, memberId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "expenseParticipant_expenseId_memberId_key",
+        "table": "expenseParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"expenseParticipant_expenseId_memberId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expenseParticipant_expenseId_memberId_key",
+          "public",
+          "\"public\".\"expenseParticipant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"expenseParticipant_expenseId_memberId_key\"",
+        "sql": "ALTER TABLE \"public\".\"expenseParticipant\" ADD CONSTRAINT \"expenseParticipant_expenseId_memberId_key\" UNIQUE (\"expenseId\", \"memberId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"expenseParticipant_expenseId_memberId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expenseParticipant_expenseId_memberId_key",
+          "public",
+          "\"public\".\"expenseParticipant\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.group.group_shareToken_key",
+    "label": "Add unique constraint on \"group\" (shareToken)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "group_shareToken_key",
+        "table": "group"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"group_shareToken_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "group_shareToken_key",
+          "public",
+          "\"public\".\"group\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"group_shareToken_key\"",
+        "sql": "ALTER TABLE \"public\".\"group\" ADD CONSTRAINT \"group_shareToken_key\" UNIQUE (\"shareToken\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"group_shareToken_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "group_shareToken_key",
+          "public",
+          "\"public\".\"group\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.guestSession.guestSession_tokenHash_key",
+    "label": "Add unique constraint on \"guestSession\" (tokenHash)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "guestSession_tokenHash_key",
+        "table": "guestSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"guestSession_tokenHash_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "guestSession_tokenHash_key",
+          "public",
+          "\"public\".\"guestSession\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"guestSession_tokenHash_key\"",
+        "sql": "ALTER TABLE \"public\".\"guestSession\" ADD CONSTRAINT \"guestSession_tokenHash_key\" UNIQUE (\"tokenHash\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"guestSession_tokenHash_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "guestSession_tokenHash_key",
+          "public",
+          "\"public\".\"guestSession\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.activityEvent.activityEvent_groupId_createdAt_idx_bac1e421",
+    "label": "Create index \"activityEvent_groupId_createdAt_idx_bac1e421\" on \"activityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "activityEvent_groupId_createdAt_idx_bac1e421",
+        "table": "activityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"activityEvent_groupId_createdAt_idx_bac1e421\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"activityEvent_groupId_createdAt_idx_bac1e421\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"activityEvent_groupId_createdAt_idx_bac1e421\"",
+        "sql": "CREATE INDEX \"activityEvent_groupId_createdAt_idx_bac1e421\" ON \"public\".\"activityEvent\" (\"groupId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"activityEvent_groupId_createdAt_idx_bac1e421\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"activityEvent_groupId_createdAt_idx_bac1e421\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.activityEvent.activityEvent_groupId_idx_e2fb5578",
+    "label": "Create index \"activityEvent_groupId_idx_e2fb5578\" on \"activityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "activityEvent_groupId_idx_e2fb5578",
+        "table": "activityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"activityEvent_groupId_idx_e2fb5578\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"activityEvent_groupId_idx_e2fb5578\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"activityEvent_groupId_idx_e2fb5578\"",
+        "sql": "CREATE INDEX \"activityEvent_groupId_idx_e2fb5578\" ON \"public\".\"activityEvent\" (\"groupId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"activityEvent_groupId_idx_e2fb5578\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"activityEvent_groupId_idx_e2fb5578\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.activityEvent.activityEvent_memberId_idx_76b3c263",
+    "label": "Create index \"activityEvent_memberId_idx_76b3c263\" on \"activityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "activityEvent_memberId_idx_76b3c263",
+        "table": "activityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"activityEvent_memberId_idx_76b3c263\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"activityEvent_memberId_idx_76b3c263\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"activityEvent_memberId_idx_76b3c263\"",
+        "sql": "CREATE INDEX \"activityEvent_memberId_idx_76b3c263\" ON \"public\".\"activityEvent\" (\"memberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"activityEvent_memberId_idx_76b3c263\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"activityEvent_memberId_idx_76b3c263\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.expense.expense_paidByMemberId_idx_e98587e6",
+    "label": "Create index \"expense_paidByMemberId_idx_e98587e6\" on \"expense\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "expense_paidByMemberId_idx_e98587e6",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"expense_paidByMemberId_idx_e98587e6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"expense_paidByMemberId_idx_e98587e6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"expense_paidByMemberId_idx_e98587e6\"",
+        "sql": "CREATE INDEX \"expense_paidByMemberId_idx_e98587e6\" ON \"public\".\"expense\" (\"paidByMemberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"expense_paidByMemberId_idx_e98587e6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"expense_paidByMemberId_idx_e98587e6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.expenseParticipant.expenseParticipant_memberId_idx_76b3c263",
+    "label": "Create index \"expenseParticipant_memberId_idx_76b3c263\" on \"expenseParticipant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "expenseParticipant_memberId_idx_76b3c263",
+        "table": "expenseParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"expenseParticipant_memberId_idx_76b3c263\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"expenseParticipant_memberId_idx_76b3c263\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"expenseParticipant_memberId_idx_76b3c263\"",
+        "sql": "CREATE INDEX \"expenseParticipant_memberId_idx_76b3c263\" ON \"public\".\"expenseParticipant\" (\"memberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"expenseParticipant_memberId_idx_76b3c263\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"expenseParticipant_memberId_idx_76b3c263\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.guestSession.guestSession_expiresAt_idx_6b6b8c10",
+    "label": "Create index \"guestSession_expiresAt_idx_6b6b8c10\" on \"guestSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "guestSession_expiresAt_idx_6b6b8c10",
+        "table": "guestSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"guestSession_expiresAt_idx_6b6b8c10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guestSession_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"guestSession_expiresAt_idx_6b6b8c10\"",
+        "sql": "CREATE INDEX \"guestSession_expiresAt_idx_6b6b8c10\" ON \"public\".\"guestSession\" (\"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"guestSession_expiresAt_idx_6b6b8c10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guestSession_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.guestSession.guestSession_groupMemberId_idx_0cf1f04e",
+    "label": "Create index \"guestSession_groupMemberId_idx_0cf1f04e\" on \"guestSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "guestSession_groupMemberId_idx_0cf1f04e",
+        "table": "guestSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"guestSession_groupMemberId_idx_0cf1f04e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guestSession_groupMemberId_idx_0cf1f04e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"guestSession_groupMemberId_idx_0cf1f04e\"",
+        "sql": "CREATE INDEX \"guestSession_groupMemberId_idx_0cf1f04e\" ON \"public\".\"guestSession\" (\"groupMemberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"guestSession_groupMemberId_idx_0cf1f04e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"guestSession_groupMemberId_idx_0cf1f04e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.payment.payment_payerMemberId_idx_c9a3134e",
+    "label": "Create index \"payment_payerMemberId_idx_c9a3134e\" on \"payment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "payment_payerMemberId_idx_c9a3134e",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"payment_payerMemberId_idx_c9a3134e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_payerMemberId_idx_c9a3134e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"payment_payerMemberId_idx_c9a3134e\"",
+        "sql": "CREATE INDEX \"payment_payerMemberId_idx_c9a3134e\" ON \"public\".\"payment\" (\"payerMemberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"payment_payerMemberId_idx_c9a3134e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_payerMemberId_idx_c9a3134e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.payment.payment_receiverMemberId_idx_0e68368d",
+    "label": "Create index \"payment_receiverMemberId_idx_0e68368d\" on \"payment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "payment_receiverMemberId_idx_0e68368d",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"payment_receiverMemberId_idx_0e68368d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_receiverMemberId_idx_0e68368d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"payment_receiverMemberId_idx_0e68368d\"",
+        "sql": "CREATE INDEX \"payment_receiverMemberId_idx_0e68368d\" ON \"public\".\"payment\" (\"receiverMemberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"payment_receiverMemberId_idx_0e68368d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_receiverMemberId_idx_0e68368d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.activityEvent.activityEvent_groupId_fkey",
+    "label": "Add foreign key \"activityEvent_groupId_fkey\" on \"activityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "activityEvent_groupId_fkey",
+        "table": "activityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"activityEvent_groupId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "activityEvent_groupId_fkey",
+          "public",
+          "\"public\".\"activityEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"activityEvent_groupId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"activityEvent\"\nADD CONSTRAINT \"activityEvent_groupId_fkey\"\nFOREIGN KEY (\"groupId\")\nREFERENCES \"public\".\"group\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"activityEvent_groupId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "activityEvent_groupId_fkey",
+          "public",
+          "\"public\".\"activityEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.activityEvent.activityEvent_memberId_fkey",
+    "label": "Add foreign key \"activityEvent_memberId_fkey\" on \"activityEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "activityEvent_memberId_fkey",
+        "table": "activityEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"activityEvent_memberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "activityEvent_memberId_fkey",
+          "public",
+          "\"public\".\"activityEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"activityEvent_memberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"activityEvent\"\nADD CONSTRAINT \"activityEvent_memberId_fkey\"\nFOREIGN KEY (\"memberId\")\nREFERENCES \"public\".\"groupMember\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"activityEvent_memberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "activityEvent_memberId_fkey",
+          "public",
+          "\"public\".\"activityEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.expense.expense_paidByMemberId_fkey",
+    "label": "Add foreign key \"expense_paidByMemberId_fkey\" on \"expense\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "expense_paidByMemberId_fkey",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"expense_paidByMemberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expense_paidByMemberId_fkey",
+          "public",
+          "\"public\".\"expense\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"expense_paidByMemberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"expense\"\nADD CONSTRAINT \"expense_paidByMemberId_fkey\"\nFOREIGN KEY (\"paidByMemberId\")\nREFERENCES \"public\".\"groupMember\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"expense_paidByMemberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expense_paidByMemberId_fkey",
+          "public",
+          "\"public\".\"expense\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.expenseParticipant.expenseParticipant_memberId_fkey",
+    "label": "Add foreign key \"expenseParticipant_memberId_fkey\" on \"expenseParticipant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "expenseParticipant_memberId_fkey",
+        "table": "expenseParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"expenseParticipant_memberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expenseParticipant_memberId_fkey",
+          "public",
+          "\"public\".\"expenseParticipant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"expenseParticipant_memberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"expenseParticipant\"\nADD CONSTRAINT \"expenseParticipant_memberId_fkey\"\nFOREIGN KEY (\"memberId\")\nREFERENCES \"public\".\"groupMember\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"expenseParticipant_memberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expenseParticipant_memberId_fkey",
+          "public",
+          "\"public\".\"expenseParticipant\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.guestSession.guestSession_groupMemberId_fkey",
+    "label": "Add foreign key \"guestSession_groupMemberId_fkey\" on \"guestSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "guestSession_groupMemberId_fkey",
+        "table": "guestSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"guestSession_groupMemberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "guestSession_groupMemberId_fkey",
+          "public",
+          "\"public\".\"guestSession\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"guestSession_groupMemberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"guestSession\"\nADD CONSTRAINT \"guestSession_groupMemberId_fkey\"\nFOREIGN KEY (\"groupMemberId\")\nREFERENCES \"public\".\"groupMember\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"guestSession_groupMemberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "guestSession_groupMemberId_fkey",
+          "public",
+          "\"public\".\"guestSession\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.payment.payment_payerMemberId_fkey",
+    "label": "Add foreign key \"payment_payerMemberId_fkey\" on \"payment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "payment_payerMemberId_fkey",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"payment_payerMemberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_payerMemberId_fkey",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"payment_payerMemberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"payment\"\nADD CONSTRAINT \"payment_payerMemberId_fkey\"\nFOREIGN KEY (\"payerMemberId\")\nREFERENCES \"public\".\"groupMember\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"payment_payerMemberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_payerMemberId_fkey",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.payment.payment_receiverMemberId_fkey",
+    "label": "Add foreign key \"payment_receiverMemberId_fkey\" on \"payment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "payment_receiverMemberId_fkey",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"payment_receiverMemberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_receiverMemberId_fkey",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"payment_receiverMemberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"payment\"\nADD CONSTRAINT \"payment_receiverMemberId_fkey\"\nFOREIGN KEY (\"receiverMemberId\")\nREFERENCES \"public\".\"groupMember\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"payment_receiverMemberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_receiverMemberId_fkey",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ]
+  }
+]

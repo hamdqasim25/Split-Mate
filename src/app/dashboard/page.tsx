@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Dashboard | SPLITMate",
@@ -32,7 +34,9 @@ const activity = [
   },
 ];
 
-export default function Dashboard() {
+export default async function Dashboard() {
+  if (!(await getCurrentUser())) redirect("/login?next=/dashboard");
+
   return (
     <main className="min-h-screen bg-[#f8faf7] px-6 py-12 font-sans text-slate-900 sm:py-20">
       <div className="mx-auto max-w-6xl">

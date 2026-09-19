@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth/session";
 
 const steps = [
   { number: "01", title: "Create a group", description: "Bring your flatmates, travel buddies, or dinner crew together. Give every shared adventure a home." },
@@ -14,18 +15,21 @@ const expenses = [
 
 const primaryLink = "inline-flex items-center justify-center gap-3 rounded-full bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700";
 
-export default function Home() {
+export default async function Home() {
+  const authenticated = Boolean(await getCurrentUser());
+  const destination = authenticated ? "/dashboard" : "/register";
   return (
     <main className="min-h-screen bg-[#f8faf7] font-sans text-slate-900">
       <header className="border-b border-slate-900/10">
-        <nav aria-label="Main navigation" className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-5">
+        <nav aria-label="Main navigation" className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
           <Link href="/" className="flex items-center gap-2.5 text-xl font-bold tracking-tight">
             <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-xl bg-emerald-800 text-2xl text-white">÷</span>
             <span>SPLIT<span className="text-emerald-800">Mate</span></span>
           </Link>
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4 sm:gap-8">
             <a href="#how-it-works" className="hidden text-sm font-medium text-slate-600 hover:text-emerald-800 sm:block">How it works</a>
-            <Link href="/dashboard" className={primaryLink}>Get started <span aria-hidden="true">↗</span></Link>
+            {!authenticated && <Link href="/login" className="text-sm font-semibold text-emerald-800 hover:underline">Log in</Link>}
+            <Link href={destination} className={primaryLink}>{authenticated ? "Go to dashboard" : "Create account"} <span aria-hidden="true">↗</span></Link>
           </div>
         </nav>
       </header>
@@ -40,7 +44,7 @@ export default function Home() {
           </h1>
           <p className="mt-6 max-w-md text-lg leading-8 text-slate-600">Weekend trips. Shared bills. One more round. Keep group expenses organised and see who owes what with SPLITMate.</p>
           <div className="mt-8 flex flex-wrap items-center gap-6">
-            <Link href="/dashboard" className={primaryLink}>Get started <span aria-hidden="true">→</span></Link>
+            <Link href={destination} className={primaryLink}>{authenticated ? "Go to dashboard" : "Get started"} <span aria-hidden="true">→</span></Link>
             <a href="#how-it-works" className="text-sm font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-emerald-800">See how it works</a>
           </div>
           <p className="mt-7 text-xs font-medium tracking-wide text-slate-500">Less chasing payments. More making plans.</p>

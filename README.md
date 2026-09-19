@@ -1,64 +1,49 @@
 # SPLITMate
 
-SPLITMate helps groups track shared expenses while keeping account creation optional for guests. The implemented milestone is authenticated group creation and an owner dashboard backed by PostgreSQL. Expense calculations and repayments are still planned.
+SPLITMate tracks shared group expenses while keeping accounts optional for guests. The current application uses Next.js App Router, TypeScript, Tailwind CSS, Prisma 8 RC and Prisma-hosted PostgreSQL.
 
-## Implementation and testing update - 19 September 2026
+## Current Progress
 
-This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
+Completed:
 
-### Completed
+- Owner registration, login and sign-out with hashed, database-backed UserSession authentication.
+- Persisted dashboard/groups and transactional group creation with owner/guest GroupMembers.
+- Owner-only group detail page, member list, recent activity and reusable share-link UI.
+- Public guest invites and concurrency-safe member claiming with MEMBER_CLAIMED logging.
+- Hashed GuestSession authentication and cross-group access isolation.
+- Protected guest group page showing the current identity, active members and recent activity.
+- Throttled guest activity tracking and device sign-out without resetting claimedAt.
+- Automated testing: **190 tests passing**, with TypeScript, targeted ESLint and production build passing at the guest milestone checkpoint.
 
-- Next.js App Router, React, TypeScript and Tailwind CSS; backend routes and services run in the Next.js application.
-- Prisma 8 RC contract workflow and Prisma-hosted PostgreSQL, using the installed release-candidate toolchain.
-- Owner registration, login and POST logout, with database-backed `UserSession`. Registration creates an account, then sends the owner to login.
-- Login/register UI, session-aware landing actions, and server-side guards directly in `/dashboard` and `/groups/new`.
-- `User` is an account; `GroupMember` is the identity inside a group. Guests have `userId = null` and do not need accounts. Guest access is a later milestone.
-- `/groups/new` submits to `POST /api/groups`. The endpoint derives the owner from the server session, never a client-supplied owner ID.
-- One transaction creates the Group with a cryptographically secure reusable `shareToken`, claimed owner GroupMember, unclaimed guest GroupMembers and owner-attributed `GROUP_CREATED` ActivityEvent.
-- The dashboard displays the real owner name, persisted owned groups, active member counts and latest five real activity events. It excludes share tokens and replaces fake balances with neutral placeholders.
-- Group creation was live-tested against Prisma cloud PostgreSQL; a subsequent read-only check confirmed persisted group/member/activity data.
+**Next development area: Expense creation and splitting**
 
-### Next
+Expenses, balances and repayments are not implemented. Their database models do not imply working financial features.
 
-1. Owner group detail page.
-2. Clickable dashboard group cards.
-3. Group members/activity view.
-4. Reusable share-link controls.
-5. Public `/g/[shareToken]`.
-6. Guest member claiming and `GuestSession`.
-7. Then expenses, balances and repayments.
+## Access model
 
-### Future
+Only the owner needs an account. Guests open a shared link, choose an existing unclaimed name and enter the protected group page. Disabling invitations blocks new claims while existing valid guests retain access. Owner and guest sessions remain separate.
 
-Optional guest account linking, member management, richer splitting and settlement features. Rate limiting is required before public deployment; it is not implemented yet. A generated share token does not yet provide public guest access.
+One guest identity is remembered per browser. Signing out, losing or expiring its cookie leaves that member claimed; session recovery is not implemented. Invite links should only be shared with intended members.
 
-### Verification
+## Development
 
-| Check | Latest implementation result |
-| --- | --- |
-| `node --test tests/auth-pages.test.mjs` | 38 passed |
-| `node --test tests/dashboard.test.mjs` | 18 passed |
-| `node --test tests/create-group.test.mjs` | 32 passed |
-| `node --test tests/auth.test.mjs` | 32 passed |
-| Targeted ESLint for changed implementation/test files | Passed |
-| `npx tsc --noEmit` | Passed |
-| `npm run build` | Passed |
+Use Node 24 (the test harness uses Node module hooks), `npm ci` and `npm run dev` with privately configured database connections. Use the locally installed Prisma CLI; do not upgrade the RC packages or apply migrations as part of ordinary setup.
 
-These 120 tests use local mocks; they do not write cloud records. Results are from the completed implementation/testing cycle, not a new test run for this documentation-only update. On Windows, `npm.cmd` and `npx.cmd` were used where PowerShell blocked the `.ps1` wrappers.
+See [tests and verification](docs/tests.md) for commands, coverage, manual evidence and limitations.
 
-### Local development and documentation
+**Documentation convention:** future milestones must update relevant documentation, this README's progress and `docs/tests.md` whenever behaviour or testing changes.
 
-Use `npm ci` and `npm run dev` with privately configured database connections. Never commit connection strings. Use the locally installed Prisma CLI; ordinary setup must not apply migrations or upgrade the RC packages.
+## Documentation
 
-- [Architecture](docs/architecture.md)
+- [Architecture, authentication and routing](docs/architecture.md)
 - [Database design](docs/database-design.md)
-- [Group creation and dashboard reads](docs/group-creation.md)
-- [Progress and verification limits](docs/progress-report.md)
-- [Roadmap](docs/dev-roadmap.md)
+- [Group creation and owner reads](docs/group-creation.md)
 - [Project structure](docs/project-structure.md)
+- [Testing](docs/tests.md)
+- [Progress history](docs/progress-report.md) and [roadmap](docs/dev-roadmap.md)
 - [Requirements](docs/requirements.md) and [user stories](docs/user-stories.md)
 
-The original architecture and ERD images below describe earlier proposals, not the current implementation.
+Original notes and diagrams below are historical, not current implementation guidance.
 
 ---
 

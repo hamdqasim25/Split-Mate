@@ -1,59 +1,29 @@
 # SPLITMate Progress Report
 
-## Implementation and testing update - 19 September 2026
+## Completed milestones
 
-This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
-
-### Completed
-
-- Owner authentication backend and UI: registration, login, POST logout, hashed database-backed UserSession, generic credential errors and same-origin mutation protection.
-- Protected owner dashboard and group creation pages; login returns only to the two allowed owner routes using a fresh request.
-- Connected group form and `/api/groups` endpoint; ownership is taken from the verified server session.
-- Atomic creation of Group, secure reusable share token, claimed owner identity, unclaimed guest identities and GROUP_CREATED activity.
-- Persisted dashboard with real owner name, owned groups, active member counts and five latest events. No fake balance values and no share-token exposure.
-- Separate User accounts and GroupMember identities; guest userId remains nullable.
-
-### Verification recorded during implementation and testing
-
-| Check | Latest implementation result |
+| Milestone | Outcome |
 | --- | --- |
-| `node --test tests/auth-pages.test.mjs` | 38 passed |
-| `node --test tests/dashboard.test.mjs` | 18 passed |
-| `node --test tests/create-group.test.mjs` | 32 passed |
-| `node --test tests/auth.test.mjs` | 32 passed |
-| Targeted ESLint for changed implementation/test files | Passed |
-| `npx tsc --noEmit` | Passed |
-| `npm run build` | Passed |
+| Database foundation | Prisma-hosted PostgreSQL and contract workflow; GroupMember is the financial identity |
+| Owner authentication and creation | Registration/login/logout, UserSession, atomic group/member/activity creation |
+| Persisted owner access | Dashboard cards, owner-only group detail, members/activity and reusable share links |
+| Guest invite and claim | Eligible-name selection, conditional transactional claims, hashed GuestSession and MEMBER_CLAIMED |
+| Protected guest area | Same-group session authorization, member/activity display, disabled-invite policy, throttled activity and sign-out |
+| Guest milestone documentation | Updated architecture/status/source map and permanent tests.md |
 
-These 120 tests use local mocks; they do not write cloud records. Results are from the completed implementation/testing cycle, not a new test run for this documentation-only update. On Windows, `npm.cmd` and `npx.cmd` were used where PowerShell blocked the `.ps1` wrappers.
+Current development area: **Expense creation and splitting**.
 
-Targeted lint passed; this is not a claim that repository-wide `npm run lint` is clean. Earlier full scans reported generated/tooling findings (12 errors and 58 warnings); that full scan was not rerun for this update.
+## Verification and evidence
 
-### Live checks and limits
+The guest checkpoint is **190 automated tests**, TypeScript, targeted ESLint and production build passing. [tests.md](tests.md) is the authoritative reference for commands, feature coverage, manual evidence, limitations and test-count history.
 
-The owner group-creation browser flow was successfully tested against Prisma-hosted PostgreSQL. The Group, OWNER GroupMember with claimedAt, guest members with null userId/claimedAt, and owner-attributed GROUP_CREATED event were verified. The UserSession migration had already been applied and verified using migration status and schema verification.
+Earlier live work verified group creation and a read-only persisted dashboard query against Prisma-hosted PostgreSQL. The developer subsequently reported independent guest claims in separate browser profiles. Protected-group browser validation and real-database race/rollback tests remain outstanding.
 
-A subsequent read-only check of the new dashboard service returned the existing test group with four active members, GBP and one event; no shareToken was returned and no records were changed. A connected browser was unavailable for a separate manual dashboard rendering check. Mock tests exercise rollback/error propagation; live PostgreSQL rollback failure injection is still unverified.
+## Development convention
 
-The live read emitted an existing PostgreSQL driver SSL-mode compatibility warning; no environment or dependency changes were made. Some earlier builds needed network access to download the existing Google Fonts. The latest production build passed.
+For future milestones, update relevant documentation, README progress and tests.md when behaviour or testing changes. Review intended files and verification before committing; commit/push only when explicitly authorized.
 
-### Next
-
-1. Owner group detail page.
-2. Clickable dashboard group cards.
-3. Group members/activity view.
-4. Reusable share-link controls.
-5. Public `/g/[shareToken]`.
-6. Guest member claiming and `GuestSession`.
-7. Then expenses, balances and repayments.
-
-### Future
-
-Optional account linking, member management and additional splitting/settlement features. Rate limiting is a pre-public-deployment requirement. The group form's pending state is not server-side idempotency. GuestSession storage and financial tables are present, but their workflows are not yet implemented.
-
-### Documentation checkpoint
-
-This update aligns public documentation with the completed authentication, group creation and dashboard milestones. It changes documentation only. Original development notes and diagrams remain below or in their respective documents for historical comparison. Old `prisma@latest` commands are historical records, not current setup instructions; use the locally installed CLI and separately review/approve migrations.
+Original notes below are historical. Old `prisma@latest` commands and automatic push examples are not current instructions: use the locally pinned CLI, review migrations separately and preserve applied migration history.
 
 ---
 

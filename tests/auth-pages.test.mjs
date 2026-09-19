@@ -9,6 +9,7 @@ import ts from "typescript";
 const runtimeUrl = `data:text/javascript,${encodeURIComponent(`
   export const state = { user: null, slots: [], cursor: 0, dashboard: null, ownerReads: [] };
   export async function getCurrentUser() { return state.user; }
+  export async function signOut() { throw new Error('Unexpected sign-out in page rendering test'); }
   export async function getGroupsForOwner(ownerId) {
     state.ownerReads.push(ownerId);
     return state.dashboard;
@@ -29,7 +30,7 @@ const runtimeUrl = `data:text/javascript,${encodeURIComponent(`
 `)}`;
 const hooks = registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (["@/lib/auth/session", "@/data/groups", "next/navigation", "next/link"].includes(specifier)
+    if (["@/lib/auth/session", "@/data/groups", "@/app/actions/auth", "next/navigation", "next/link"].includes(specifier)
       || (specifier === "react" && context.parentURL?.endsWith("/auth-form.tsx"))) {
       return { url: runtimeUrl, shortCircuit: true };
     }

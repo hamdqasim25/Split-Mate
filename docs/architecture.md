@@ -1,57 +1,74 @@
 # SPLITMate Architecture
 
-## Implementation and testing update - 19 September 2026
+## Runtime and identity
 
-This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
+Next.js App Router hosts pages, route handlers, Server Actions and server-only data services. React and Tailwind provide the UI; `src/prisma/db.ts` connects the pinned Prisma 8 RC runtime to Prisma-hosted PostgreSQL. There is no separate FastAPI backend.
 
-### Completed
+A User is an account; a GroupMember is an identity inside one group. Only owners require accounts. All financial relationships reference GroupMember, including guests with null userId.
 
-The application uses Next.js App Router, React, TypeScript and Tailwind CSS. Route handlers, server-only services and Prisma 8 RC run within the Next.js application; there is no separate FastAPI backend. Persistence uses Prisma-hosted PostgreSQL through `src/prisma/db.ts`.
+## Authentication
+
+| Concern | Owner | Guest |
+| --- | --- | --- |
+| Establish identity | bcrypt-verified login | Claim an eligible owner-defined member through an enabled invite |
+| Session model | UserSession → User | GuestSession → GroupMember |
+| Expiry | Eight hours | 30 days; activity does not extend expiry |
+| Cookie | Owner-specific host-only HttpOnly cookie | Separate guest-specific host-only HttpOnly cookie |
+| Access check | Verified owner ID and Group.createdBy | Valid session, active claimed MEMBER with null userId, matching group |
+| Sign-out | Revoke browser owner sessions, clear owner cookies | Revoke browser guest sessions, clear guest cookies; preserve claimedAt |
+
+Both session types use 32 random bytes and store only SHA-256 token hashes. Shared helpers validate canonical base64url tokens. Cookies use SameSite=Lax; production uses Secure and the `__Host-` prefix. Owner issuance also supports an HTTPS development cookie. Guest issuance uses the local cookie outside production.
+
+Registration normalizes email and hashes passwords with bcrypt cost 12; passwords are not trimmed and require 15 characters minimum, 72 UTF-8 bytes maximum. Registration does not issue a session. HTTP mutation endpoints enforce same origin; Server Actions use Next.js's action request protection and revalidate identity/input server-side.
+
+Session reads reject malformed, missing, expired or unusable credentials. Server Components do not mutate cookies during rendering. Explicit sign-out clears cookies only after successful revocation.
+
+## Guest flow
 
 ```mermaid
 flowchart TD
-    AuthUI[Login and register UI] --> AuthAPI[Auth POST routes]
-    AuthAPI --> Sessions[UserSession and User]
-    Form[Protected group creation form] --> API[POST /api/groups]
-    API --> Session[requireUser resolves server session]
-    Session --> Create[createGroup with verified user.id]
-    Create --> TX[Prisma transaction]
-    TX --> Records[Group, owner and guest members, GROUP_CREATED]
-    Dashboard[Protected dashboard] --> User[getCurrentUser]
-    User --> Read[getGroupsForOwner with verified user.id]
-    Read --> Data[Owned groups, active member counts, latest five events]
-    Sessions --> DB[Prisma-hosted PostgreSQL]
-    Records --> DB
-    Data --> DB
+    Invite[Shared invite] --> Lookup[Resolve group token]
+    Lookup --> Existing{Valid same-group guest session?}
+    Existing -->|Yes| Group[Protected guest group page]
+    Existing -->|No| Enabled{Sharing enabled?}
+    Enabled -->|Yes| Names[Eligible member names]
+    Names --> Claim[Transactional conditional claim]
+    Claim --> Records[claimedAt + hashed GuestSession + MEMBER_CLAIMED]
+    Records --> Cookie[Issue guest cookie]
+    Cookie --> Group
+    Enabled -->|No| Unavailable[Invite unavailable]
+    Group --> Data[Current identity, active members, recent activity]
+    Data --> Activity[Throttled activity timestamps]
 ```
 
-### Authentication and identity boundaries
+Claim eligibility is active, unclaimed, role MEMBER and null userId, in the group resolved from the token. Conditional `updateAll()` writes retain guards in SQL: the group write coordinates claiming with link changes, and the member write prevents two successful claims. Session/event creation shares the transaction. This RC's single-row `update()` first resolves an ID, so it is not used for these guarded writes.
 
-- Owner session tokens use 32 random bytes; only their SHA-256 hashes are stored in `UserSession`.
-- Host-only HttpOnly cookies use SameSite=Lax and no Domain. HTTPS uses the `__Host-` cookie; local HTTP development uses a separate cookie name. Sessions expire after eight hours.
-- Passwords use bcrypt cost 12. Registration requires at least 15 characters and at most 72 UTF-8 bytes. Emails are trimmed and lowercased; passwords are not trimmed.
-- Registration does not issue a session. Login failures remain generic. Logout is POST-only and revokes the database session before expiring the cookie.
-- Same-origin checks protect mutation endpoints. Guards live directly in the owner pages, leaving future guest routes publicly reachable.
-- Post-login destinations are restricted to `/dashboard` and `/groups/new`; login performs a fresh navigation.
-- User accounts and GroupMember identities stay separate. Financial references use GroupMember; guest sessions remain separate from owner sessions.
+Sharing controls new invitations, not existing membership. Disabling sharing preserves valid guest access; inactive membership blocks it. Rotating a token would make old URLs unresolvable, including for existing guests. Rotation/disable UI is not implemented.
 
-### Dashboard reads
+## Routing and data boundaries
 
-`getGroupsForOwner` validates the owner ID and selects only dashboard fields from groups where `createdBy` equals the verified User ID. Prisma's filtered `members` relation reducer counts active GroupMembers, including guests. A second query fetches the latest five events across those group IDs. An owner with no groups needs only one query. Both lists order by creation timestamp and ID descending.
+| Route | Behaviour |
+| --- | --- |
+| `/` | Session-aware landing actions |
+| `/register`, `/login` | Owner authentication; allowed return paths are dashboard/group creation |
+| `/dashboard` | Owner's groups, active-member counts and latest five owned-group events |
+| `/groups/new` | Owner-only creation form → POST /api/groups |
+| `/groups/[groupId]` | Ownership checked server-side; active members, latest 10 events and share UI |
+| `/g/[shareToken]` | Invite; existing same-group guests redirect to /group even when sharing is disabled |
+| `/g/[shareToken]/group` | Matching guest session required; failures redirect to invite without private lists |
+| `/g/[shareToken]/joined` | Compatibility redirect to the protected /group destination |
 
-There is no per-group query loop. The read service returns no share tokens, password hashes or session data. No cross-user application cache is introduced. Since Group has no archive flag, the displayed active-group count means all owned groups.
+Successful claims go directly to the guest group page. Guest sign-out returns to the invite without making the identity claimable again. Invalid token paths use a fixed safe destination. Unexpected protected-group/action failures produce generic messages.
 
-### Next
+Guest output contains only group/current-member identity, active member names/joined status and up to 10 events ordered by timestamp and ID descending. Allowed events are GROUP_CREATED, MEMBER_CLAIMED, MEMBER_ADDED and MEMBER_REMOVED. Other event types need an explicit visibility decision. Owner account data, authentication fields and financial data are excluded.
 
-Owner group details, dashboard card navigation and group members/activity, then share-link controls, public token access and guest claiming. See the [ordered roadmap](dev-roadmap.md).
+Guest group reads and activity updates share a transaction. lastSeenAt and lastActiveAt each refresh when at least five minutes old; observed-value guards avoid overwriting newer timestamps. No page-view ActivityEvents are created. Guest pages are dynamic and set noindex/no-referrer metadata.
 
-### Future
+## Limits and next work
 
-Expenses, balances and repayments follow guest access. Account linking remains optional. Add rate limiting before public deployment. Group submission has a pending state but no server-side idempotency guarantee.
+One current guest cookie per browser; no session recovery, identity switching or multi-group guest-session UI. Rate limiting and live database concurrency/rollback testing remain outstanding. Group creation has no server-side idempotency guarantee.
 
-### Verification
-
-Local tests cover authentication, page guards, dashboard reads and creation. A live creation request and a read-only dashboard query have succeeded against the cloud database. Mocked transaction tests do not independently prove live PostgreSQL rollback. See [progress](progress-report.md).
+Next: **Expense creation and splitting**. See [testing evidence](tests.md), [owner data flow](group-creation.md) and [database design](database-design.md).
 
 ---
 

@@ -9,6 +9,7 @@ import ts from "typescript";
 const mockUrl = `data:text/javascript,${encodeURIComponent(`
 export const state = { rows: {}, reads: [], user: null, failure: null };
 export async function getCurrentUser() { return state.user; }
+export async function signOut() { throw new Error('Unexpected sign-out in page rendering test'); }
 export function redirect(destination) { throw Object.assign(new Error('redirect'), { destination }); }
 export default function Link() {}
 const fields = new Proxy({}, { get: (_, key) => ({
@@ -55,7 +56,7 @@ export const db = { orm: { public: { Group: collection('Group'), ActivityEvent: 
 `)}`;
 const hooks = registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (["@/prisma/db", "@/lib/auth/session", "next/navigation", "next/link"].includes(specifier)) {
+    if (["@/prisma/db", "@/lib/auth/session", "@/app/actions/auth", "next/navigation", "next/link"].includes(specifier)) {
       return { url: mockUrl, shortCircuit: true };
     }
     if (specifier === "server-only") return { url: "data:text/javascript,export {};", shortCircuit: true };

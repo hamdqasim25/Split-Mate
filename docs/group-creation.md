@@ -40,15 +40,19 @@ Failures propagate so the transaction can roll back. The response selects only i
 
 A second query selects the latest five ActivityEvents whose groupId is in the owned group IDs. Both queries use timestamp and ID descending for deterministic ordering. No groups means no activity query. No N+1 loop or share-token projection is used.
 
-The page shows the verified owner name, group details, currency, active member counts, dates and event descriptions. Empty groups/activity states are explicit. Balance cards show neutral placeholders. The invalid `/groups` link was removed; dashboard cards do not yet navigate to group details.
+The page shows the verified owner name, group details, currency, active member counts, dates and event descriptions. Empty groups/activity states are explicit. Balance cards show neutral placeholders. Dashboard cards open `/groups/[groupId]`; there is no `/groups` index.
+
+### Completed - owner group detail
+
+The route validates a positive database-range group ID and requires an owner session. `getGroupForOwner(user.id, groupId)` checks `createdBy` server-side before loading active members and the latest 10 events. Missing/non-owned groups are not found. This private service may return the share token for the copy-link UI; dashboard and guest group data do not. Guest access is described in [architecture](architecture.md).
 
 ### Verification
 
-The 32 creation tests and 18 dashboard tests use database doubles. Auth suites add 70 tests. Targeted lint, TypeScript and production build passed. Live group creation successfully persisted the group, owner, guests and owner-attributed event in Prisma cloud PostgreSQL. A later read-only query confirmed one persisted group with four active members and one event, without returning the share token. Live rollback failure injection was not performed.
+See [tests.md](tests.md) for creation/dashboard coverage, recorded live evidence and verification. Owner group-detail authorization is implemented, but dedicated automated tests for that route/service remain a coverage gap.
 
 ### Next
 
-Owner group detail page, clickable dashboard cards, members/activity view, share-link controls, public token route, then guest claiming and GuestSession. See [roadmap](dev-roadmap.md).
+Expense creation and splitting. See [roadmap](dev-roadmap.md).
 
 ### Future
 

@@ -1,48 +1,44 @@
 # SPLITMate Project Structure
 
-## Implementation and testing update - 19 September 2026
-
-This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
-
-### Completed - current source map
+## Current source map
 
 | Path | Responsibility |
 | --- | --- |
-| `src/app/page.tsx` | Landing page with server-side authentication-aware actions |
-| `src/app/login/page.tsx`, `src/app/register/page.tsx` | Auth pages with validated return destinations |
-| `src/components/auth/auth-form.tsx` | Login/register form, validation, pending/error states and navigation |
-| `src/app/dashboard/page.tsx` | Owner guard and persisted group/activity dashboard |
-| `src/app/groups/new/page.tsx` | Owner guard and group creation page |
-| `src/components/groups/create-group-form.tsx` | Authenticated group submission UI |
-| `src/app/api/groups/route.ts` | Session-derived owner, JSON/origin validation and creation response |
-| `src/app/api/auth/register/route.ts` | Account creation POST endpoint |
-| `src/app/api/auth/login/route.ts` | Credential verification and owner session issuance |
-| `src/app/api/auth/logout/route.ts` | POST-only session revocation |
-| `src/data/auth.ts` | Account validation and bcrypt password handling |
-| `src/data/groups.ts` | Transactional createGroup and owner-scoped getGroupsForOwner |
-| `src/lib/auth/session.ts` | UserSession creation, resolution and revocation |
-| `src/lib/auth/http.ts`, `src/lib/auth/errors.ts` | Safe auth responses, request protection and errors |
-| `src/prisma/db.ts` | Prisma-hosted PostgreSQL runtime client |
-| `src/prisma/contract.prisma` | Authored nine-model data contract |
-| `src/prisma/contract.json`, `src/prisma/contract.d.ts` | Generated contract artifacts; do not hand-edit |
-| `migrations/app/` | Three migration packages and migration refs |
-| `migrations/snapshots/` | Historical contract snapshots |
-| `tests/auth-pages.test.mjs` | 38 page/form tests, including mocked persisted dashboard data |
-| `tests/dashboard.test.mjs` | 18 read-service and dashboard tests |
-| `tests/create-group.test.mjs` | 32 transactional creation tests |
-| `tests/auth.test.mjs` | 32 auth/service/session/route tests |
-| `tests/helpers/` | Local database/session doubles |
-| `docs/` | Public status, architecture, requirements, roadmap and historical diagrams |
+| `src/app/page.tsx` | Session-aware landing page |
+| `src/app/login/`, `src/app/register/` | Owner authentication pages |
+| `src/app/api/auth/` | Registration, login and logout POST endpoints |
+| `src/app/actions/auth.ts` | Owner sign-out action |
+| `src/app/dashboard/page.tsx` | Protected persisted owner dashboard |
+| `src/app/groups/new/page.tsx` | Protected group creation page |
+| `src/app/groups/[groupId]/page.tsx` | Owner-only group detail |
+| `src/app/api/groups/route.ts` | Validated, session-derived group creation |
+| `src/app/g/[shareToken]/page.tsx` | Invite/member selection and returning-guest redirect |
+| `src/app/g/[shareToken]/group/page.tsx` | Protected guest group view |
+| `src/app/g/[shareToken]/joined/page.tsx` | Compatibility redirect |
+| `src/app/actions/guest.ts` | Guest claim and sign-out actions |
+| `src/components/auth/auth-form.tsx` | Login/register interaction |
+| `src/components/groups/create-group-form.tsx` | Group submission UI |
+| `src/components/groups/share-link.tsx` | Owner share-link display/copy |
+| `src/components/groups/claim-member-form.tsx` | Claim submission, pending/error states |
+| `src/components/groups/guest-sign-out.tsx` | Device sign-out and claim-retention explanation |
+| `src/data/auth.ts` | Account validation and password handling |
+| `src/data/groups.ts` | Transactional creation, owner dashboard/detail reads |
+| `src/data/invites.ts` | Minimal token lookup, safe invite data and atomic claims |
+| `src/data/guest-groups.ts` | Authenticated guest data and activity tracking |
+| `src/lib/auth/tokens.ts` | Shared secure token generation, validation and hashing |
+| `src/lib/auth/session.ts` | Owner session lifecycle |
+| `src/lib/auth/guest-session.ts` | Guest validation, cookies, activity and revocation |
+| `src/lib/auth/http.ts`, `errors.ts` | HTTP validation and safe authentication errors |
+| `src/prisma/db.ts` | PostgreSQL runtime |
+| `src/prisma/contract.prisma` | Authored nine-model contract |
+| `src/prisma/contract.json`, `contract.d.ts` | Generated artifacts; do not hand-edit |
+| `migrations/` | Applied migration history, refs and snapshots |
+| `tests/*.test.mjs`, `tests/helpers/` | Node tests and isolated runtime/database doubles |
+| `docs/tests.md` | Permanent testing reference and checkpoints |
 
-Next.js layout/styles remain in `src/app/layout.tsx` and `src/app/globals.css`. Tool versions and scripts are defined in `package.json` and the lockfile. Private environment files, local agent instructions, dependencies and build output are ignored by Git.
+Layout/styles remain in `src/app/layout.tsx` and `globals.css`. Dependencies and scripts are defined in package.json and its lockfile. Environment secrets and build output remain ignored.
 
-### Next
-
-An owner group detail page and dashboard card links, group members/activity views, share controls, `/g/[shareToken]` and guest claiming. There is no `/groups` index or owner group detail route yet. See the [roadmap](dev-roadmap.md).
-
-### Future
-
-Expense, balance and repayment handlers/UI, plus optional account linking. Existing database models do not imply existing pages or workflows.
+For route authorization see [architecture](architecture.md); for current feature status see [README](../README.md). No expense routes/workflows or `/groups` index exist.
 
 ---
 

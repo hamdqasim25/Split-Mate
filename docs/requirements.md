@@ -1,33 +1,30 @@
 # SPLITMate Requirements
 
-## Implementation and testing update - 19 September 2026
+## Implemented
 
-This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
-
-### Completed
-
-| Requirement | Implemented behaviour |
+| Area | Requirement satisfied |
 | --- | --- |
-| Owner accounts | Register/login/logout, password hashing and database-backed UserSession |
-| Protected owner pages | Direct server guards on dashboard and group creation |
-| Trusted ownership | API and dashboard derive User.id from the verified server session |
-| Group creation | Form and endpoint call the transactional service; owner/guest identities, token and activity are created together |
-| Guest-compatible identity | GroupMember.userId is nullable; guests need no account to be represented in a group |
-| Owner overview | Real groups, active member counts and recent owned-group activity; useful empty states |
-| Safe output | No shareToken, password hash or session token in dashboard data; no invented balances |
-| Validation | GBP, 1-100 character names, optional description up to 1000 characters, 0-50 guests, distinct normalized names |
+| Owner accounts | Registration/login/sign-out with hashed passwords and UserSession |
+| Owner group access | Session-derived ownership for creation, dashboard and group detail |
+| Group creation | Group, secure share token, owner/guest members and GROUP_CREATED created atomically |
+| Guest identity | Nullable GroupMember.userId; existing named members can claim without accounts |
+| Invite validation | Canonical token, enabled sharing and eligible same-group member required for new claims |
+| Guest authentication | Hashed expiring GuestSession; URL/member IDs alone never authenticate |
+| Protected guest page | Current identity, active joined/waiting members, latest 10 allowed events |
+| Access policy | Disabled invitations stop new claims; existing valid guests retain access |
+| Activity tracking | Throttled lastSeenAt/lastActiveAt updates without extending expiry |
+| Guest sign-out | Revoke browser guest session; preserve membership, claimedAt and owner login |
+| Safe presentation | No private account/session data or invented financial balances |
 
-Registration requires at least 15 characters and at most 72 UTF-8 password bytes. Emails are consistently trimmed/lowercased. Login failures are generic. Mutations validate origin; group creation accepts JSON with a bounded body. Ordinary duplicate clicks are inhibited while pending; server-side idempotency is not implemented.
+Group input supports GBP, 1–100-character normalized distinct names, optional description up to 1000 characters and 0–50 guests. Owner/member and token validation remains server-side. See [architecture](architecture.md) for authentication details and [tests](tests.md) for verification scope.
 
-### Next
+## Next: Expense creation and splitting
 
-Owner detail and card navigation, member/activity display and share-link controls precede public `/g/[shareToken]` and guest claiming. Guest claiming must choose an existing owner-defined GroupMember and use a separate hashed, expiring GuestSession. It must not require a User account or trust a browser-supplied member ID as proof of identity.
+Financial records must reference GroupMember, enforce same-group participants/payer, use group currency and deterministic money handling, and preserve totals after rounding. Expense creation must log activity atomically.
 
-### Future
+## Future requirements and limits
 
-Expenses, balances and repayments must reference GroupMember, use group currency and deterministic Decimal rounding, and enforce same-group references server-side. Repayment completion requires receiver confirmation after the sender marks SENT. Optional guest registration must link the existing identity, preserving history.
-
-Rate limiting is required before public deployment. Further production hardening and live rollback integration tests remain separate work. See [progress](progress-report.md) for tested scope and [roadmap](dev-roadmap.md) for ordering.
+Balances and repayments must preserve sender SENT / receiver CONFIRMED. Optional accounts must link existing memberships and history. Rate limiting is required before public deployment; server-side idempotency, guest recovery and multi-group guest-session management are not implemented.
 
 ---
 

@@ -40,7 +40,7 @@ erDiagram
 
 `User` and `GroupMember` are not interchangeable. Guests are created with null `userId` and `claimedAt`; the owner has role OWNER, a User link and a claimed timestamp. One creation transaction writes the Group, members, secure token and GROUP_CREATED event attributed to the owner's GroupMember.
 
-UserSession is implemented independently of GuestSession. Owner session tokens are hashed with SHA-256 before storage; logout deletes the session row. GuestSession storage exists, but its runtime flow is still planned.
+UserSession and GuestSession are both implemented, with separate cookies and identity checks. Both store SHA-256 token hashes rather than raw tokens. Guest claiming atomically sets claimedAt/lastActiveAt, creates the session and logs MEMBER_CLAIMED. Guest group reads refresh lastSeenAt/lastActiveAt with a five-minute throttle and do not extend expiry. Guest sign-out deletes the browser's session without resetting claimedAt or deleting its GroupMember. See [authentication architecture](architecture.md).
 
 ### Constraints and read behaviour
 
@@ -60,7 +60,7 @@ Use the existing pooled application connection and direct administrative connect
 
 ### Next
 
-Build owner detail/member/activity reads and reusable share-link controls using this schema, then public access and GuestSession claiming. See the [roadmap](dev-roadmap.md).
+Expense creation and splitting, using the existing GroupMember-based financial models. The owner/guest access milestones required no new migration. See the [roadmap](dev-roadmap.md) and [testing limits](tests.md).
 
 ### Future
 

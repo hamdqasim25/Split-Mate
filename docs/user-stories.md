@@ -1,32 +1,27 @@
 # SPLITMate User Stories
 
-## Implementation and testing update - 19 September 2026
+## Completed
 
-This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
+- As an owner, I can register, sign in and sign out using a database-backed session.
+- As an owner, I can create a group with distinct guest names and see it on my persisted dashboard.
+- As an owner, I can open my group, view members/recent activity and copy its reusable invite.
+- As a guest, I can select my existing unclaimed name through an enabled invite without registering.
+- As a returning guest, I can enter my group's protected page using my valid browser session.
+- As a guest, I can see my identity, joined/waiting active members and recent group activity.
+- As an existing guest, I retain access when invitations are disabled, provided my session and membership remain valid.
+- As a guest, I can sign out on this device; my membership remains claimed and my owner login, if any, is unaffected.
 
-### Completed
+## Next: Expense creation and splitting
 
-- As an owner, I can register, log in and use a database-backed session to reach protected owner pages. A POST logout endpoint revokes my session.
-- As an authenticated owner, I can create a group with named guests through the form. The server establishes ownership from my session, creates my claimed OWNER membership, unclaimed guest memberships and the creation event atomically.
-- As an owner, I receive validation feedback for invalid or duplicate names instead of ambiguous member identities.
-- As an owner, I can see my name, persisted groups, active member counts and recent group activity on the dashboard. Money summaries clearly remain unavailable until the expense workflow exists.
-- As a guest, I can already be represented by a GroupMember with no linked User account. Accessing or claiming that identity is still planned.
+As a group member, I want to record who paid and who participated, with shares that add up exactly to the expense amount.
 
-The creation journey was live-tested against Prisma cloud PostgreSQL. Dashboard reads were verified read-only; automated tests use local mocks. See [progress](progress-report.md).
+## Future
 
-### Next
+- View balances and record repayments with receiver confirmation.
+- Recover guest access or link an optional account without losing history.
+- Manage members and disable/regenerate invitations through owner controls.
 
-- As an owner, I want to open my group from a dashboard card and see its members and activity.
-- As an owner, I want to copy, disable or regenerate the reusable share link.
-- As a guest, I want to open `/g/[shareToken]`, select my existing name and be remembered securely through a separate GuestSession without registering.
-
-These follow the ordered [roadmap](dev-roadmap.md); shared access is not implemented merely because a token exists.
-
-### Future
-
-- As a member, I want to record expenses, allocate shares and see accurate balances using my GroupMember identity.
-- As a payer, I want to mark a repayment SENT; as its receiver, I want to mark it CONFIRMED after receipt.
-- As a guest, I want optional account linking without a duplicate identity or lost history.
+See [requirements](requirements.md), [architecture](architecture.md) and [testing evidence](tests.md). The sign-out UI explains that claimed identities cannot currently be recovered on that device.
 
 ---
 

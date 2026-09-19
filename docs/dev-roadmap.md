@@ -1,43 +1,28 @@
 # SPLITMate Development Roadmap
 
-## Implementation and testing update - 19 September 2026
+## Completed
 
-This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
+- Owner authentication and database-backed sessions.
+- Atomic group creation and persisted dashboard/groups.
+- Owner-only details, members/activity and share-link display/copy.
+- Guest invite resolution and secure member claiming.
+- GuestSession authentication and protected guest group access.
+- Guest member/activity display, five-minute activity tracking and device sign-out.
+- Automated tests and milestone verification; see [tests.md](tests.md).
 
-### Completed
+## Next: Expense creation and splitting
 
-- Next.js App Router, TypeScript and Tailwind foundation.
-- Prisma 8 RC and Prisma-hosted PostgreSQL, including separate UserSession and GuestSession models.
-- Owner register/login/logout backend, session utilities and login/register UI.
-- Server-side protection of dashboard and group creation pages.
-- Authenticated group creation through `/api/groups`, deriving ownership from the server session.
-- Transactional Group, secure share token, owner/guest members and GROUP_CREATED activity.
-- Live cloud-database verification of group creation.
-- Persisted owner dashboard: name, owned groups, active member counts and recent events; no fake balances or exposed share token.
-- 120 local tests passing across four suites; targeted lint, TypeScript and production build passing.
+Implement a focused expense-creation slice with authenticated owner/guest identity, same-group payer and participant validation, group currency, deterministic equal splitting and atomic EXPENSE_CREATED logging. Do not infer completed workflows from existing financial tables.
 
-### Next - ordered milestones
+## Later
 
-1. Owner group detail page.
-2. Clickable dashboard group cards.
-3. Group members/activity view.
-4. Reusable share-link controls.
-5. Public `/g/[shareToken]`.
-6. Guest member claiming and `GuestSession`.
-7. Then expenses, balances and repayments.
+- Balances and repayments, preserving payer SENT → receiver CONFIRMED.
+- Optional account linking without duplicating GroupMember/history.
+- Member management and invite disable/regeneration controls.
+- Session recovery and multi-group guest access.
+- Broader split methods, settlement improvements and notifications.
 
-Owner detail access must verify ownership server-side. Guests must remain able to participate without registering. A share link identifies a group, while an authenticated owner session or valid GuestSession establishes the caller's identity.
-
-### Future
-
-- Optional account linking without duplicating GroupMember history.
-- Member management and broader activity coverage.
-- Unequal splitting, settlement optimisation and notifications as separately scoped features.
-- Production hardening, including rate limiting before public deployment and consideration of server-side request idempotency.
-
-The financial milestone includes deterministic splitting/rounding and repayments marked SENT by the payer, then CONFIRMED by the receiver. No current balance engine is claimed.
-
-See [progress and test evidence](progress-report.md). Original stages below are historical, not the current work queue.
+Rate limiting is required before public deployment. Live database concurrency/rollback tests and server-side creation idempotency remain separate work. [README](../README.md) holds concise current progress; [architecture](architecture.md) defines access boundaries.
 
 ---
 

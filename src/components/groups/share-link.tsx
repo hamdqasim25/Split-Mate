@@ -76,8 +76,8 @@ export default function ShareLink({
             </div>
 
             <p className="mt-3 text-xs leading-5 text-slate-500">
-              Anyone with this link can reach the group&apos;s guest entry page
-              once guest access is enabled.
+              Anyone with this link can choose an unclaimed member name and join
+              without an account. Share it only with your group members.
             </p>
           </>
         ) : (

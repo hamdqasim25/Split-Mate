@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
+import { createSessionToken, tokenHash } from "@/lib/auth/tokens";
 import { cookies } from "next/headers";
 import { db } from "@/prisma/db";
 import { AuthError } from "@/lib/auth/errors";
@@ -11,13 +11,6 @@ const SESSION_SECONDS = 8 * 60 * 60;
 
 function cookieNames(): string[] {
   return process.env.NODE_ENV === "production" ? [SECURE_COOKIE] : [SECURE_COOKIE, LOCAL_COOKIE];
-}
-
-function tokenHash(token: string | undefined): string | null {
-  if (!token || !/^[A-Za-z0-9_-]{43}$/u.test(token)) return null;
-  const bytes = Buffer.from(token, "base64url");
-  if (bytes.length !== 32 || bytes.toString("base64url") !== token) return null;
-  return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
 function cookieOptions(name: string) {
@@ -41,8 +34,7 @@ export async function createUserSession(userId: number, requestUrl: string): Pro
   const previousHashes = cookieNames()
     .map((name) => tokenHash(cookieStore.get(name)?.value))
     .filter((hash): hash is string => hash !== null);
-  const token = randomBytes(32).toString("base64url");
-  const hash = createHash("sha256").update(token, "utf8").digest("hex");
+  const { token, hash } = createSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_SECONDS * 1000);
 
   await db.transaction(async (tx) => {

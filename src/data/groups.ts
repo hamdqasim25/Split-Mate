@@ -3,6 +3,31 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { db } from "@/prisma/db";
 
+/** Internal read service: the owner ID must come from a verified server session. */
+export async function getGroupsForOwner(authenticatedOwnerId: number) {
+  if (!Number.isInteger(authenticatedOwnerId) || authenticatedOwnerId <= 0 || authenticatedOwnerId > 2_147_483_647) {
+    throw new RangeError("A valid authenticated owner ID is required.");
+  }
+
+  const groups = await db.orm.public.Group
+    .where({ createdBy: authenticatedOwnerId })
+    .select("id", "name", "description", "currency", "createdAt")
+    .include("members", (members) => members.where({ isActive: true }).count())
+    .orderBy([(group) => group.createdAt.desc(), (group) => group.id.desc()])
+    .all();
+
+  // Fetch the latest events across ALL owned groups, not five per group.
+  // No query for an empty ID set, and no per-group database round trips.
+  const activity = groups.length === 0 ? [] : await db.orm.public.ActivityEvent
+    .where((event) => event.groupId.in(groups.map((group) => group.id)))
+    .select("id", "groupId", "description", "createdAt")
+    .orderBy([(event) => event.createdAt.desc(), (event) => event.id.desc()])
+    .limit(5)
+    .all();
+
+  return { groups, activity };
+}
+
 type GroupCreationErrorCode = "INVALID_INPUT" | "OWNER_NOT_FOUND";
 
 export class GroupCreationError extends Error {

@@ -7,9 +7,15 @@ import ts from "typescript";
 // In-memory React hooks let us exercise the actual submit handler without a DOM
 // dependency. Page session reads and navigation never reach Next.js or a database.
 const runtimeUrl = `data:text/javascript,${encodeURIComponent(`
-  export const state = { user: null, slots: [], cursor: 0 };
+  export const state = { user: null, slots: [], cursor: 0, dashboard: null, ownerReads: [] };
   export async function getCurrentUser() { return state.user; }
+  export async function getGroupsForOwner(ownerId) {
+    state.ownerReads.push(ownerId);
+    return state.dashboard;
+  }
   export function redirect(destination) { throw Object.assign(new Error('redirect'), { destination }); }
+  // The protected group page imports its client form, but these tests do not render it.
+  export function useRouter() { throw new Error('Unexpected client router use in page tests'); }
   export function useState(initial) {
     const index = state.cursor++;
     if (!(index in state.slots)) state.slots[index] = initial;
@@ -23,7 +29,7 @@ const runtimeUrl = `data:text/javascript,${encodeURIComponent(`
 `)}`;
 const hooks = registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (["@/lib/auth/session", "next/navigation", "next/link"].includes(specifier)
+    if (["@/lib/auth/session", "@/data/groups", "next/navigation", "next/link"].includes(specifier)
       || (specifier === "react" && context.parentURL?.endsWith("/auth-form.tsx"))) {
       return { url: runtimeUrl, shortCircuit: true };
     }
@@ -60,6 +66,17 @@ beforeEach(() => {
   state.user = null;
   state.slots = [];
   state.cursor = 0;
+  state.ownerReads = [];
+  state.dashboard = {
+    groups: [{
+      id: 42, name: "Mocked climbing group", description: "Thursday climbing sessions",
+      currency: "GBP", members: 4, createdAt: "2026-09-19T10:00:00Z",
+    }],
+    activity: [{
+      id: 81, groupId: 42, description: "Private owner created the group",
+      createdAt: "2026-09-19T10:00:00Z",
+    }],
+  };
   requests = [];
   navigations = [];
   globalThis.FormData = class { constructor(form) { this.form = form; } get(key) { return this.form[key] ?? null; } };
@@ -101,12 +118,39 @@ const params = next => ({ searchParams: Promise.resolve({ next }) });
 for (const [path, Page] of [["/dashboard", Dashboard], ["/groups/new", NewGroup]]) {
   test(`anonymous ${path} redirects before rendering`, async () => {
     await assert.rejects(Page(), { destination: `/login?next=${path}` });
+    assert.deepEqual(state.ownerReads, [], "Group data must not load before authentication");
   });
   test(`authenticated ${path} renders existing content`, async () => {
     state.user = { id: 7, name: "Private owner" };
     const tree = await Page();
     assert.equal(tree.type, "main");
-    assert.match(text(tree), path === "/dashboard" ? /Weekend/ : /Create a group/);
+    if (path === "/groups/new") {
+      assert.match(text(tree), /Create a group/);
+      return;
+    }
+
+    assert.deepEqual(state.ownerReads, [7], "Use the verified session's owner ID");
+    assert.match(text(tree), /Welcome back, Private owner/);
+    const sections = nodes(tree).filter(node => node.type === "section");
+    const groupsSection = sections.find(section => text(section).includes("Your groups"));
+    assert.match(text(groupsSection), /Mocked climbing group/);
+    assert.match(text(groupsSection), /Thursday climbing sessions/);
+    assert.match(text(groupsSection), /4 members · GBP/);
+
+    const activitySection = sections.find(section => text(section).includes("Recent activity"));
+    assert.match(text(activitySection), /Private owner created the group/);
+    assert.match(text(activitySection), /Mocked climbing group/);
+
+    for (const label of ["You are owed", "You owe"]) {
+      const card = nodes(tree).find(node => node.type === "div"
+        && Array.isArray(node.props.children)
+        && node.props.children.some(child => child?.type === "p" && text(child) === label));
+      assert.ok(card, `${label} card renders`);
+      const paragraphs = nodes(card).filter(node => node.type === "p").map(text);
+      assert.ok(paragraphs.includes("—"));
+      assert.ok(paragraphs.includes("Available once expenses are added"));
+    }
+    assert.doesNotMatch(text(tree), /£40\.00|£12\.00|£75\.00|£45\.00|Weekend Trip|Football|Dinner together|Train tickets/);
   });
 }
 

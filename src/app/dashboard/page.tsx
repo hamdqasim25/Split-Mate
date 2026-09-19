@@ -2,40 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getGroupsForOwner } from "@/data/groups";
 
 export const metadata: Metadata = {
   title: "Dashboard | SPLITMate",
   description: "Your shared expenses and groups, all in one place.",
 };
 
-const groups = [
-  {
-    name: "Weekend Trip",
-    members: 3,
-    balance: "You are owed £40.00",
-  },
-  {
-    name: "Football",
-    members: 8,
-    balance: "You owe £12.00",
-  },
-];
-
-const activity = [
-  {
-    title: "Dinner together",
-    detail: "Yamin paid",
-    amount: "£75.00",
-  },
-  {
-    title: "Train tickets",
-    detail: "Mohammed paid",
-    amount: "£45.00",
-  },
-];
+const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Europe/London" });
+const activityDateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London" });
 
 export default async function Dashboard() {
-  if (!(await getCurrentUser())) redirect("/login?next=/dashboard");
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/dashboard");
+
+  const { groups, activity } = await getGroupsForOwner(user.id);
+  const groupNames = new Map(groups.map((group) => [group.id, group.name]));
 
   return (
     <main className="min-h-screen bg-[#f8faf7] px-6 py-12 font-sans text-slate-900 sm:py-20">
@@ -55,7 +37,7 @@ export default async function Dashboard() {
             </h1>
 
             <p className="mt-4 max-w-xl text-lg leading-8 text-slate-600">
-              Keep track of your groups, expenses, and balances in one place.
+              Welcome back, {user.name}
             </p>
           </div>
 
@@ -71,21 +53,23 @@ export default async function Dashboard() {
           <div className="rounded-2xl border border-slate-200 bg-white p-6">
             <p className="text-sm text-slate-500">You are owed</p>
             <p className="mt-2 text-3xl font-semibold text-emerald-800">
-              £40.00
+              —
             </p>
+            <p className="mt-2 text-sm text-slate-500">Available once expenses are added</p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6">
             <p className="text-sm text-slate-500">You owe</p>
             <p className="mt-2 text-3xl font-semibold">
-              £12.00
+              —
             </p>
+            <p className="mt-2 text-sm text-slate-500">Available once expenses are added</p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6">
             <p className="text-sm text-slate-500">Active groups</p>
             <p className="mt-2 text-3xl font-semibold">
-              2
+              {groups.length}
             </p>
           </div>
         </section>
@@ -96,30 +80,33 @@ export default async function Dashboard() {
               Your groups
             </h2>
 
-            <Link
-              href="/groups"
-              className="text-sm font-semibold text-emerald-800"
-            >
-              View all
-            </Link>
+
           </div>
 
+          {groups.length === 0 && (
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
+              <h3 className="text-xl font-semibold">No groups yet</h3>
+              <p className="mt-2 text-sm text-slate-600">Create your first SPLITMate group to start tracking shared expenses.</p>
+              <Link href="/groups/new" className="mt-4 inline-block font-semibold text-emerald-800 underline">Create your first group</Link>
+            </div>
+          )}
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {groups.map((group) => (
               <div
-                key={group.name}
+                key={group.id}
                 className="rounded-2xl border border-slate-200 bg-white p-6"
               >
-                <h3 className="text-xl font-semibold">
+                <h3 className="break-words text-xl font-semibold">
                   {group.name}
                 </h3>
 
                 <p className="mt-2 text-sm text-slate-500">
-                  {group.members} members
+                  {group.members} {group.members === 1 ? "member" : "members"} · {group.currency}
                 </p>
 
-                <p className="mt-5 font-semibold text-emerald-800">
-                  {group.balance}
+                {group.description && <p className="mt-3 break-words text-sm text-slate-600">{group.description}</p>}
+                <p className="mt-5 text-sm text-slate-500">
+                  Created <time dateTime={group.createdAt}>{dateFormat.format(new Date(group.createdAt))}</time>
                 </p>
               </div>
             ))}
@@ -132,24 +119,25 @@ export default async function Dashboard() {
           </h2>
 
           <div className="mt-5 rounded-2xl border border-slate-200 bg-white">
+            {activity.length === 0 && <p className="p-5 text-sm text-slate-600">No activity yet. Group updates will appear here.</p>}
             {activity.map((item) => (
               <div
-                key={item.title}
-                className="flex items-center justify-between border-b border-slate-100 p-5 last:border-b-0"
+                key={item.id}
+                className="flex flex-col gap-3 border-b border-slate-100 p-5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div>
+                <div className="min-w-0 break-words">
                   <p className="font-semibold">
-                    {item.title}
+                    {item.description}
                   </p>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    {item.detail}
+                    {groupNames.get(item.groupId)}
                   </p>
                 </div>
 
-                <p className="font-semibold">
-                  {item.amount}
-                </p>
+                <time dateTime={item.createdAt} className="shrink-0 text-sm text-slate-500">
+                  {activityDateFormat.format(new Date(item.createdAt))} (London)
+                </time>
               </div>
             ))}
           </div>

@@ -1,63 +1,53 @@
-## Current Project Structure
+# SPLITMate Project Structure
 
-## Implementation and testing notes — 17 September 2026
+## Implementation and testing update - 19 September 2026
 
-This inventory was added during implementation and testing. It shows files actually present after the backend group-creation work. The original structure is preserved below and includes historical paths that no longer exist.
+This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
 
-```text
-Split-Mate/
-├── docs/
-│   ├── images/                    Original design images
-│   ├── architecture.md
-│   ├── database-design.md
-│   ├── dev-roadmap.md
-│   ├── group-creation.md          Backend inputs, transaction and limitations
-│   ├── progress-report.md
-│   ├── project-structure.md
-│   ├── requirements.md
-│   └── user-stories.md
-├── migrations/
-│   ├── app/                       Applied migration history and refs
-│   └── snapshots/                 Generated historical contracts
-├── public/
-├── src/
-│   ├── app/
-│   │   ├── dashboard/page.tsx      Sample dashboard
-│   │   ├── groups/new/page.tsx     Form UI without submission wiring
-│   │   ├── favicon.ico
-│   │   ├── globals.css
-│   │   ├── layout.tsx
-│   │   └── page.tsx                Landing page
-│   ├── data/
-│   │   └── groups.ts              Server-only transactional creation service
-│   └── prisma/
-│       ├── contract.prisma        Authored contract
-│       ├── contract.json          Generated
-│       ├── contract.d.ts          Generated
-│       └── db.ts                  Existing Prisma PostgreSQL client
-├── tests/
-│   ├── create-group.test.mjs       32 service unit tests
-│   └── helpers/
-│       └── group-database.mjs      In-memory transaction double
-├── .gitignore
-├── eslint.config.mjs
-├── next.config.ts
-├── package.json
-├── package-lock.json
-├── postcss.config.mjs
-├── prisma.config.ts
-├── prisma-next.md
-├── README.md
-└── tsconfig.json
-```
+### Completed - current source map
 
-There is no `src/app/api/`, `src/lib/`, authentication module or `/g/[shareToken]` route yet. The former `/api/test-db` route is absent. `docs/progress-structure.md` in the original tree is not an existing file.
+| Path | Responsibility |
+| --- | --- |
+| `src/app/page.tsx` | Landing page with server-side authentication-aware actions |
+| `src/app/login/page.tsx`, `src/app/register/page.tsx` | Auth pages with validated return destinations |
+| `src/components/auth/auth-form.tsx` | Login/register form, validation, pending/error states and navigation |
+| `src/app/dashboard/page.tsx` | Owner guard and persisted group/activity dashboard |
+| `src/app/groups/new/page.tsx` | Owner guard and group creation page |
+| `src/components/groups/create-group-form.tsx` | Authenticated group submission UI |
+| `src/app/api/groups/route.ts` | Session-derived owner, JSON/origin validation and creation response |
+| `src/app/api/auth/register/route.ts` | Account creation POST endpoint |
+| `src/app/api/auth/login/route.ts` | Credential verification and owner session issuance |
+| `src/app/api/auth/logout/route.ts` | POST-only session revocation |
+| `src/data/auth.ts` | Account validation and bcrypt password handling |
+| `src/data/groups.ts` | Transactional createGroup and owner-scoped getGroupsForOwner |
+| `src/lib/auth/session.ts` | UserSession creation, resolution and revocation |
+| `src/lib/auth/http.ts`, `src/lib/auth/errors.ts` | Safe auth responses, request protection and errors |
+| `src/prisma/db.ts` | Prisma-hosted PostgreSQL runtime client |
+| `src/prisma/contract.prisma` | Authored nine-model data contract |
+| `src/prisma/contract.json`, `src/prisma/contract.d.ts` | Generated contract artifacts; do not hand-edit |
+| `migrations/app/` | Three migration packages and migration refs |
+| `migrations/snapshots/` | Historical contract snapshots |
+| `tests/auth-pages.test.mjs` | 38 page/form tests, including mocked persisted dashboard data |
+| `tests/dashboard.test.mjs` | 18 read-service and dashboard tests |
+| `tests/create-group.test.mjs` | 32 transactional creation tests |
+| `tests/auth.test.mjs` | 32 auth/service/session/route tests |
+| `tests/helpers/` | Local database/session doubles |
+| `docs/` | Public status, architecture, requirements, roadmap and historical diagrams |
 
-Private environment files and the local agent instructions are excluded from version control. Generated build output, dependencies and installed AI/tooling skills are also ignored.
+Next.js layout/styles remain in `src/app/layout.tsx` and `src/app/globals.css`. Tool versions and scripts are defined in `package.json` and the lockfile. Private environment files, local agent instructions, dependencies and build output are ignored by Git.
 
-The test helper replaces only the database dependency; the production service continues to import the existing `src/prisma/db.ts` client. See [group-creation.md](group-creation.md) for execution instructions.
+### Next
+
+An owner group detail page and dashboard card links, group members/activity views, share controls, `/g/[shareToken]` and guest claiming. There is no `/groups` index or owner group detail route yet. See the [roadmap](dev-roadmap.md).
+
+### Future
+
+Expense, balance and repayment handlers/UI, plus optional account linking. Existing database models do not imply existing pages or workflows.
 
 ---
+
+<details>
+<summary>Historical original notes - not current implementation</summary>
 
 ## Original notes — preserved
 
@@ -110,3 +100,5 @@ Split-Mate/
 ├── README.md
 └── tsconfig.json
 ```
+
+</details>

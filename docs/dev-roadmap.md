@@ -1,30 +1,48 @@
-## Development Roadmap
+# SPLITMate Development Roadmap
 
-### Implementation and testing notes — 17 September 2026
+## Implementation and testing update - 19 September 2026
 
-This roadmap update was added during implementation and testing. It reflects the current code and contract; the original stage list is preserved below as historical planning.
+This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
 
-| Milestone | Current status | Evidence or remaining work |
-| --- | --- | --- |
-| Project and UI foundation | Implemented | Next.js app with landing, dashboard and group-creation pages; dashboard/form remain static |
-| Database foundation and guest-member redesign | Implemented in the contract and migration history | Eight models; latest migration is recorded as applied and verified before this work |
-| Transactional group-creation service | Implemented and unit tested | Creates group, secure token, owner, guests and activity together; internal service only |
-| Owner authentication | Next | Registration, password verification and secure owner sessions |
-| Authenticated creation boundary | Pending | Verify owner session; validate requests; handle errors, request origin and duplicate submissions |
-| Form and dashboard integration | Pending | Submit the form and display the owner's persisted groups |
-| End-to-end group creation verification | Pending | Exercise authenticated creation against a designated test database and check real rollback |
-| Shared group access | Planned | Resolve enabled share tokens at `/g/[shareToken]` |
-| Guest identity | Planned | Claim existing names, hashed guest-session tokens, expiry and secure cookies |
-| Activity feed | Planned | Display recorded events; GROUP_CREATED is already written by the service |
-| Expenses and balances | Planned | GroupMember-based participants, Decimal amounts and explicit rounding |
-| Repayments | Planned | SENT followed by receiver CONFIRMED |
-| Account linking and owner controls | Planned | Optional guest accounts, member management and share-link regeneration/disable |
+### Completed
 
-The immediate product milestone remains **end-to-end group creation**. The backend service is complete for its current scope; authentication, delivery through the UI and live integration verification still need work.
+- Next.js App Router, TypeScript and Tailwind foundation.
+- Prisma 8 RC and Prisma-hosted PostgreSQL, including separate UserSession and GuestSession models.
+- Owner register/login/logout backend, session utilities and login/register UI.
+- Server-side protection of dashboard and group creation pages.
+- Authenticated group creation through `/api/groups`, deriving ownership from the server session.
+- Transactional Group, secure share token, owner/guest members and GROUP_CREATED activity.
+- Live cloud-database verification of group creation.
+- Persisted owner dashboard: name, owned groups, active member counts and recent events; no fake balances or exposed share token.
+- 120 local tests passing across four suites; targeted lint, TypeScript and production build passing.
 
-During implementation, 32 unit tests, TypeScript, targeted lint and the production build passed. Repository-wide lint has existing generated/tooling findings. See the [progress report](progress-report.md) for the verification limits.
+### Next - ordered milestones
+
+1. Owner group detail page.
+2. Clickable dashboard group cards.
+3. Group members/activity view.
+4. Reusable share-link controls.
+5. Public `/g/[shareToken]`.
+6. Guest member claiming and `GuestSession`.
+7. Then expenses, balances and repayments.
+
+Owner detail access must verify ownership server-side. Guests must remain able to participate without registering. A share link identifies a group, while an authenticated owner session or valid GuestSession establishes the caller's identity.
+
+### Future
+
+- Optional account linking without duplicating GroupMember history.
+- Member management and broader activity coverage.
+- Unequal splitting, settlement optimisation and notifications as separately scoped features.
+- Production hardening, including rate limiting before public deployment and consideration of server-side request idempotency.
+
+The financial milestone includes deterministic splitting/rounding and repayments marked SENT by the payer, then CONFIRMED by the receiver. No current balance engine is claimed.
+
+See [progress and test evidence](progress-report.md). Original stages below are historical, not the current work queue.
 
 ---
+
+<details>
+<summary>Historical original notes - not current implementation</summary>
 
 ## Original notes — preserved
 
@@ -66,3 +84,5 @@ The following notes are retained as originally written. For current implementati
 - Expenses
 - Expense splitting
 - Payments
+
+</details>

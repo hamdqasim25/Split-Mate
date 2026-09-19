@@ -1,67 +1,77 @@
-# Database Design
+# SPLITMate Database Design
 
-## Implementation and testing notes — 17 September 2026
+## Implementation and testing update - 19 September 2026
 
-This section was added during implementation and testing after inspecting [the current Prisma contract](../src/prisma/contract.prisma). It supersedes the original six-table, User-based financial design preserved below. The original ERD image is historical.
+This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
 
-### Current contract
+### Completed
 
-There are eight models. Primary keys are auto-incrementing integers. Timestamp fields use `TimestamptzString`, and monetary fields use `Decimal`.
+The authored source is [`src/prisma/contract.prisma`](../src/prisma/contract.prisma), with generated JSON/types beside it. Prisma-hosted PostgreSQL stores nine models. Integer primary keys auto-increment; timestamps use `TimestamptzString`; money fields use `Decimal`.
 
-| Model | Current fields and relationships |
+| Model | Identity and relationships |
 | --- | --- |
-| User | `id`, `name`, unique `email`, `passwordHash`, `createdAt`; creates groups and optionally links to memberships |
-| Group | `id`, `name`, nullable `description`, `currency`, `createdBy → User`, unique `shareToken`, `shareLinkEnabled`, `createdAt` |
-| GroupMember | `id`, `groupId → Group`, nullable `userId → User`, `name`, `role`, nullable `claimedAt` and `lastActiveAt`, `isActive`, `addedAt` |
-| Expense | `id`, `groupId → Group`, `description`, `amount`, `paidByMemberId → GroupMember`, `splitMethod`, `createdAt` |
-| ExpenseParticipant | `id`, `expenseId → Expense`, `memberId → GroupMember`, `amountOwed`, `createdAt`; unique `(expenseId, memberId)` |
-| Payment | `id`, `groupId → Group`, `payerMemberId` and `receiverMemberId → GroupMember`, `amount`, `status`, `createdAt`, nullable `sentAt` and `confirmedAt` |
-| ActivityEvent | `id`, `groupId → Group`, nullable `memberId → GroupMember`, `eventType`, `description`, nullable `entityType` and `entityId`, `createdAt` |
-| GuestSession | `id`, `groupMemberId → GroupMember`, unique `tokenHash`, `createdAt`, `lastSeenAt`, `expiresAt` |
-
-A GroupMember is a group identity with an optional account link. All financial relationships use that identity, allowing guests to pay, participate and receive repayments without registering.
+| User | Account: name, unique email, passwordHash; creates groups |
+| UserSession | Owner-only session: userId, unique tokenHash, createdAt, expiresAt |
+| Group | createdBy references User; name, description, currency, unique shareToken, shareLinkEnabled, createdAt |
+| GroupMember | groupId, nullable userId, name, role, claimedAt, lastActiveAt, isActive, addedAt |
+| ActivityEvent | groupId; optional actor memberId references GroupMember; eventType, description, entityType, entityId, createdAt |
+| GuestSession | Separate guest identity session: groupMemberId, unique tokenHash, createdAt, lastSeenAt, expiresAt |
+| Expense | groupId and paidByMemberId referencing GroupMember; description, amount, splitMethod |
+| ExpenseParticipant | expenseId, memberId referencing GroupMember, amountOwed; unique expense/member pair |
+| Payment | groupId, payerMemberId and receiverMemberId referencing GroupMember; amount, status, sentAt, confirmedAt |
 
 ```mermaid
 erDiagram
+    User ||--o{ UserSession : authenticates
     User ||--o{ Group : creates
     User o|--o{ GroupMember : optionally_links
     Group ||--o{ GroupMember : contains
+    Group ||--o{ ActivityEvent : records
+    GroupMember o|--o{ ActivityEvent : acts
+    GroupMember ||--o{ GuestSession : identifies
     Group ||--o{ Expense : contains
     GroupMember ||--o{ Expense : pays
-    Expense ||--o{ ExpenseParticipant : contains
+    Expense ||--o{ ExpenseParticipant : splits
     GroupMember ||--o{ ExpenseParticipant : participates
     Group ||--o{ Payment : contains
     GroupMember ||--o{ Payment : sends
     GroupMember ||--o{ Payment : receives
-    Group ||--o{ ActivityEvent : records
-    GroupMember o|--o{ ActivityEvent : acts
-    GroupMember ||--o{ GuestSession : identifies
 ```
 
-### Constraints and application rules
+`User` and `GroupMember` are not interchangeable. Guests are created with null `userId` and `claimedAt`; the owner has role OWNER, a User link and a claimed timestamp. One creation transaction writes the Group, members, secure token and GROUP_CREATED event attributed to the owner's GroupMember.
 
-The contract declares uniqueness for User email, Group share token, GuestSession token hash and the ExpenseParticipant expense/member pair, in addition to primary keys. It does **not** declare unique member names or a unique `(groupId, userId)` pair.
+UserSession is implemented independently of GuestSession. Owner session tokens are hashed with SHA-256 before storage; logout deletes the session row. GuestSession storage exists, but its runtime flow is still planned.
 
-The group-creation service enforces distinct normalized names within the submitted group and adds the owner once. It creates guests with null `userId` and `claimedAt`, and writes GROUP_CREATED with the owner's GroupMember as actor in the same transaction.
+### Constraints and read behaviour
 
-Roles, event types, split methods and payment statuses are stored as strings, not database enums. Future expense/payment handlers must enforce valid states, positive amounts, matching group membership and deterministic rounding. The contract's individual foreign keys do not enforce all same-group relationships. The intended payment lifecycle is SENT followed by receiver CONFIRMED; the workflow is not implemented yet.
+Unique constraints cover User email, Group shareToken, both session tokenHash fields and the ExpenseParticipant expense/member pair. Member-name uniqueness is validated by the creation service, not a database constraint. Roles/statuses/event types are strings. Foreign keys alone do not enforce every same-group relationship; future financial handlers must validate those relationships.
 
-ActivityEvent `entityType` and `entityId` are descriptive references, not a polymorphic database foreign key. The group-creation service writes `GROUP` and the newly created group ID.
+Dashboard reads scope Group.createdBy to the verified owner, count only active GroupMembers and fetch at most five events across owned groups. They never select shareToken. Group has no active/archive field, so the active-group total counts all owned groups.
 
-### Migration and verification history
+### Applied migration history
 
-The repository contains:
+- `20260906T2009_initial_schema`
+- `20260913T2223_guest_members_and_activity`
+- `20260917T1942_owner_user_sessions`
 
-1. `20260906T2009_initial_schema`
-2. `20260913T2223_guest_members_and_activity`
+The UserSession migration was reported applied and verified with migration status and schema verification. Group creation was subsequently live-tested; a read-only dashboard query also succeeded. This documentation update does not change or apply migrations and does not repeat a full schema audit.
 
-Project records state that both were applied and that the second migration was verified against the cloud database. The current generated contract storage hash begins `e6e9161`. The backend implementation and this documentation update did not change the contract, migrations or cloud database.
+Use the existing pooled application connection and direct administrative connection as configured privately. Do not edit applied migrations; any future schema change requires a new reviewed migration. Use the pinned local Prisma CLI, not `prisma@latest`.
 
-The 32 backend unit tests use a database double. They verify transaction usage and propagated failures; they do not independently verify PostgreSQL constraints, live schema state or rollback.
+### Next
 
-Use `DATABASE_URL` for application traffic and the direct administrative connection when performing approved migration operations. Connection values remain private. Future schema changes require a new reviewed migration; applied migrations remain immutable.
+Build owner detail/member/activity reads and reusable share-link controls using this schema, then public access and GuestSession claiming. See the [roadmap](dev-roadmap.md).
+
+### Future
+
+Expense splitting and balances require deterministic Decimal handling. Repayments use a sender SENT / receiver CONFIRMED lifecycle. These tables do not imply completed financial workflows. Optional account linking must preserve the existing GroupMember and its history.
+
+The original ERD below is historical and does not describe today's nine-model contract.
 
 ---
+
+<details>
+<summary>Historical original notes - not current implementation</summary>
 
 ## Original notes — preserved
 
@@ -339,3 +349,5 @@ Constraints will also be used to protect data integrity, including:
 - UNIQUE constraints
 - Foreign key constraints
 - CHECK constraints where appropriate
+
+</details>

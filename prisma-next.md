@@ -1,3 +1,30 @@
+# Prisma 8 RC in SPLITMate
+
+## Implementation and testing update - 19 September 2026
+
+### Completed
+
+SPLITMate uses the installed Prisma 8 RC contract API and Prisma-hosted PostgreSQL, not a new localhost database. The application runtime lives in `src/prisma/db.ts`; `src/prisma/contract.prisma` defines the current nine-model schema. The JSON and TypeScript contract files are generated artifacts.
+
+Owner UserSession authentication, transactional group creation and owner-scoped dashboard reads are implemented. Dashboard queries use `db.orm.public`, a filtered relation count and a bounded recent-activity query. No shareToken is selected for the dashboard. See [database design](docs/database-design.md), [group creation](docs/group-creation.md) and [verification](docs/progress-report.md).
+
+The installed package versions include `prisma` 8.0.0-rc.13 and `@prisma/orm-postgres` 8.0.0-rc.9. Use the locked dependencies and local CLI. Do not initialize, migrate or upgrade the existing database as part of ordinary setup. Schema changes require a separate reviewed migration; generated artifacts must not be hand-edited.
+
+### Next
+
+Owner detail/member/activity reads and share-link controls, followed by public guest access and GuestSession. See the [roadmap](docs/dev-roadmap.md).
+
+### Future
+
+Expenses, balances and repayments follow those access flows. Their models already exist but their application workflows do not.
+
+## Historical starter reference
+
+The retained scaffold below is a generic reference, not SPLITMate's current schema or setup instructions. Its sample User fields, localhost URL, automatic framework-plugin claim and database-initialization commands must not be treated as descriptions of this repository. The actual Next.js configuration and contract are authoritative.
+
+<details>
+<summary>Original Prisma starter guide (generic examples)</summary>
+
 # Welcome to Prisma Next!
 
 Prisma Next lets you query your database in simple, easy-to-read TypeScript. Define what your data looks like, and Prisma Next gives you a fully typed client — with autocomplete for every table, column, and relation.
@@ -104,3 +131,5 @@ If this project lives inside a pnpm workspace, a few things are worth knowing:
 - **Catalogs.** When the workspace's `pnpm-workspace.yaml` defines a `catalogs` entry for `prisma` or `@prisma/orm-postgres`, pnpm uses the catalog version everywhere — `init` does too. If you wanted the published `latest` instead, update or remove the catalog entry, then re-run `pnpm install`.
 - **`pnpm dlx`.** `pnpm dlx prisma@next orm init …` works in any directory. Inside a workspace, pnpm still resolves dependencies through the workspace's catalog/overrides rather than the registry; expect the installed Prisma Next packages to reflect the workspace's catalog rather than `latest`.
 - **`pnpm` → `npm` fallback.** If `pnpm` ever fails to install Prisma Next with a `workspace:*` or `catalog:` resolution error (a leak in a published artefact), `init` falls back to `npm install` and surfaces a warning. Once the offending package republishes a clean version you can switch back with `pnpm install`.
+
+</details>

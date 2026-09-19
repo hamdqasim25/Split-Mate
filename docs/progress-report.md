@@ -1,53 +1,64 @@
 # SPLITMate Progress Report
 
-## Implementation and testing notes — 17 September 2026
+## Implementation and testing update - 19 September 2026
 
-This section was added during implementation and testing. It records the current milestone separately from the original development log below; historical entries describe what was true at their recorded dates.
+This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
 
-### Database milestone carried forward — 13 September 2026
+### Completed
 
-The guest-member redesign is recorded in migration `20260913T2223_guest_members_and_activity` and commit `57fb300`. The project records it as applied and verified before this implementation work. This documentation update did not reconnect to the cloud database or independently repeat that verification.
+- Owner authentication backend and UI: registration, login, POST logout, hashed database-backed UserSession, generic credential errors and same-origin mutation protection.
+- Protected owner dashboard and group creation pages; login returns only to the two allowed owner routes using a fresh request.
+- Connected group form and `/api/groups` endpoint; ownership is taken from the verified server session.
+- Atomic creation of Group, secure reusable share token, claimed owner identity, unclaimed guest identities and GROUP_CREATED activity.
+- Persisted dashboard with real owner name, owned groups, active member counts and five latest events. No fake balance values and no share-token exposure.
+- Separate User accounts and GroupMember identities; guest userId remains nullable.
 
-The current contract contains eight models: User, Group, GroupMember, Expense, ExpenseParticipant, Payment, ActivityEvent and GuestSession. GroupMember now supports guests with null `userId`; expense and payment relationships use GroupMember IDs. Groups have reusable share tokens, and guest sessions have a token-hash field.
+### Verification recorded during implementation and testing
 
-### Implemented during the group-creation milestone
+| Check | Latest implementation result |
+| --- | --- |
+| `node --test tests/auth-pages.test.mjs` | 38 passed |
+| `node --test tests/dashboard.test.mjs` | 18 passed |
+| `node --test tests/create-group.test.mjs` | 32 passed |
+| `node --test tests/auth.test.mjs` | 32 passed |
+| Targeted ESLint for changed implementation/test files | Passed |
+| `npx tsc --noEmit` | Passed |
+| `npm run build` | Passed |
 
-- Added the internal server-only service in `src/data/groups.ts`, using the existing Prisma client and `tx.orm.public` namespace.
-- Added server validation for group details, GBP currency, guest count, blank names, duplicate names and unsupported fields.
-- Generated a share token using 32 cryptographically random bytes.
-- Created the Group, claimed owner GroupMember, unclaimed guest GroupMembers and GROUP_CREATED activity record inside one transaction.
-- Selected the owner's name from the User record and returned a group summary without the share token.
-- Added 32 unit tests and documented the service's authentication boundary and limitations.
+These 120 tests use local mocks; they do not write cloud records. Results are from the completed implementation/testing cycle, not a new test run for this documentation-only update. On Windows, `npm.cmd` and `npx.cmd` were used where PowerShell blocked the `.ps1` wrappers.
 
-No authentication system or public endpoint was added. The form and dashboard still contain presentation code only. The temporary database test route mentioned in the original notes is already absent.
+Targeted lint passed; this is not a claim that repository-wide `npm run lint` is clean. Earlier full scans reported generated/tooling findings (12 errors and 58 warnings); that full scan was not rerun for this update.
 
-### Verification performed during implementation
+### Live checks and limits
 
-| Check | Result | What it establishes |
-| --- | --- | --- |
-| `node --test tests/create-group.test.mjs` | 32 passed | Input validation, identity assignment, token format, activity actor and error propagation through a transaction double |
-| `npx --no-install tsc --noEmit --incremental false` | Passed | Compatibility with the installed TypeScript and Prisma contract types |
-| `npx --no-install eslint src/data/groups.ts tests/create-group.test.mjs tests/helpers/group-database.mjs` | Passed | Lint for the new implementation and tests |
-| `npm run build` | Passed after allowing the existing Google Fonts download | Existing application production build and TypeScript checks |
-| `npm run lint` | 12 errors and 58 warnings | Existing generated Prisma declarations and bundled tooling are included in the repository-wide lint scan |
+The owner group-creation browser flow was successfully tested against Prisma-hosted PostgreSQL. The Group, OWNER GroupMember with claimedAt, guest members with null userId/claimedAt, and owner-attributed GROUP_CREATED event were verified. The UserSession migration had already been applied and verified using migration status and schema verification.
 
-On this Windows setup, PowerShell blocked the `npm.ps1` and `npx.ps1` wrappers. The same commands were run with `npm.cmd` and `npx.cmd`.
+A subsequent read-only check of the new dashboard service returned the existing test group with four active members, GBP and one event; no shareToken was returned and no records were changed. A connected browser was unavailable for a separate manual dashboard rendering check. Mock tests exercise rollback/error propagation; live PostgreSQL rollback failure injection is still unverified.
 
-The database double does not prove PostgreSQL rollback. No live group-creation request, authenticated browser flow or database integration test was performed. The service is not yet imported by a route, so the production build also does not establish a working HTTP creation flow.
+The live read emitted an existing PostgreSQL driver SSL-mode compatibility warning; no environment or dependency changes were made. Some earlier builds needed network access to download the existing Google Fonts. The latest production build passed.
 
-### Lessons and remaining work
+### Next
 
-A transaction keeps related writes together, but the caller still needs real authentication. Looking up an existing User is not proof of the caller's identity. Likewise, a share token gives access to a group; it does not identify a particular member.
+1. Owner group detail page.
+2. Clickable dashboard group cards.
+3. Group members/activity view.
+4. Reusable share-link controls.
+5. Public `/g/[shareToken]`.
+6. Guest member claiming and `GuestSession`.
+7. Then expenses, balances and repayments.
 
-The next steps are owner authentication, an authenticated submission boundary with safe errors and request protection, form wiring and database-backed dashboard queries. Request deduplication is still needed: repeated successful service calls currently create separate groups.
+### Future
 
-The applied migrations and generated contract were preserved. The old `npx prisma@latest` commands below are historical records, not current instructions. Use the locally installed Prisma CLI, review any new migration, and obtain approval before applying it.
+Optional account linking, member management and additional splitting/settlement features. Rate limiting is a pre-public-deployment requirement. The group form's pending state is not server-side idempotency. GuestSession storage and financial tables are present, but their workflows are not yet implemented.
 
-### Documentation follow-up
+### Documentation checkpoint
 
-During this implementation and testing cycle, dated updates were added to the README, roadmap, architecture, database design, project structure, requirements and user stories. Their original notes are retained for learning and comparison. See [group-creation.md](group-creation.md) for the backend contract.
+This update aligns public documentation with the completed authentication, group creation and dashboard milestones. It changes documentation only. Original development notes and diagrams remain below or in their respective documents for historical comparison. Old `prisma@latest` commands are historical records, not current setup instructions; use the locally installed CLI and separately review/approve migrations.
 
 ---
+
+<details>
+<summary>Historical original notes - not current implementation</summary>
 
 ## Original notes — preserved
 
@@ -497,3 +508,5 @@ git push
 ```
 
 Use clear commit messages that describe the milestone being completed.
+
+</details>

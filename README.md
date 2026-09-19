@@ -1,42 +1,69 @@
-# SplitMate
+# SPLITMate
 
-## Implementation and testing notes — 17 September 2026
+SPLITMate helps groups track shared expenses while keeping account creation optional for guests. The implemented milestone is authenticated group creation and an owner dashboard backed by PostgreSQL. Expense calculations and repayments are still planned.
 
-These notes were added during implementation and testing to record the repository's current state. The original project notes are preserved separately below, including earlier technology choices and plans that have since changed.
+## Implementation and testing update - 19 September 2026
 
-SPLITMate is being built around an account-owning group creator and guests who can participate without registering. A `User` is an account; a `GroupMember` is a person's identity within one group. Financial records reference GroupMember identities.
+This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
 
-### Current implementation
+### Completed
 
-- **Application:** Next.js App Router, React, TypeScript and Tailwind CSS. The backend service runs in the Next.js project using Node.js.
-- **Data layer:** Prisma 8 release candidate with an authored contract and generated artifacts in `src/prisma/`, connected to Prisma-hosted PostgreSQL.
-- **Pages:** `/`, `/dashboard` and `/groups/new`. The dashboard uses sample data and the group form is not connected to the backend.
-- **Group creation backend:** [`createGroup`](src/data/groups.ts) validates input and creates the Group, a secure share token, the owner's GroupMember, guest GroupMembers and a GROUP_CREATED activity record in one transaction.
-- **Current limits:** GBP, up to 50 guests, distinct member names, and an existing owner User. The service requires a verified owner ID from a future authentication boundary.
+- Next.js App Router, React, TypeScript and Tailwind CSS; backend routes and services run in the Next.js application.
+- Prisma 8 RC contract workflow and Prisma-hosted PostgreSQL, using the installed release-candidate toolchain.
+- Owner registration, login and POST logout, with database-backed `UserSession`. Registration creates an account, then sends the owner to login.
+- Login/register UI, session-aware landing actions, and server-side guards directly in `/dashboard` and `/groups/new`.
+- `User` is an account; `GroupMember` is the identity inside a group. Guests have `userId = null` and do not need accounts. Guest access is a later milestone.
+- `/groups/new` submits to `POST /api/groups`. The endpoint derives the owner from the server session, never a client-supplied owner ID.
+- One transaction creates the Group with a cryptographically secure reusable `shareToken`, claimed owner GroupMember, unclaimed guest GroupMembers and owner-attributed `GROUP_CREATED` ActivityEvent.
+- The dashboard displays the real owner name, persisted owned groups, active member counts and latest five real activity events. It excludes share tokens and replaces fake balances with neutral placeholders.
+- Group creation was live-tested against Prisma cloud PostgreSQL; a subsequent read-only check confirmed persisted group/member/activity data.
 
-Authentication, a public group-creation endpoint, form submission, dashboard database queries, guest claiming and expense/payment behaviour remain unimplemented. A share token is generated, but the shared `/g/[shareToken]` route is still planned.
+### Next
 
-### Verification during backend implementation
+1. Owner group detail page.
+2. Clickable dashboard group cards.
+3. Group members/activity view.
+4. Reusable share-link controls.
+5. Public `/g/[shareToken]`.
+6. Guest member claiming and `GuestSession`.
+7. Then expenses, balances and repayments.
 
-All 32 unit tests, TypeScript checks, lint for the new service/tests, and the production build passed. Repository-wide lint reported 12 errors in existing generated Prisma declarations and 58 warnings in existing generated/tooling files. The tests use a database double; live PostgreSQL writes and rollback were not tested.
+### Future
 
-See the [progress report](docs/progress-report.md) for commands, results and limitations, and the [roadmap](docs/dev-roadmap.md) for the remaining implementation sequence.
+Optional guest account linking, member management, richer splitting and settlement features. Rate limiting is required before public deployment; it is not implemented yet. A generated share token does not yet provide public guest access.
 
-### Current documentation
+### Verification
+
+| Check | Latest implementation result |
+| --- | --- |
+| `node --test tests/auth-pages.test.mjs` | 38 passed |
+| `node --test tests/dashboard.test.mjs` | 18 passed |
+| `node --test tests/create-group.test.mjs` | 32 passed |
+| `node --test tests/auth.test.mjs` | 32 passed |
+| Targeted ESLint for changed implementation/test files | Passed |
+| `npx tsc --noEmit` | Passed |
+| `npm run build` | Passed |
+
+These 120 tests use local mocks; they do not write cloud records. Results are from the completed implementation/testing cycle, not a new test run for this documentation-only update. On Windows, `npm.cmd` and `npx.cmd` were used where PowerShell blocked the `.ps1` wrappers.
+
+### Local development and documentation
+
+Use `npm ci` and `npm run dev` with privately configured database connections. Never commit connection strings. Use the locally installed Prisma CLI; ordinary setup must not apply migrations or upgrade the RC packages.
 
 - [Architecture](docs/architecture.md)
 - [Database design](docs/database-design.md)
-- [Group creation backend](docs/group-creation.md)
+- [Group creation and dashboard reads](docs/group-creation.md)
+- [Progress and verification limits](docs/progress-report.md)
+- [Roadmap](docs/dev-roadmap.md)
 - [Project structure](docs/project-structure.md)
 - [Requirements](docs/requirements.md) and [user stories](docs/user-stories.md)
 
-### Local development
-
-Install the locked dependencies with `npm ci`, then run `npm run dev`. Backend unit tests currently use Node 24: `node --test tests/create-group.test.mjs`. Database operations require the project's privately configured environment; never commit connection strings.
-
-Use the locally installed Prisma CLI for this release-candidate toolchain. Do not upgrade Prisma or apply migrations as part of ordinary setup. The database contract and migration history were unchanged by this backend implementation.
+The original architecture and ERD images below describe earlier proposals, not the current implementation.
 
 ---
+
+<details>
+<summary>Historical original notes - not current implementation</summary>
 
 ## Original notes — preserved
 
@@ -153,3 +180,5 @@ Next:
 - Connect group creation to the database
 - Add group member functionality
 - Begin expense and payment functionality
+
+</details>

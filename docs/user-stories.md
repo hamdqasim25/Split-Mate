@@ -1,52 +1,37 @@
-# User Stories
+# SPLITMate User Stories
 
-## Implementation and testing notes — 17 September 2026
+## Implementation and testing update - 19 September 2026
 
-These stories were added during implementation and testing to clarify the guest-member experience. The original stories remain separately below. Status describes implemented behaviour, not just available database fields.
+This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
 
-### Owner creates a group
+### Completed
 
-As an authenticated owner, I want to name a group and enter my friends' names so we can start tracking shared costs.
+- As an owner, I can register, log in and use a database-backed session to reach protected owner pages. A POST logout endpoint revokes my session.
+- As an authenticated owner, I can create a group with named guests through the form. The server establishes ownership from my session, creates my claimed OWNER membership, unclaimed guest memberships and the creation event atomically.
+- As an owner, I receive validation feedback for invalid or duplicate names instead of ambiguous member identities.
+- As an owner, I can see my name, persisted groups, active member counts and recent group activity on the dashboard. Money summaries clearly remain unavailable until the expense workflow exists.
+- As a guest, I can already be represented by a GroupMember with no linked User account. Accessing or claiming that identity is still planned.
 
-**Implemented backend:** one transaction creates the group, secure share token, my claimed owner identity, guest identities and the group-created event.
+The creation journey was live-tested against Prisma cloud PostgreSQL. Dashboard reads were verified read-only; automated tests use local mocks. See [progress](progress-report.md).
 
-**Pending:** owner authentication, submitting the form, showing the persisted group on my dashboard and testing this complete flow against a test database.
+### Next
 
-### Guest joins without registering
+- As an owner, I want to open my group from a dashboard card and see its members and activity.
+- As an owner, I want to copy, disable or regenerate the reusable share link.
+- As a guest, I want to open `/g/[shareToken]`, select my existing name and be remembered securely through a separate GuestSession without registering.
 
-As a guest, I want to open the shared group link and select my existing name so I can participate without creating an account.
+These follow the ordered [roadmap](dev-roadmap.md); shared access is not implemented merely because a token exists.
 
-**Status:** planned. GroupMember, share-token and GuestSession storage exist; route, claiming and session behaviour remain to be implemented.
+### Future
 
-### Members can distinguish identities
-
-As a group owner, I want clear feedback for blank or duplicate names so members can identify themselves reliably.
-
-**Status:** backend validation implemented and unit tested. Duplicate names, including the owner's name, are rejected; distinguish people with the same name using an initial. Form feedback remains pending.
-
-### Member records and settles expenses
-
-As a group member, I want expenses and repayments attached to my group identity so my history works even without an account.
-
-As a receiver, I want to confirm a repayment after the sender marks it sent so balances reflect payments I have received.
-
-**Status:** supported by the database design; expense creation, splitting, balances and payment actions remain planned.
-
-### Member sees a transparent history
-
-As a group member, I want to see who changed the group and when so I can understand its records.
-
-**Status:** GROUP_CREATED is written by the backend service. The activity feed and other action types remain pending.
-
-### Guest optionally creates an account
-
-As a guest, I want to link an account to my existing group identity later so I can collect my groups without duplicating financial history.
-
-**Status:** planned. Accounts remain optional for guests.
-
-The completed unit tests exercise backend rules using a database double. They do not demonstrate a working browser journey yet. See [group creation](group-creation.md) and [the roadmap](dev-roadmap.md).
+- As a member, I want to record expenses, allocate shares and see accurate balances using my GroupMember identity.
+- As a payer, I want to mark a repayment SENT; as its receiver, I want to mark it CONFIRMED after receipt.
+- As a guest, I want optional account linking without a duplicate identity or lost history.
 
 ---
+
+<details>
+<summary>Historical original notes - not current implementation</summary>
 
 ## Original notes — preserved
 
@@ -76,3 +61,5 @@ so that I know whether I owe money or am owed money.
 As a group member,
 I want the application to calculate who should pay whom,
 so that the group can settle expenses efficiently.
+
+</details>

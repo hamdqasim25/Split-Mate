@@ -5,7 +5,11 @@ import { db } from "@/prisma/db";
 
 /** Internal read service: the owner ID must come from a verified server session. */
 export async function getGroupsForOwner(authenticatedOwnerId: number) {
-  if (!Number.isInteger(authenticatedOwnerId) || authenticatedOwnerId <= 0 || authenticatedOwnerId > 2_147_483_647) {
+  if (
+    !Number.isInteger(authenticatedOwnerId) ||
+    authenticatedOwnerId <= 0 ||
+    authenticatedOwnerId > 2_147_483_647
+  ) {
     throw new RangeError("A valid authenticated owner ID is required.");
   }
 
@@ -18,14 +22,115 @@ export async function getGroupsForOwner(authenticatedOwnerId: number) {
 
   // Fetch the latest events across ALL owned groups, not five per group.
   // No query for an empty ID set, and no per-group database round trips.
-  const activity = groups.length === 0 ? [] : await db.orm.public.ActivityEvent
-    .where((event) => event.groupId.in(groups.map((group) => group.id)))
-    .select("id", "groupId", "description", "createdAt")
-    .orderBy([(event) => event.createdAt.desc(), (event) => event.id.desc()])
-    .limit(5)
-    .all();
+  const activity =
+    groups.length === 0
+      ? []
+      : await db.orm.public.ActivityEvent
+          .where((event) => event.groupId.in(groups.map((group) => group.id)))
+          .select("id", "groupId", "description", "createdAt")
+          .orderBy([
+            (event) => event.createdAt.desc(),
+            (event) => event.id.desc(),
+          ])
+          .limit(5)
+          .all();
 
   return { groups, activity };
+}
+
+/**
+ * Internal owner-only read service.
+ *
+ * authenticatedOwnerId must come from a verified server session.
+ * The group is returned only when it belongs to that authenticated owner.
+ *
+ * Unlike the dashboard read service, this service may return the share token
+ * because it is intended for the private owner group-detail page.
+ */
+export async function getGroupForOwner(
+  authenticatedOwnerId: number,
+  groupId: number,
+) {
+  if (
+    !Number.isInteger(authenticatedOwnerId) ||
+    authenticatedOwnerId <= 0 ||
+    authenticatedOwnerId > 2_147_483_647
+  ) {
+    throw new RangeError("A valid authenticated owner ID is required.");
+  }
+
+  if (
+    !Number.isInteger(groupId) ||
+    groupId <= 0 ||
+    groupId > 2_147_483_647
+  ) {
+    return null;
+  }
+
+  const group = await db.orm.public.Group
+    .select(
+      "id",
+      "name",
+      "description",
+      "currency",
+      "createdAt",
+      "shareToken",
+      "shareLinkEnabled",
+    )
+    .first({
+      id: groupId,
+      createdBy: authenticatedOwnerId,
+    });
+
+  if (!group) {
+    return null;
+  }
+
+  const [members, activity] = await Promise.all([
+    db.orm.public.GroupMember
+      .where({
+        groupId: group.id,
+        isActive: true,
+      })
+      .select(
+        "id",
+        "name",
+        "role",
+        "claimedAt",
+        "addedAt",
+        "lastActiveAt",
+      )
+      .orderBy([
+        (member) => member.addedAt.asc(),
+        (member) => member.id.asc(),
+      ])
+      .all(),
+
+    db.orm.public.ActivityEvent
+      .where({
+        groupId: group.id,
+      })
+      .select(
+        "id",
+        "groupId",
+        "memberId",
+        "eventType",
+        "description",
+        "createdAt",
+      )
+      .orderBy([
+        (event) => event.createdAt.desc(),
+        (event) => event.id.desc(),
+      ])
+      .limit(10)
+      .all(),
+  ]);
+
+  return {
+    group,
+    members,
+    activity,
+  };
 }
 
 type GroupCreationErrorCode = "INVALID_INPUT" | "OWNER_NOT_FOUND";
@@ -53,14 +158,21 @@ function invalidInput(message: string, field?: string): never {
   throw new GroupCreationError("INVALID_INPUT", message, field);
 }
 
-function requiredName(value: unknown, field: string, maxLength: number): string {
+function requiredName(
+  value: unknown,
+  field: string,
+  maxLength: number,
+): string {
   if (typeof value !== "string") {
     invalidInput("Enter a name.", field);
   }
 
   const name = value.trim().replace(/\s+/gu, " ");
   if (name.length === 0 || name.length > maxLength) {
-    invalidInput(`Enter a name between 1 and ${maxLength} characters.`, field);
+    invalidInput(
+      `Enter a name between 1 and ${maxLength} characters.`,
+      field,
+    );
   }
 
   return name;
@@ -76,20 +188,33 @@ function validateInput(input: unknown): CreateGroupInput {
   }
 
   const values = input as Record<string, unknown>;
-  const allowedFields = new Set(["name", "description", "currency", "memberNames"]);
+  const allowedFields = new Set([
+    "name",
+    "description",
+    "currency",
+    "memberNames",
+  ]);
+
   if (Object.keys(values).some((key) => !allowedFields.has(key))) {
     invalidInput("The group details contain an unsupported field.");
   }
 
   const name = requiredName(values.name, "name", 100);
+
   let description: string | null = null;
+
   if (values.description !== undefined && values.description !== null) {
     if (typeof values.description !== "string") {
       invalidInput("Enter a text description.", "description");
     }
+
     description = values.description.trim() || null;
+
     if (description !== null && description.length > 1000) {
-      invalidInput("Keep the description to 1000 characters or fewer.", "description");
+      invalidInput(
+        "Keep the description to 1000 characters or fewer.",
+        "description",
+      );
     }
   }
 
@@ -98,23 +223,37 @@ function validateInput(input: unknown): CreateGroupInput {
   }
 
   if (!Array.isArray(values.memberNames) || values.memberNames.length > 50) {
-    invalidInput("Provide a list of up to 50 guest names.", "memberNames");
+    invalidInput(
+      "Provide a list of up to 50 guest names.",
+      "memberNames",
+    );
   }
 
   const memberNames: string[] = [];
   const seenNames = new Set<string>();
+
   for (const [index, value] of values.memberNames.entries()) {
     const field = `memberNames.${index}`;
     const memberName = requiredName(value, field, 100);
     const key = nameKey(memberName);
+
     if (seenNames.has(key)) {
-      invalidInput("Use distinct member names; add an initial if needed.", field);
+      invalidInput(
+        "Use distinct member names; add an initial if needed.",
+        field,
+      );
     }
+
     seenNames.add(key);
     memberNames.push(memberName);
   }
 
-  return { name, description, currency: values.currency, memberNames };
+  return {
+    name,
+    description,
+    currency: values.currency,
+    memberNames,
+  };
 }
 
 /**
@@ -122,35 +261,63 @@ function validateInput(input: unknown): CreateGroupInput {
  * Looking up a User here checks existence; it does not authenticate a caller.
  * Do not expose this function as a Server Action accepting a client-supplied ID.
  */
-export async function createGroup(authenticatedOwnerId: number, input: unknown) {
+export async function createGroup(
+  authenticatedOwnerId: number,
+  input: unknown,
+) {
   if (
     !Number.isInteger(authenticatedOwnerId) ||
     authenticatedOwnerId <= 0 ||
     authenticatedOwnerId > 2_147_483_647
   ) {
-    throw new GroupCreationError("OWNER_NOT_FOUND", "The owner account is unavailable.");
+    throw new GroupCreationError(
+      "OWNER_NOT_FOUND",
+      "The owner account is unavailable.",
+    );
   }
 
   const details = validateInput(input);
 
   return db.transaction(async (tx) => {
     // Select only identity fields: password hashes must never leave this layer.
-    const owner = await tx.orm.public.User.select("id", "name").first({ id: authenticatedOwnerId });
+    const owner = await tx.orm.public.User
+      .select("id", "name")
+      .first({ id: authenticatedOwnerId });
+
     if (!owner) {
-      throw new GroupCreationError("OWNER_NOT_FOUND", "The owner account is unavailable.");
+      throw new GroupCreationError(
+        "OWNER_NOT_FOUND",
+        "The owner account is unavailable.",
+      );
     }
 
     const ownerName = requiredName(owner.name, "ownerName", 100);
-    if (details.memberNames.some((name) => nameKey(name) === nameKey(ownerName))) {
-      invalidInput("The owner is added automatically. Use distinct guest names.", "memberNames");
+
+    if (
+      details.memberNames.some(
+        (name) => nameKey(name) === nameKey(ownerName),
+      )
+    ) {
+      invalidInput(
+        "The owner is added automatically. Use distinct guest names.",
+        "memberNames",
+      );
     }
 
     const createdAt = new Date().toISOString();
+
     // 256 bits of entropy. The existing unique constraint also prevents collisions.
     // A collision throws and rolls back; never retry unrelated database failures.
     const shareToken = randomBytes(32).toString("base64url");
+
     const group = await tx.orm.public.Group
-      .select("id", "name", "description", "currency", "createdAt")
+      .select(
+        "id",
+        "name",
+        "description",
+        "currency",
+        "createdAt",
+      )
       .create({
         name: details.name,
         description: details.description,

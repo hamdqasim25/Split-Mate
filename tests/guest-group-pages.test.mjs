@@ -4,6 +4,9 @@ import { installHooks, reset, state, token } from "./helpers/guest-environment.m
 const hooks = installHooks();
 const { default: GroupPage } = await import("../src/app/g/[shareToken]/group/page.tsx");
 const { default: SignOut } = await import("../src/components/groups/guest-sign-out.tsx");
+const { default: ExpenseList } = await import("../src/components/expenses/expense-list.tsx");
+const { default: MemberList } = await import("../src/components/groups/member-list.tsx");
+const { default: ActivityList } = await import("../src/components/groups/activity-list.tsx");
 const { claimGuest, signOutGuest } = await import("../src/app/actions/guest.ts");
 hooks.deregister();
 beforeEach(reset);
@@ -11,11 +14,13 @@ const props = (shareToken = token) => ({ params: Promise.resolve({ shareToken })
 function nodes(tree) {
   if (Array.isArray(tree)) return tree.flatMap(nodes);
   if (!tree || typeof tree !== "object") return [];
+  if ([MemberList, ActivityList].includes(tree.type)) return [tree, ...nodes(tree.type(tree.props))];
   return [tree, ...nodes(tree.props?.children)];
 }
 function text(tree) {
   if (Array.isArray(tree)) return tree.map(text).join("");
   if (tree === null || tree === undefined || typeof tree === "boolean") return "";
+  if ([MemberList, ActivityList].includes(tree?.type)) return text(tree.type(tree.props));
   return typeof tree === "object" ? text(tree.props?.children) : String(tree);
 }
 async function join() {
@@ -27,9 +32,12 @@ test("valid guest sees identity, joined/waiting members, activity and future exp
   state.rows.GroupMember.push({ ...state.rows.GroupMember[0], id: 3, name: "Waiting guest", claimedAt: null });
   const tree = await GroupPage(props());
   const content = text(tree);
-  for (const expected of ["Football", "You're joined as Jaher", "Jaher(You)", "Waiting guest", "Joined", "Waiting to join", "Recent activity", "Jaher joined the group", "Expense tracking is coming soon"]) assert.ok(content.includes(expected), expected);
+  for (const expected of ["Football", "You're joined as Jaher", "Jaher(You)", "Waiting guest", "Joined", "Waiting", "Recent activity", "Jaher joined the group"]) assert.ok(content.includes(expected), expected);
+  const expenses = nodes(tree).find(node => node.type === ExpenseList);
+  assert.match(text(ExpenseList(expenses.props)), /No expenses yet/);
   assert.ok(nodes(tree).some(node => node.type === SignOut));
   assert.ok(nodes(tree).some(node => node.type === "time" && node.props.dateTime));
+  assert.ok(nodes(tree).some(node => node.props.href === `/g/${token}/expenses/new`));
   assert.ok(!content.includes(token));
   assert.ok(!nodes(tree).some(node => node.type === "button"), "no fake expense action");
 });

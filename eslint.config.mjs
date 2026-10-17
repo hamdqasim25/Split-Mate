@@ -12,6 +12,18 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "**/node_modules/**",
+    // Generated Prisma contracts; keep db.ts and migration sources linted.
+    "src/prisma/contract.d.ts",
+    "src/prisma/contract.json",
+    "migrations/snapshots/**",
+    "migrations/app/*/migration.json",
+    "migrations/app/*/ops.json",
+    // Local agent tooling is not maintained application code.
+    ".agents/**",
+    ".claude/**",
+    ".cursor/**",
+    ".devin/**",
   ]),
 ]);
 

@@ -2,6 +2,34 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 import { db } from "@/prisma/db";
+import type { SavedExpense } from "@/lib/expenses/types";
+
+/** Internal read: call only after authorizing access to this group. */
+export async function getExpensesForGroup(groupId: number, client: Pick<typeof db, "orm"> = db): Promise<SavedExpense[]> {
+  const expenses = await client.orm.public.Expense.where({ groupId })
+    .select("id", "description", "amount", "paidByMemberId", "createdAt", "splitMethod")
+    .orderBy([(expense) => expense.createdAt.desc(), (expense) => expense.id.desc()]).limit(50).all();
+  if (expenses.length === 0) return [];
+  const [members, participants] = await Promise.all([
+    client.orm.public.GroupMember.where({ groupId })
+      .select("id", "name").orderBy([(member) => member.addedAt.asc(), (member) => member.id.asc()]).all(),
+    client.orm.public.ExpenseParticipant.where(row => row.expenseId.in(expenses.map(expense => expense.id)))
+      .select("expenseId", "memberId", "amountOwed").all(),
+  ]);
+  const names = new Map(members.map(member => [member.id, member.name]));
+  const counts = new Map<number, number>();
+  for (const participant of participants) counts.set(participant.expenseId, (counts.get(participant.expenseId) ?? 0) + 1);
+  return expenses.map(expense => ({
+    id: expense.id, description: expense.description, amount: expense.amount,
+    payerName: names.get(expense.paidByMemberId) ?? "Unavailable member", createdAt: expense.createdAt,
+    participantCount: counts.get(expense.id) ?? 0,
+    splitMethod: expense.splitMethod,
+    participants: members.flatMap(member => {
+      const share = participants.find(row => row.expenseId === expense.id && row.memberId === member.id);
+      return share ? [{ id: member.id, name: member.name, amount: share.amountOwed }] : [];
+    }),
+  }));
+}
 
 /** Internal read service: the owner ID must come from a verified server session. */
 export async function getGroupsForOwner(authenticatedOwnerId: number) {
@@ -130,6 +158,9 @@ export async function getGroupForOwner(
     group,
     members,
     activity,
+    expenses: await getExpensesForGroup(group.id),
+    currentMember: await db.orm.public.GroupMember.select("id", "name")
+      .first({ groupId: group.id, userId: authenticatedOwnerId, role: "OWNER", isActive: true }),
   };
 }
 

@@ -23,7 +23,7 @@ For a focused run, pass a specific test file, for example `node --test tests/gue
 Lint the application and test sources involved in the milestone:
 
 ```bash
-npx eslint src/app/actions/guest.ts "src/app/g/**/*.tsx" src/components/groups/claim-member-form.tsx src/components/groups/guest-sign-out.tsx src/components/groups/share-link.tsx src/data/invites.ts src/data/guest-groups.ts src/lib/auth/tokens.ts src/lib/auth/session.ts src/lib/auth/guest-session.ts "tests/**/*.mjs"
+npx eslint src/data/expenses.ts src/data/groups.ts src/data/guest-groups.ts "src/lib/expenses/*.ts" "src/components/expenses/*.tsx" src/components/groups/member-list.tsx src/components/groups/activity-list.tsx src/app/actions/expenses.ts "src/app/groups/[[]groupId[]]/**/*.tsx" "src/app/g/[[]shareToken[]]/expenses/**/*.tsx" "src/app/g/[[]shareToken[]]/group/page.tsx" "tests/expense*.test.mjs" tests/helpers/guest-environment.mjs tests/guest-groups.test.mjs tests/guest-group-pages.test.mjs
 ```
 
 On Windows, use `npx.cmd` and `npm.cmd` if PowerShell blocks the `.ps1` wrappers. Builds use the existing private environment configuration; never print or commit it. Review `git diff`, `git diff --check` and `git status` after verification. Stage only intended files.
@@ -35,13 +35,20 @@ On Windows, use `npx.cmd` and `npm.cmd` if PowerShell blocks the `.ps1` wrappers
 | Owner auth | Registration validation, bcrypt hashing, generic login errors, token hashing/cookies, expiry, revocation, request-origin/body checks and safe errors; `auth.test.mjs` |
 | Owner pages/forms | Authentication guards, safe login destinations, form validation, pending/error states and landing/dashboard rendering; `auth-pages.test.mjs` |
 | Group creation/dashboard | Transactional owner/guest creation and activity, secure share token, invalid input/duplicate names, rollback simulation, owner-scoped dashboard reads and projections; `create-group.test.mjs`, `dashboard.test.mjs` |
-| Owner group access | Shared owner-auth/dashboard guards are tested. Dedicated `/groups/[groupId]` and `getGroupForOwner` authorization tests are not yet present; do not infer full owner-detail coverage from dashboard tests. |
+| Owner group access | Shared auth/dashboard guards, authorized detail rendering and wrong-owner read rejection; `auth-pages.test.mjs`, `expense-groups.test.mjs`. This is not comprehensive live owner-detail authorization coverage. |
 | Invite resolution | Valid, malformed, unknown and disabled invites; minimal output and eligible active/unclaimed guest filtering; `invites.test.mjs` |
 | Member claiming | Same-group eligibility, rejection of claimed/inactive/owner/account-linked members, hashed session and MEMBER_CLAIMED, rollback and simulated competing claims; `invites.test.mjs` |
 | Guest sessions | Cookie security, expiry, malformed/unknown credentials, missing records, group/member mismatch and separation from owner credentials; `guest-session.test.mjs` |
 | Protected guest group access | Safe projections, active member filtering, latest 10 allowed events in deterministic order, matching-session requirement, disabled-invite policy and throttled timestamps/rollback; `guest-groups.test.mjs` |
-| Guest page/navigation | Group/current identity, joined/waiting states, activity/expense placeholder, redirects, generic errors, session reuse and compatibility route; `guest-group-pages.test.mjs`, `invite-pages.test.mjs` |
+| Guest page/navigation | Group/current identity, joined/waiting states, activity, expense list/empty state, redirects, generic errors, session reuse and compatibility route; `guest-group-pages.test.mjs`, `invite-pages.test.mjs`, `expense-groups.test.mjs` |
 | Guest sign-out | Revocation, cookie clearing, owner/unrelated session preservation, retained claimedAt, revoked-token replay rejection, failure handling and UI feedback; `guest-session.test.mjs`, `guest-group-pages.test.mjs` |
+| Expense context | Real owner/guest session resolution to GroupMember, mixed-cookie isolation, cross-group protection, inactive/missing identities, safe projections, active/unclaimed member options, disabled-invite policy and read-only behaviour; `expenses.test.mjs` |
+| Expense pages/form | Protected routes, safe failures, labels, payer default, member options, review totals/shares, preserved edit values, pending/error feedback and confirmation buttons; `expense-pages.test.mjs` |
+| Editable review | Custom edits, exact assigned/remaining totals, under/over-allocation, invalid/zero values, reset, pending state, preserved failures and natural order; `expense-review.test.mjs` |
+| Expense money | Exact decimal-to-pence conversion, invalid precision/ranges, deterministic remainder order, zero-pence shares, sums and maximum bound; `expense-money.test.mjs` |
+| Expense validation/persistence | Description, amount, payer/participants, duplicates, active/same-group checks, GBP-only writes, changed membership/session after review, owner/guest success, actor identity, every participant and EXPENSE_CREATED, custom share cardinality/identity/precision/totals, exact custom persistence, EQUAL/CUSTOM classification, natural order and rollback at each of five write points; `expenses.test.mjs` |
+| Expense actions | Owner/guest review/edit/save, explicit confirmation, safe errors, repeated/file fields, validated paired share fields, rejected missing/misaligned shares, ignored forged actor/redirect, post-commit destinations and revalidation; `expense-actions.test.mjs` |
+| Saved expense display | Owner/guest service and page integration, safe output, scoped records, inactive historical payer, participant count, persisted split summaries, current identity, shared panels, natural member order, newest-50 ordering and empty state; `expense-groups.test.mjs` |
 
 ## Manual testing completed
 
@@ -55,7 +62,9 @@ These are historical/reported checks, not new live tests performed during docume
 
 - Test doubles cannot prove live PostgreSQL locking, race outcomes or rollback behaviour. Use a designated test database for concurrent claims and failure injection.
 - No browser automation, full HTTP end-to-end suite, visual/mobile accessibility audit or production HTTPS-cookie test is present.
-- Dedicated owner group-detail authorization tests remain missing.
+- Owner group-detail authorization has targeted coverage but still needs broader HTTP/browser checks.
+- Expense tests inspect React elements and execute Server Actions with mocked runtime boundaries; they do not simulate browser form resets, focus or checkbox interaction. Live owner/guest review/edit/save navigation and visual/mobile checks remain outstanding.
+- Expense persistence and equal/custom splitting are implemented; balances, expense editing, percentage splits, payments and settlements remain pending. Pending buttons do not provide durable idempotency: retrying after a lost successful response can create a duplicate expense.
 - Protected group access, disabled invitations with existing sessions, timestamp throttling and guest sign-out still need live browser/database checks.
 - Targeted ESLint success is not a repository-wide lint claim; historical full scans included generated/tooling findings outside this milestone.
 - Recovery of lost/expired/signed-out guest sessions, multi-group guest-cookie management and rate limiting are not implemented. Signing out does not make a claimed name available again.
@@ -68,19 +77,28 @@ Suggested manual checklist, using disposable identities:
 4. After five minutes, verify lastSeenAt/lastActiveAt refresh; immediate reloads should not keep writing. Expiry must remain unchanged.
 5. Sign out and verify revocation, cleared guest cookies, retained owner login and unchanged claimedAt. That guest identity cannot currently be recovered on this device.
 6. Check narrow-screen layout, keyboard interaction, pending states and safe failure messages.
+7. In a disposable GBP group, open Add expense as owner. Enter £10.00, choose three participants and review. Check £3.34/£3.33/£3.33 with the remainder assigned internally by member ID while names stay in group order; verify no expense exists yet.
+8. Use Back and edit, verify all values remain, change the amount/participants and review again. Confirm and save; check the group redirect, one expense, all participant shares and one EXPENSE_CREATED event. The actor must be the submitter even when another member paid.
+9. Repeat in a separate claimed-guest browser. Verify both group views show the saved expense with payer, total, date and participant count; refresh to confirm persistence.
+10. Try blank description, zero/negative amounts, extra decimal places and no participants. In test fixtures, deactivate a selected member or expire the guest session after review: confirmation must fail without partial records. Check cross-group IDs via a controlled request.
+11. Edit the three shares to 5.00/3.00/2.00. Check assigned 10.00 and remaining 0.00; under/over-allocation and negative/invalid entries must disable save. Reset to equal, edit again and save; verify exact custom shares and CUSTOM in the database and expandable summaries in both group views. Check keyboard and narrow-screen layout.
+12. In a designated test database, inject failure after expense creation and during participant/activity writes; verify full rollback. Test concurrent member deactivation and saving to validate the membership locks. Do not modify production data for failure injection.
 
 ## Current verification checkpoint
 
-Guest milestone checkpoint, 19 September 2026:
+Custom splits/group UI checkpoint, 20 September 2026:
 
 | Check | Result |
 | --- | --- |
-| `node --test tests/*.test.mjs` | 190 passing |
+| `node --test tests/*.test.mjs` | 334 passing |
 | `npx tsc --noEmit` | Passing |
 | Targeted ESLint command above | Passing |
 | `npm run build` | Passing |
+| `git diff --check` | Passing |
 
-The checkpoint must reflect an actual run, not code inspection. See the final milestone commit for the corresponding implementation.
+This checkpoint records local verification, not a live database/browser test. No schema, migration or dependency changes were needed.
+
+TypeScript and ESLint were run with the Windows `npx.cmd` wrapper, and the build with `npm.cmd run build`. The earlier foundation milestone needed network access to download the existing Geist fonts; this milestone's build uses the existing font setup.
 
 ## Short milestone test history
 
@@ -89,8 +107,11 @@ The checkpoint must reflect an actual run, not code inspection. See the final mi
 | Owner auth, group creation and persisted dashboard | 120 tests across four suites |
 | Guest invite/member claiming and session confirmation | 153 tests; added 33 guest tests |
 | Protected guest group access, activity tracking and sign-out | 190 tests; added 37 tests |
+| Shared expense foundation and non-persisting form | 220 tests; added 30 tests |
+| Equal split confirmation, persistence and group lists | 293 tests; added 73 tests |
+| Editable custom splits and improved group UI | 334 tests; added 41 tests |
 
-Current suite totals: owner auth 32; owner pages/forms 38; creation 32; dashboard 18; invites 16; guest sessions 18; invite pages 8; guest group service 18; guest group pages 10.
+Current suite totals: owner auth 32; owner pages/forms 38; creation 32; dashboard 18; invites 16; guest sessions 18; invite pages 8; guest group service 20; guest group pages 10; expense service 73; expense pages/form 11; expense money 25; expense actions 11; expense group display 10; editable review 12.
 
 ## Project convention
 

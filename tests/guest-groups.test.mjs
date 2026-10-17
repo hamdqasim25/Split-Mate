@@ -75,6 +75,11 @@ test("disabled invitations do not eject authenticated guests", async () => {
   await join(); state.rows.Group[0].shareLinkEnabled = false;
   assert.equal((await getGroupForGuest(token)).currentGuest.name, "Jaher");
 });
+test("guest members follow order added rather than numeric IDs", async () => {
+  await join(); state.rows.GroupMember[0].addedAt = "2026-02-01";
+  state.rows.GroupMember.push({ ...state.rows.GroupMember[0], id: 90, name: "Added first", addedAt: "2026-01-01" });
+  assert.deepEqual((await getGroupForGuest(token)).members.map(member => member.id), [90, 2]);
+});
 test("successful access refreshes stale timestamps together without extending expiry", async () => {
   await join(); ageActivity();
   const expiry = state.rows.GuestSession[0].expiresAt;
@@ -95,7 +100,7 @@ test("member activity can refresh independently of a fresh session timestamp", a
   await getGroupForGuest(token);
   assert.deepEqual(state.writes, ["GroupMember.updateAll"]);
 });
-for (const failAt of ["GroupMember.all", "ActivityEvent.all", "GuestSession.updateAll", "GroupMember.updateAll"]) test(`failure at ${failAt} rolls back activity updates`, async () => {
+for (const failAt of ["GroupMember.all", "ActivityEvent.all", "Expense.all", "GuestSession.updateAll", "GroupMember.updateAll"]) test(`failure at ${failAt} rolls back activity updates`, async () => {
   await join(); ageActivity(); state.failAt = failAt;
   const before = structuredClone(state.rows);
   await assert.rejects(getGroupForGuest(token), /PRIVATE_DATABASE_DETAILS/);

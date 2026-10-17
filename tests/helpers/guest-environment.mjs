@@ -9,12 +9,13 @@ export function reset() {
   queue = Promise.resolve();
   Object.assign(state, {
     rows: {
-      Group: [{ id: 1, name: "Football", shareToken: token, shareLinkEnabled: true, createdBy: 7 }],
+      Group: [{ id: 1, name: "Football", currency: "GBP", shareToken: token, shareLinkEnabled: true, createdBy: 7 }],
       GroupMember: [{ id: 2, groupId: 1, name: "Jaher", role: "MEMBER", userId: null, claimedAt: null, isActive: true }],
-      GuestSession: [], ActivityEvent: [],
+      GuestSession: [], ActivityEvent: [], User: [], UserSession: [], Expense: [], ExpenseParticipant: [],
     },
     cookies: new Map(), cookieWrites: [], failAt: null, reads: 0, readOperations: [], writes: [], commits: 0, rollbacks: 0,
-    actionState: { error: "" }, pending: false,
+    actionState: { error: "" }, pending: false, revalidated: [], createCalls: 0, failCreateAt: null,
+    hooks: [], hookIndex: 0, rendering: false,
   });
 }
 const fieldProxy = new Proxy({}, { get: (_, key) => ({
@@ -68,13 +69,15 @@ function collection(model, getRows, fields, filters = [], order = [], limit = In
     },
     async create(values) {
       fail("create");
+      state.createCalls++;
+      if (state.createCalls === state.failCreateAt) throw new Error("PRIVATE_DATABASE_DETAILS");
       const row = { id: getRows()[model].length + 1, ...values };
       getRows()[model].push(row); return project(row);
     },
   };
 }
 function orm(getRows) {
-  return { public: Object.fromEntries(["Group", "GroupMember", "GuestSession", "ActivityEvent"].map(model => [model, collection(model, getRows)])) };
+  return { public: Object.fromEntries(["Group", "GroupMember", "GuestSession", "ActivityEvent", "User", "UserSession", "Expense", "ExpenseParticipant"].map(model => [model, collection(model, getRows)])) };
 }
 export const db = {
   orm: orm(() => state.rows),
@@ -98,15 +101,27 @@ export async function cookies() {
   };
 }
 export function redirect(destination) { throw Object.assign(new Error("redirect"), { destination }); }
+export function notFound() { throw Object.assign(new Error("not found"), { status: 404 }); }
+export function revalidatePath(path) { state.revalidated.push(path); }
 export default function Link() {}
 export function useActionState() { return [state.actionState, () => {}, state.pending]; }
+export function useState(initial) {
+  if (!state.rendering) return [typeof initial === "function" ? initial() : initial, () => {}];
+  const index = state.hookIndex++;
+  if (!(index in state.hooks)) state.hooks[index] = typeof initial === "function" ? initial() : initial;
+  return [state.hooks[index], value => { state.hooks[index] = typeof value === "function" ? value(state.hooks[index]) : value; }];
+}
+export function renderWithState(component, props) {
+  state.hookIndex = 0; state.rendering = true;
+  try { return component(props); } finally { state.rendering = false; }
+}
 
 export function installHooks() {
   return registerHooks({
     resolve(specifier, context, next) {
       if (specifier === "server-only") return { url: "data:text/javascript,export {};", shortCircuit: true };
-      if (["@/prisma/db", "next/headers", "next/navigation", "next/link"].includes(specifier)
-        || (specifier === "react" && ["claim-member-form.tsx", "guest-sign-out.tsx"].some(file => context.parentURL?.endsWith(file)))) {
+      if (["@/prisma/db", "next/headers", "next/navigation", "next/link", "next/cache"].includes(specifier)
+        || (specifier === "react" && ["claim-member-form.tsx", "guest-sign-out.tsx", "expense-form.tsx", "expense-review.tsx", "share-link.tsx"].some(file => context.parentURL?.endsWith(file)))) {
         return { url: import.meta.url, shortCircuit: true };
       }
       if (specifier.startsWith("@/")) {

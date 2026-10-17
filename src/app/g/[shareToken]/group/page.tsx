@@ -4,15 +4,14 @@ import { redirect } from "next/navigation";
 import { getGroupForGuest } from "@/data/guest-groups";
 import { isValidToken } from "@/lib/auth/tokens";
 import GuestSignOut from "@/components/groups/guest-sign-out";
+import ExpenseList from "@/components/expenses/expense-list";
+import MemberList from "@/components/groups/member-list";
+import ActivityList from "@/components/groups/activity-list";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Your group | SPLITMate", robots: { index: false, follow: false }, referrer: "no-referrer",
 };
-const dateFormat = new Intl.DateTimeFormat("en-GB", {
-  dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London",
-});
-
 export default async function GuestGroupPage({ params }: { params: Promise<{ shareToken: string }> }) {
   const { shareToken } = await params;
   if (!isValidToken(shareToken)) redirect("/g/invalid");
@@ -32,43 +31,36 @@ export default async function GuestGroupPage({ params }: { params: Promise<{ sha
     );
   }
   if (!result) redirect(`/g/${shareToken}`);
-  const { group, currentGuest, members, activity } = result;
+  const { group, currentGuest, members, activity, expenses } = result;
   return (
-    <main className="min-h-screen bg-[#f8faf7] px-6 py-12 font-sans text-slate-900 sm:py-20">
-      <div className="mx-auto max-w-4xl">
-        <Link href="/" className="font-semibold text-emerald-800">SPLITMate</Link>
-        <header className="mt-8">
-          <h1 className="break-words text-4xl font-semibold tracking-tight sm:text-5xl">{group.name}</h1>
-          <p className="mt-4 break-words text-lg text-slate-600">You&apos;re joined as {currentGuest.name}.</p>
+    <main className="min-h-screen bg-[#f8faf7] px-4 py-8 font-sans text-slate-900 sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-6xl">
+        <Link href="/" className="text-sm font-semibold text-emerald-800">SPLITMate</Link>
+        <header className="mt-6 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm sm:p-8">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-800">Shared group</p>
+              <h1 className="mt-2 break-words text-3xl font-semibold tracking-tight sm:text-4xl">{group.name}</h1>
+              <p className="mt-4 break-words text-sm text-emerald-900">You&apos;re joined as <strong>{currentGuest.name}</strong>.</p>
+              <p className="mt-2 text-sm text-slate-500">{members.length} active {members.length === 1 ? "member" : "members"} &middot; No account needed</p>
+            </div>
+            <Link href={`/g/${shareToken}/expenses/new`} className="shrink-0 rounded-xl bg-emerald-800 px-5 py-3 text-center font-semibold text-white hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800">Add expense</Link>
+          </div>
         </header>
-        <section aria-labelledby="members-heading" className="mt-10">
-          <h2 id="members-heading" className="text-2xl font-semibold">Members</h2>
-          <ul className="mt-5 grid gap-4 sm:grid-cols-2">
-            {members.map((member) => (
-              <li key={member.id} className="rounded-2xl border border-slate-200 bg-white p-5">
-                <h3 className="break-words font-semibold">{member.name}{member.id === currentGuest.id && <span className="ml-2 text-sm text-emerald-800">(You)</span>}</h3>
-                <p className="mt-2 text-sm text-slate-500">{member.joined ? "Joined" : "Waiting to join"}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section aria-labelledby="activity-heading" className="mt-10">
-          <h2 id="activity-heading" className="text-2xl font-semibold">Recent activity</h2>
-          {activity.length === 0 ? <p className="mt-5 text-slate-600">No activity yet. Group updates will appear here.</p> :
-            <ul className="mt-5 rounded-2xl border border-slate-200 bg-white">
-              {activity.map((event) => (
-                <li key={event.id} className="flex flex-col gap-3 border-b border-slate-100 p-5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="min-w-0 break-words font-semibold">{event.description}</p>
-                  <time dateTime={event.createdAt} className="shrink-0 text-sm text-slate-500">{dateFormat.format(new Date(event.createdAt))} (London)</time>
-                </li>
-              ))}
-            </ul>}
-        </section>
-        <section aria-labelledby="expenses-heading" className="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
-          <h2 id="expenses-heading" className="text-2xl font-semibold">Expenses</h2>
-          <p className="mt-3 text-slate-600">Expense tracking is coming soon. Expenses added to this group will appear here.</p>
-        </section>
-        <GuestSignOut shareToken={shareToken} />
+        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <div className="min-w-0 space-y-6">
+            <section aria-labelledby="expenses-heading" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <h2 id="expenses-heading" className="text-xl font-semibold">Expenses</h2>
+              <p className="mt-1 text-sm text-slate-500">What your group has spent, and how each expense is shared.</p>
+              <ExpenseList expenses={expenses} />
+            </section>
+            <ActivityList activity={activity} />
+          </div>
+          <div className="min-w-0 space-y-6">
+            <MemberList members={members} currentMemberId={currentGuest.id} />
+            <GuestSignOut shareToken={shareToken} />
+          </div>
+        </div>
       </div>
     </main>
   );

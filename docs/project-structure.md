@@ -22,9 +22,22 @@
 | `src/components/groups/claim-member-form.tsx` | Claim submission, pending/error states |
 | `src/components/groups/guest-sign-out.tsx` | Device sign-out and claim-retention explanation |
 | `src/data/auth.ts` | Account validation and password handling |
-| `src/data/groups.ts` | Transactional creation, owner dashboard/detail reads |
+| `src/data/groups.ts` | Transactional group creation, owner reads and internal authorized-group expense list helper |
 | `src/data/invites.ts` | Minimal token lookup, safe invite data and atomic claims |
 | `src/data/guest-groups.ts` | Authenticated guest data and activity tracking |
+| `src/data/expenses.ts` | Authenticated context, server validation, split review and atomic expense persistence |
+| `src/lib/expenses/types.ts` | Form, review, action state and safe expense list types |
+| `src/lib/expenses/money.ts` | Exact integer-pence parsing, equal splitting and decimal formatting |
+| `src/app/actions/expenses.ts` | Owner/guest review, edit, confirmation, safe errors and redirects |
+| `src/components/expenses/expense-form.tsx` | Shared input/review/confirm UI with preserved values and pending/error feedback |
+| `src/components/expenses/expense-review.tsx` | Editable shares, exact totals, reset and confirmation |
+| `src/components/groups/member-list.tsx`, `src/components/groups/activity-list.tsx` | Shared member states and recent activity panels |
+| `tests/expense-review.test.mjs` | Stateful custom editing, totals, reset and order coverage |
+| `src/components/expenses/expense-list.tsx` | Saved-expense cards with expandable persisted shares |
+| `src/app/groups/[groupId]/expenses/new/page.tsx` | Protected owner expense form |
+| `src/app/g/[shareToken]/expenses/new/page.tsx` | Protected guest expense form |
+| `tests/expenses.test.mjs`, `tests/expense-pages.test.mjs` | Expense context, authorization, route and form coverage |
+| `tests/expense-money.test.mjs`, `tests/expense-actions.test.mjs`, `tests/expense-groups.test.mjs` | Money invariants, submission actions and saved-expense group display |
 | `src/lib/auth/tokens.ts` | Shared secure token generation, validation and hashing |
 | `src/lib/auth/session.ts` | Owner session lifecycle |
 | `src/lib/auth/guest-session.ts` | Guest validation, cookies, activity and revocation |
@@ -38,7 +51,7 @@
 
 Layout/styles remain in `src/app/layout.tsx` and `globals.css`. Dependencies and scripts are defined in package.json and its lockfile. Environment secrets and build output remain ignored.
 
-For route authorization see [architecture](architecture.md); for current feature status see [README](../README.md). No expense routes/workflows or `/groups` index exist.
+For route authorization see [architecture](architecture.md); for current feature status see [README](../README.md). Equal/custom splitting and expense persistence are implemented. Balances, editing, payments, settlements and a `/groups` index remain unimplemented.
 
 ---
 

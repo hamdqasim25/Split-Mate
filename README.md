@@ -13,11 +13,17 @@ Completed:
 - Hashed GuestSession authentication and cross-group access isolation.
 - Protected guest group page showing the current identity, active members and recent activity.
 - Throttled guest activity tracking and device sign-out without resetting claimedAt.
-- Automated testing: **190 tests passing**, with TypeScript, targeted ESLint and production build passing at the guest milestone checkpoint.
+- Shared expense context resolves authenticated owners and guests to active same-group GroupMembers and returns only safe form data.
+- Reusable expense form for both flows: description, amount, current-member payer default and participant checkboxes. Available from each group page.
+- Server-validated equal splitting in integer pence, split review/edit/confirmation, and transactional expense/participant creation with EXPENSE_CREATED logging.
+- Editable custom shares with exact assigned/remaining totals, reset to equal and server validation.
+- Improved owner/guest headers, identity, member states and activity panels.
+- Saved expense lists on owner and guest group pages, including payer, total, date, participant count and expandable split amounts.
+- Automated testing: **334 tests passing**; see [verification results](docs/tests.md).
 
-**Next development area: Expense creation and splitting**
+**Next development area: Group balances**
 
-Expenses, balances and repayments are not implemented. Their database models do not imply working financial features.
+Equal/custom splitting and expense persistence are implemented for GBP groups. The server calculates shares for review, revalidates on confirmation and saves all records together. Balances, expense editing, percentage splits, payments and settlements remain pending.
 
 ## Access model
 

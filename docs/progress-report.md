@@ -10,12 +10,15 @@
 | Guest invite and claim | Eligible-name selection, conditional transactional claims, hashed GuestSession and MEMBER_CLAIMED |
 | Protected guest area | Same-group session authorization, member/activity display, disabled-invite policy, throttled activity and sign-out |
 | Guest milestone documentation | Updated architecture/status/source map and permanent tests.md |
+| Expense foundation and form (20 September 2026) | Shared safe context, active GroupMember authorization, owner/guest form routes and reusable non-persisting UI |
+| Equal splitting and expense persistence (20 September 2026) | Server validation, deterministic integer-pence shares, review/edit/confirm UI, atomic expense/participants/activity and saved-expense lists |
+| Custom splits and group UI (20 September 2026) | Editable shares, exact-total validation, reset to equal, persisted custom amounts and shared responsive group panels |
 
-Current development area: **Expense creation and splitting**.
+Equal/custom splitting and persistence are implemented. Recommended next area: **group balances**, following manual expense-flow verification. Balances, editing, payments and settlements remain pending.
 
 ## Verification and evidence
 
-The guest checkpoint is **190 automated tests**, TypeScript, targeted ESLint and production build passing. [tests.md](tests.md) is the authoritative reference for commands, feature coverage, manual evidence, limitations and test-count history.
+The custom-split checkpoint has **334 passing automated tests** (41 added); expense persistence had 293 and the foundation had 220. [tests.md](tests.md) is the authoritative reference for verification commands/results, feature coverage, manual evidence, limitations and test-count history. No live expense writes or browser testing are claimed.
 
 Earlier live work verified group creation and a read-only persisted dashboard query against Prisma-hosted PostgreSQL. The developer subsequently reported independent guest claims in separate browser profiles. Protected-group browser validation and real-database race/rollback tests remain outstanding.
 

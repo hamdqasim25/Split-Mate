@@ -10,12 +10,20 @@
 - Guest member/activity display, five-minute activity tracking and device sign-out.
 - Automated tests and milestone verification; see [tests.md](tests.md).
 
-## Next: Expense creation and splitting
+- Shared expense backend foundation: authenticated GroupMember resolution, same-group authorization and minimal active-member form context.
+- One reusable owner/guest expense form with payer default, participant multi-select and server-calculated confirmation.
+- Validated GBP expense persistence, deterministic equal splitting in integer pence, atomic participants/EXPENSE_CREATED and shared expense lists.
 
-Implement a focused expense-creation slice with authenticated owner/guest identity, same-group payer and participant validation, group currency, deterministic equal splitting and atomic EXPENSE_CREATED logging. Do not infer completed workflows from existing financial tables.
+- Editable custom shares, exact-total validation and reset to equal; natural member order and improved owner/guest group pages.
+
+## Next: Group balances (not implemented)
+
+First manually verify the owner/guest review-and-save flow and live database transaction behaviour using disposable test data. The next product milestone can derive group balances from saved payer totals and participant shares, continuing to use GroupMember identity and exact money arithmetic. No balance work is part of this expense milestone.
 
 ## Later
 
+- Expense editing and percentage splitting.
+- Durable expense-submission idempotency for safe retries after lost responses.
 - Balances and repayments, preserving payer SENT → receiver CONFIRMED.
 - Optional account linking without duplicating GroupMember/history.
 - Member management and invite disable/regeneration controls.

@@ -710,6 +710,36 @@
                   "namespace": "public"
                 }
               },
+              "paymentsRecorded": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "recordedByMemberId"
+                  ]
+                },
+                "to": {
+                  "model": "Payment",
+                  "namespace": "public"
+                }
+              },
+              "paymentsReviewed": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "reviewedByMemberId"
+                  ]
+                },
+                "to": {
+                  "model": "Payment",
+                  "namespace": "public"
+                }
+              },
               "paymentsSent": {
                 "cardinality": "1:N",
                 "on": {
@@ -885,6 +915,13 @@
                   "kind": "scalar"
                 }
               },
+              "creationKind": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "groupId": {
                 "nullable": false,
                 "type": {
@@ -908,6 +945,34 @@
               },
               "receiverMemberId": {
                 "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "recordedByMemberId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "requestKey": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reviewedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "reviewedByMemberId": {
+                "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
                   "kind": "scalar"
@@ -973,6 +1038,36 @@
                   "model": "GroupMember",
                   "namespace": "public"
                 }
+              },
+              "recorder": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "recordedByMemberId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "GroupMember",
+                  "namespace": "public"
+                }
+              },
+              "reviewer": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "reviewedByMemberId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "GroupMember",
+                  "namespace": "public"
+                }
               }
             },
             "storage": {
@@ -986,6 +1081,9 @@
                 "createdAt": {
                   "column": "createdAt"
                 },
+                "creationKind": {
+                  "column": "creationKind"
+                },
                 "groupId": {
                   "column": "groupId"
                 },
@@ -997,6 +1095,18 @@
                 },
                 "receiverMemberId": {
                   "column": "receiverMemberId"
+                },
+                "recordedByMemberId": {
+                  "column": "recordedByMemberId"
+                },
+                "requestKey": {
+                  "column": "requestKey"
+                },
+                "reviewedAt": {
+                  "column": "reviewedAt"
+                },
+                "reviewedByMemberId": {
+                  "column": "reviewedByMemberId"
                 },
                 "sentAt": {
                   "column": "sentAt"
@@ -1858,6 +1968,11 @@
                   "nativeType": "timestamptz",
                   "nullable": false
                 },
+                "creationKind": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "groupId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
@@ -1881,6 +1996,26 @@
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
                   "nullable": false
+                },
+                "recordedByMemberId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "requestKey": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "reviewedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "reviewedByMemberId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
                 },
                 "sentAt": {
                   "codecId": "pg/timestamptz-string@1",
@@ -1941,6 +2076,38 @@
                     "namespaceId": "public",
                     "tableName": "groupMember"
                   }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "recordedByMemberId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "payment"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "groupMember"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "reviewedByMemberId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "payment"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "groupMember"
+                  }
                 }
               ],
               "indexes": [
@@ -1967,6 +2134,22 @@
                   "name": "payment_receiverMemberId_idx_0e68368d",
                   "prefix": "payment_receiverMemberId_idx",
                   "unique": false
+                },
+                {
+                  "columns": [
+                    "recordedByMemberId"
+                  ],
+                  "name": "payment_recordedByMemberId_idx_bb82e2f1",
+                  "prefix": "payment_recordedByMemberId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "reviewedByMemberId"
+                  ],
+                  "name": "payment_reviewedByMemberId_idx_60d9da7b",
+                  "prefix": "payment_reviewedByMemberId_idx",
+                  "unique": false
                 }
               ],
               "primaryKey": {
@@ -1974,7 +2157,13 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "requestKey"
+                  ]
+                }
+              ]
             },
             "user": {
               "columns": {
@@ -2118,7 +2307,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "68a78b5e428f40a6abc3edbcfc0c5467e9dcf2e16fe8552a103abeac5354b988"
+    "storageHash": "6164bc09235f61a5ae59c7e5d465734a240c6fc0c9f4d8da37a3c1d986e3dbde"
   },
   "capabilities": {
     "postgres": {

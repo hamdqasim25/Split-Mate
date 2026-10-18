@@ -2,6 +2,8 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 import { db } from "@/prisma/db";
+import { getLedgerForGroup } from "@/data/balances";
+import { formatPence } from "@/lib/expenses/money";
 import type { SavedExpense } from "@/lib/expenses/types";
 
 /** Internal read: call only after authorizing access to this group. */
@@ -63,7 +65,41 @@ export async function getGroupsForOwner(authenticatedOwnerId: number) {
           .limit(5)
           .all();
 
-  return { groups, activity };
+  // One group lock/transaction at a time: no parallel pool fan-out or nested
+  // locks. Each ledger is coherent; this is not a cross-group point-in-time snapshot.
+  const dashboardGroups = [];
+  let owed = BigInt(0);
+  let owing = BigInt(0);
+  let available = true;
+  for (const group of groups) {
+    let ownerNet: string | null = null;
+    try {
+      ownerNet = await db.transaction(async tx => {
+        const { balances } = await getLedgerForGroup(group.id, tx);
+        const owners = await tx.orm.public.GroupMember
+          .where({ groupId: group.id, userId: authenticatedOwnerId, role: "OWNER", isActive: true })
+          .select("id").all();
+        if (owners.length !== 1 || balances.status !== "ready") return null;
+        return balances.members.find(member => member.id === owners[0].id)?.net ?? null;
+      });
+    } catch {
+      // Never log database errors/payloads here or present a partial financial total.
+      console.error("Dashboard group balance could not be loaded.");
+    }
+    if (ownerNet === null) available = false;
+    else {
+      // The ledger emits canonical signed decimals. Do not use parsePence here:
+      // aggregate balances can exceed its single-record limit and Number precision.
+      const net = BigInt(ownerNet.replace(".", ""));
+      if (net > BigInt(0)) owed += net;
+      else owing -= net;
+    }
+    dashboardGroups.push({ ...group, ownerNet });
+  }
+  return {
+    groups: dashboardGroups, activity,
+    totals: available ? { owed: formatPence(owed), owing: formatPence(owing) } : null,
+  };
 }
 
 /**
@@ -159,6 +195,7 @@ export async function getGroupForOwner(
     members,
     activity,
     expenses: await getExpensesForGroup(group.id),
+    ...await getLedgerForGroup(group.id),
     currentMember: await db.orm.public.GroupMember.select("id", "name")
       .first({ groupId: group.id, userId: authenticatedOwnerId, role: "OWNER", isActive: true }),
   };

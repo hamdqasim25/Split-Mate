@@ -4,7 +4,7 @@ import { registerHooks } from "node:module";
 import { beforeEach, test } from "node:test";
 import ts from "typescript";
 
-// A read-only query double evaluates predicates, projections, ordering and limits.
+// A query double evaluates projections, ordering, limits and the ledger lock protocol.
 // Import interception ensures these tests cannot reach the cloud database.
 const mockUrl = `data:text/javascript,${encodeURIComponent(`
 export const state = { rows: {}, reads: [], user: null, failure: null };
@@ -15,6 +15,7 @@ export default function Link() {}
 const fields = new Proxy({}, { get: (_, key) => ({
   in: values => row => values.includes(row[key]),
   desc: () => ({ key, direction: -1 }),
+  asc: () => ({ key, direction: 1 }),
 }) });
 function collection(model, options = {}) {
   const next = patch => collection(model, { ...options, ...patch });
@@ -32,9 +33,17 @@ function collection(model, options = {}) {
     count() { return { filters: options.filters ?? [] }; },
     orderBy(callbacks) { return next({ order: callbacks.map(callback => callback(fields)) }); },
     limit(limit) { return next({ limit }); },
+    async updateAll(values) {
+      assertLock();
+      const rows = state.rows[model].filter(row => (options.filters ?? []).every(predicate => predicate(row)));
+      state.locks.push(...rows.map(row => row.id));
+      return rows.map(row => { Object.assign(row, values); return { id: row.id }; });
+    },
     async all() {
       state.reads.push({ model, ...options });
       if (state.failure) throw state.failure;
+      if (model === state.failModel) throw new Error("private database details");
+      if (["Expense", "ExpenseParticipant", "Payment"].includes(model)) assertLock();
       let rows = state.rows[model].filter(row => (options.filters ?? []).every(predicate => predicate(row)));
       rows.sort((a, b) => {
         for (const { key, direction } of options.order ?? []) {
@@ -52,7 +61,15 @@ function collection(model, options = {}) {
     },
   };
 }
-export const db = { orm: { public: { Group: collection('Group'), ActivityEvent: collection('ActivityEvent') } } };
+function assertLock() { if (!state.inTransaction) throw new Error('Ledger read outside transaction'); }
+export const db = {
+  orm: { public: Object.fromEntries(['Group', 'GroupMember', 'ActivityEvent', 'Expense', 'ExpenseParticipant', 'Payment'].map(model => [model, collection(model)])) },
+  async transaction(fn) {
+    if (state.inTransaction) throw new Error('Parallel or nested transaction');
+    state.inTransaction = true;
+    try { return await fn(db); } finally { state.inTransaction = false; }
+  },
+};
 `)}`;
 const hooks = registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -60,7 +77,7 @@ const hooks = registerHooks({
       return { url: mockUrl, shortCircuit: true };
     }
     if (specifier === "server-only") return { url: "data:text/javascript,export {};", shortCircuit: true };
-    if (specifier === "@/data/groups") return { url: new URL("../src/data/groups.ts", import.meta.url).href, shortCircuit: true };
+    if (specifier.startsWith("@/")) return { url: new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href, shortCircuit: true };
     return nextResolve(specifier, context);
   },
   load(url, context, nextLoad) {
@@ -80,9 +97,13 @@ hooks.deregister();
 
 beforeEach(() => {
   state.reads = [];
+  state.locks = [];
+  state.inTransaction = false;
+  state.failModel = null;
   state.user = { id: 7, name: "Test Owner" };
   state.failure = null;
   state.rows = {
+    Expense: [], ExpenseParticipant: [], Payment: [],
     Group: [
       { id: 1, createdBy: 7, name: "Older group", description: null, currency: "GBP", createdAt: "2026-09-01T12:00:00Z", shareToken: "secret-token" },
       { id: 2, createdBy: 7, name: "Newest group", description: "A real description", currency: "GBP", createdAt: "2026-09-02T12:00:00Z", shareToken: "secret-token" },
@@ -113,7 +134,7 @@ test("only owned groups and their newest five events are returned", async () => 
   assert.deepEqual(groups.map(group => group.id), [2, 1]);
   assert.deepEqual(activity.map(event => event.id), [7, 6, 5, 4, 3]);
   assert.ok(activity.every(event => [1, 2].includes(event.groupId)));
-  assert.equal(state.reads.length, 2);
+  assert.deepEqual(state.locks, [2, 1]);
   assert.equal(state.reads[1].limit, 5);
 });
 test("counts only active members, including guests, and returns zero for an empty group", async () => {
@@ -122,7 +143,7 @@ test("counts only active members, including guests, and returns zero for an empt
 });
 test("selects only dashboard fields and never returns share tokens or identity secrets", async () => {
   const result = await getGroupsForOwner(7);
-  assert.deepEqual(Object.keys(result.groups[0]).sort(), ["createdAt", "currency", "description", "id", "members", "name"]);
+  assert.deepEqual(Object.keys(result.groups[0]).sort(), ["createdAt", "currency", "description", "id", "members", "name", "ownerNet"]);
   assert.deepEqual(Object.keys(result.activity[0]).sort(), ["createdAt", "description", "groupId", "id"]);
   assert.doesNotMatch(JSON.stringify(result), /secret|shareToken|password|userId|memberId/);
 });
@@ -134,7 +155,7 @@ test("uses IDs to break timestamp ties deterministically", async () => {
   assert.deepEqual(result.activity.map(event => event.id), [7, 6, 5, 4, 3]);
 });
 test("no owned groups skips the activity query", async () => {
-  assert.deepEqual(await getGroupsForOwner(88), { groups: [], activity: [] });
+  assert.deepEqual(await getGroupsForOwner(88), { groups: [], activity: [], totals: { owed: "0.00", owing: "0.00" } });
   assert.equal(state.reads.length, 1);
 });
 test("database failures propagate rather than pretending the dashboard is empty", async () => {
@@ -157,7 +178,8 @@ test("dashboard uses the verified owner, renders real data and removes sample mo
   assert.match(output, /Newest group/);
   assert.match(output, /A real description/);
   assert.match(output, /Test Owner created the group/);
-  assert.match(output, /Available once expenses are added/);
+  assert.match(output, /Across your groups/);
+  assert.match(output, /Totals unavailable/);
   assert.doesNotMatch(output, /Weekend Trip|Football|£40|£12|View all|Other owner's|secret-token/);
   state.user = { id: 9, name: "Another Owner" };
   const otherOutput = text(await Dashboard());
@@ -170,4 +192,98 @@ test("dashboard renders useful empty states", async () => {
   assert.match(output, /No groups yet/);
   assert.match(output, /Create your first group/);
   assert.match(output, /No activity yet/);
+  assert.equal((output.match(/£0\.00/g) ?? []).length, 2);
 });
+
+function memberships() {
+  state.rows.GroupMember = state.rows.Group.flatMap(group => [
+    { id: group.id * 10, groupId: group.id, userId: group.createdBy, role: "OWNER", name: "Same name", isActive: true },
+    { id: group.id * 10 + 1, groupId: group.id, userId: null, role: "MEMBER", name: "Same name", isActive: true },
+  ]);
+}
+function expense(groupId, amount, negative = false) {
+  const id = state.rows.Expense.length + 1;
+  state.rows.Expense.push({ id, groupId, amount, paidByMemberId: groupId * 10 + Number(negative) });
+  state.rows.ExpenseParticipant.push({ expenseId: id, memberId: groupId * 10 + Number(!negative), amountOwed: amount });
+}
+function payment(groupId, amount, status, outgoing = false) {
+  state.rows.Payment.push({ id: state.rows.Payment.length + 1, groupId, amount, status,
+    payerMemberId: groupId * 10 + Number(!outgoing), receiverMemberId: groupId * 10 + Number(outgoing) });
+}
+
+test("valid empty ledgers show zero totals and Even cards", async () => {
+  memberships();
+  const result = await getGroupsForOwner(7);
+  assert.deepEqual(result.totals, { owed: "0.00", owing: "0.00" });
+  assert.deepEqual(result.groups.map(group => group.ownerNet), ["0.00", "0.00"]);
+  assert.match(text(await Dashboard()), /Even/);
+});
+
+test("positive and negative owner balances remain separate across groups and cards", async () => {
+  state.rows.Group.push({ ...state.rows.Group[0], id: 4, name: "Third owned group" });
+  memberships();
+  expense(1, "20.00"); expense(2, "5.00", true); expense(4, "10.00");
+  expense(3, "999.99"); // Another owner's ledger must never affect these totals.
+  const result = await getGroupsForOwner(7);
+  assert.deepEqual(result.totals, { owed: "30.00", owing: "5.00" });
+  assert.equal((await getGroupsForOwner(9)).totals.owed, "999.99");
+  const output = text(await Dashboard());
+  for (const label of ["You are owed £20.00", "You owe £5.00", "You are owed £10.00", "£30.00"]) assert.ok(output.includes(label));
+  assert.doesNotMatch(output, /999.99/);
+});
+
+test("only confirmed repayments reduce the owner's positive and negative balances", async () => {
+  memberships(); expense(1, "10.01"); expense(2, "6.03", true);
+  payment(1, "2.00", "SENT"); payment(2, "1.00", "REJECTED", true);
+  assert.deepEqual((await getGroupsForOwner(7)).totals, { owed: "10.01", owing: "6.03" });
+  payment(1, "3.00", "CONFIRMED"); payment(2, "2.02", "CONFIRMED", true);
+  assert.deepEqual((await getGroupsForOwner(7)).totals, { owed: "7.01", owing: "4.01" });
+});
+
+test("fully repaid groups show Even without removing expenses or history", async () => {
+  memberships(); expense(1, "10.01"); payment(1, "10.01", "CONFIRMED");
+  const result = await getGroupsForOwner(7);
+  assert.deepEqual(result.totals, { owed: "0.00", owing: "0.00" });
+  assert.equal(result.groups.find(group => group.id === 1).ownerNet, "0.00");
+  assert.equal((text(await Dashboard()).match(/Even/g) ?? []).length, 2);
+});
+
+test("complete expense and payment histories exceed display limits", async () => {
+  memberships();
+  for (let i = 0; i < 61; i++) { expense(1, "1.01"); payment(1, "0.01", "CONFIRMED"); }
+  assert.deepEqual((await getGroupsForOwner(7)).totals, { owed: "61.00", owing: "0.00" });
+  assert.ok(state.reads.filter(read => ["Expense", "Payment"].includes(read.model)).every(read => read.limit === undefined));
+});
+
+test("large aggregate balances retain pennies beyond Number precision and input limits", async () => {
+  memberships();
+  // Each record is within the existing decimal bound; the total is not.
+  for (let i = 0; i < 90073; i++) expense(1, "999999999.99");
+  expense(2, "0.01");
+  const result = await getGroupsForOwner(7);
+  assert.equal(result.totals.owed, "90072999999099.28");
+  assert.equal(result.groups.find(group => group.id === 1).ownerNet, "90072999999099.27");
+});
+
+for (const problem of ["missing owner", "wrong user", "wrong role", "inactive owner", "duplicate owner", "invalid ledger", "unsupported currency", "read failure"]) {
+  test(`${problem} makes totals unavailable without hiding valid group balances`, async () => {
+    memberships(); expense(1, "20.00"); expense(2, "5.00");
+    const owner = state.rows.GroupMember.find(member => member.id === 20);
+    if (problem === "missing owner") state.rows.GroupMember = state.rows.GroupMember.filter(member => member !== owner);
+    if (problem === "wrong user") owner.userId = 9;
+    if (problem === "wrong role") owner.role = "MEMBER";
+    if (problem === "inactive owner") owner.isActive = false;
+    if (problem === "duplicate owner") state.rows.GroupMember.push({ ...owner, id: 99 });
+    if (problem === "invalid ledger") state.rows.ExpenseParticipant.find(share => share.expenseId === 2).amountOwed = "4.99";
+    if (problem === "unsupported currency") state.rows.Group[1].currency = "USD";
+    if (problem === "read failure") state.failModel = "Payment";
+    const result = await getGroupsForOwner(7);
+    assert.equal(result.totals, null);
+    assert.equal(result.groups.find(group => group.id === 2).ownerNet, null);
+    if (problem !== "read failure") assert.equal(result.groups.find(group => group.id === 1).ownerNet, "20.00");
+    const output = text(await Dashboard());
+    assert.match(output, /Totals unavailable/);
+    assert.match(output, /Balance unavailable/);
+    assert.doesNotMatch(output, /private database details/);
+  });
+}

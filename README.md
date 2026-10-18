@@ -19,11 +19,16 @@ Completed:
 - Editable custom shares with exact assigned/remaining totals, reset to equal and server validation.
 - Improved owner/guest headers, identity, member states and activity panels.
 - Saved expense lists on owner and guest group pages, including payer, total, date, participant count and expandable split amounts.
-- Automated testing: **334 tests passing**; see [verification results](docs/tests.md).
+- Owner dashboard shows separate owed/owing totals and each group's owner balance using complete ledgers and confirmed repayments. Unverifiable balances make totals unavailable rather than partial.
+- Complete-ledger GBP balances: expenses paid minus shares, plus confirmed repayments sent minus received.
+- Guest payment reporting, owner confirmation/rejection and direct recording of completed external payments, with idempotency and pending reservations.
+- Automated testing: **450 tests passing**; see [verification results](docs/tests.md).
 
-**Next development area: Group balances**
+**Next development area: Deployment verification and expense retry safety**
 
-Equal/custom splitting and expense persistence are implemented for GBP groups. The server calculates shares for review, revalidates on confirmation and saves all records together. Balances, expense editing, percentage splits, payments and settlements remain pending.
+Equal/custom splitting and expense persistence are implemented for GBP groups. The server calculates shares for review, revalidates on confirmation and saves all records together. Balances include confirmed repayments and inactive historical members. Pending/rejected payments do not change balances. Expense editing, percentage splits and transfer suggestions remain pending.
+
+**Payment migration applied:** `migrations/app/20261018T0957_payment_reporting/` adds payment idempotency/audit fields. It was applied to the configured database on 18 October 2026; migration status, schema and contract-marker verification passed. Other environments must verify their own migration status. See [database requirements](docs/database-design.md).
 
 ## Access model
 

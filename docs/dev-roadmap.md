@@ -16,15 +16,19 @@
 
 - Editable custom shares, exact-total validation and reset to equal; natural member order and improved owner/guest group pages.
 
-## Next: Group balances (not implemented)
+- Complete-ledger GBP member balances on owner/guest pages, exact paid/share/net totals, historical inactive members and explicit reconciliation failure.
 
-First manually verify the owner/guest review-and-save flow and live database transaction behaviour using disposable test data. The next product milestone can derive group balances from saved payer totals and participant shares, continuing to use GroupMember identity and exact money arithmetic. No balance work is part of this expense milestone.
+- Guest external-payment reporting; owner confirmation/rejection and direct recording; exact confirmed-payment balance adjustments, pending reservations and durable creation keys. Migration applied and schema verified on the configured database.
+
+## Next: Deployment verification and expense retry safety
+
+The user has manually verified owner/guest payment flows and dashboard balances. Verify PostgreSQL lock/rollback behaviour under concurrency. Next implementation work should add durable expense-submission idempotency to prevent duplicate expenses after lost responses.
 
 ## Later
 
 - Expense editing and percentage splitting.
 - Durable expense-submission idempotency for safe retries after lost responses.
-- Balances and repayments, preserving payer SENT → receiver CONFIRMED.
+- Broader payment lifecycle controls only after explicit product decisions; current confirmation authority is the group owner.
 - Optional account linking without duplicating GroupMember/history.
 - Member management and invite disable/regeneration controls.
 - Session recovery and multi-group guest access.

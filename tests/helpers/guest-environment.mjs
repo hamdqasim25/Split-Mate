@@ -11,11 +11,11 @@ export function reset() {
     rows: {
       Group: [{ id: 1, name: "Football", currency: "GBP", shareToken: token, shareLinkEnabled: true, createdBy: 7 }],
       GroupMember: [{ id: 2, groupId: 1, name: "Jaher", role: "MEMBER", userId: null, claimedAt: null, isActive: true }],
-      GuestSession: [], ActivityEvent: [], User: [], UserSession: [], Expense: [], ExpenseParticipant: [],
+      GuestSession: [], ActivityEvent: [], User: [], UserSession: [], Expense: [], ExpenseParticipant: [], Payment: [],
     },
     cookies: new Map(), cookieWrites: [], failAt: null, reads: 0, readOperations: [], writes: [], commits: 0, rollbacks: 0,
     actionState: { error: "" }, pending: false, revalidated: [], createCalls: 0, failCreateAt: null,
-    hooks: [], hookIndex: 0, rendering: false,
+    hooks: [], hookIndex: 0, rendering: false, actions: [], refreshes: 0, operations: [],
   });
 }
 const fieldProxy = new Proxy({}, { get: (_, key) => ({
@@ -30,6 +30,7 @@ function collection(model, getRows, fields, filters = [], order = [], limit = In
   const matches = row => filters.every(filter => filter(row));
   const project = row => row && (fields ? Object.fromEntries(fields.map(key => [key, row[key]])) : { ...row });
   function fail(operation) {
+    state.operations.push(`${model}.${operation}`);
     if (state.failAt === `${model}.${operation}`) throw new Error("PRIVATE_DATABASE_DETAILS");
   }
   return {
@@ -69,6 +70,7 @@ function collection(model, getRows, fields, filters = [], order = [], limit = In
     },
     async create(values) {
       fail("create");
+      if (model === "Payment" && values.requestKey && getRows()[model].some(row => row.requestKey === values.requestKey)) throw new Error("Duplicate payment request key");
       state.createCalls++;
       if (state.createCalls === state.failCreateAt) throw new Error("PRIVATE_DATABASE_DETAILS");
       const row = { id: getRows()[model].length + 1, ...values };
@@ -77,7 +79,7 @@ function collection(model, getRows, fields, filters = [], order = [], limit = In
   };
 }
 function orm(getRows) {
-  return { public: Object.fromEntries(["Group", "GroupMember", "GuestSession", "ActivityEvent", "User", "UserSession", "Expense", "ExpenseParticipant"].map(model => [model, collection(model, getRows)])) };
+  return { public: Object.fromEntries(["Group", "GroupMember", "GuestSession", "ActivityEvent", "User", "UserSession", "Expense", "ExpenseParticipant", "Payment"].map(model => [model, collection(model, getRows)])) };
 }
 export const db = {
   orm: orm(() => state.rows),
@@ -102,9 +104,10 @@ export async function cookies() {
 }
 export function redirect(destination) { throw Object.assign(new Error("redirect"), { destination }); }
 export function notFound() { throw Object.assign(new Error("not found"), { status: 404 }); }
+export function useRouter() { return { refresh() { state.refreshes = (state.refreshes ?? 0) + 1; } }; }
 export function revalidatePath(path) { state.revalidated.push(path); }
 export default function Link() {}
-export function useActionState() { return [state.actionState, () => {}, state.pending]; }
+export function useActionState(action) { state.actions.push(action); return [state.actionState, () => {}, state.pending]; }
 export function useState(initial) {
   if (!state.rendering) return [typeof initial === "function" ? initial() : initial, () => {}];
   const index = state.hookIndex++;
@@ -121,7 +124,7 @@ export function installHooks() {
     resolve(specifier, context, next) {
       if (specifier === "server-only") return { url: "data:text/javascript,export {};", shortCircuit: true };
       if (["@/prisma/db", "next/headers", "next/navigation", "next/link", "next/cache"].includes(specifier)
-        || (specifier === "react" && ["claim-member-form.tsx", "guest-sign-out.tsx", "expense-form.tsx", "expense-review.tsx", "share-link.tsx"].some(file => context.parentURL?.endsWith(file)))) {
+        || (specifier === "react" && ["claim-member-form.tsx", "guest-sign-out.tsx", "expense-form.tsx", "expense-review.tsx", "share-link.tsx", "payment-panel.tsx"].some(file => context.parentURL?.endsWith(file)))) {
         return { url: import.meta.url, shortCircuit: true };
       }
       if (specifier.startsWith("@/")) {

@@ -28,7 +28,7 @@ export default async function Dashboard() {
     redirect("/login?next=/dashboard");
   }
 
-  const { groups, activity } = await getGroupsForOwner(user.id);
+  const { groups, activity, totals } = await getGroupsForOwner(user.id);
 
   const groupNames = new Map(
     groups.map((group) => [group.id, group.name]),
@@ -78,24 +78,24 @@ export default async function Dashboard() {
           <div className="rounded-2xl border border-slate-200 bg-white p-6">
             <p className="text-sm text-slate-500">You are owed</p>
 
-            <p className="mt-2 text-3xl font-semibold text-emerald-800">
-              —
+            <p className="mt-2 break-all text-3xl font-semibold tabular-nums text-emerald-800">
+              {totals ? `£${totals.owed}` : "Unavailable"}
             </p>
 
             <p className="mt-2 text-sm text-slate-500">
-              Available once expenses are added
+              Across your groups
             </p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6">
             <p className="text-sm text-slate-500">You owe</p>
 
-            <p className="mt-2 text-3xl font-semibold">
-              —
+            <p className="mt-2 break-all text-3xl font-semibold tabular-nums">
+              {totals ? `£${totals.owing}` : "Unavailable"}
             </p>
 
             <p className="mt-2 text-sm text-slate-500">
-              Available once expenses are added
+              Includes confirmed repayments
             </p>
           </div>
 
@@ -107,6 +107,8 @@ export default async function Dashboard() {
             </p>
           </div>
         </section>
+
+        {!totals && <p role="alert" className="mt-4 text-sm text-amber-900">Totals unavailable because an owner balance could not be verified. Check the group balances; no partial totals are shown.</p>}
 
         <section className="mt-12">
           <div className="flex items-center justify-between">
@@ -168,6 +170,10 @@ export default async function Dashboard() {
                     {group.description}
                   </p>
                 )}
+
+                <p className="mt-4 break-words font-semibold tabular-nums">
+                  {group.ownerNet === null ? "Balance unavailable" : group.ownerNet === "0.00" ? "Even" : group.ownerNet.startsWith("-") ? `You owe £${group.ownerNet.slice(1)}` : `You are owed £${group.ownerNet}`}
+                </p>
 
                 <p className="mt-5 text-sm text-slate-500">
                   Created{" "}

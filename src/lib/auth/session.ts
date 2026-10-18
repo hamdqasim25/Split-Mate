@@ -54,14 +54,14 @@ export async function createUserSession(userId: number, requestUrl: string): Pro
 }
 
 /** Resolves only owner sessions; GuestSession cookies are never consulted. */
-export async function getCurrentUser(): Promise<{ id: number; name: string } | null> {
+export async function getCurrentUser(client: Pick<typeof db, "orm"> = db): Promise<{ id: number; name: string } | null> {
   const cookieStore = await cookies();
   // Prefer the HTTPS cookie; a malformed secure cookie must not trigger fallback.
   const sessionCookie = cookieNames().map((name) => cookieStore.get(name)).find(Boolean);
   const hash = tokenHash(sessionCookie?.value);
   if (!hash) return null;
 
-  const session = await db.orm.public.UserSession
+  const session = await client.orm.public.UserSession
     .select("userId", "expiresAt")
     .first({ tokenHash: hash });
   if (!session) return null;
@@ -69,7 +69,7 @@ export async function getCurrentUser(): Promise<{ id: number; name: string } | n
   if (!Number.isFinite(expiry) || expiry <= Date.now()) return null;
 
   // Read-only: safe to call in Server Components. No shared cross-request cache.
-  return db.orm.public.User.select("id", "name").first({ id: session.userId });
+  return client.orm.public.User.select("id", "name").first({ id: session.userId });
 }
 
 export async function requireUser(): Promise<{ id: number; name: string }> {

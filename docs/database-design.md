@@ -1,8 +1,20 @@
 # SPLITMate Database Design
 
+## Repayment migration - 18 October 2026
+
+Applied and verified on the configured database on 18 October 2026: `migrations/app/20261018T0957_payment_reporting/`. The new emitted contract has storage hash `6164bc09235f61a5ae59c7e5d465734a240c6fc0c9f4d8da37a3c1d986e3dbde`; the migration starts from the committed owner-session contract `68a78b5e428f40a6abc3edbcfc0c5467e9dcf2e16fe8552a103abeac5354b988`. The local `db` ref still points to the older initial schema, so planning used the explicit current-contract origin. Existing migrations and the ref were preserved.
+
+Ten additive operations add five nullable Payment columns (`requestKey`, `creationKind`, `recordedByMemberId`, `reviewedByMemberId`, `reviewedAt`), a unique request-key constraint, two audit-member indexes and two foreign keys. Nullability preserves existing rows without inventing historical audit data or keys. All new application creations require a UUID key and recorder. Status remains String; the application enforces SENT -> CONFIRMED/REJECTED or direct CONFIRMED creation. No backfill or destructive operation is included.
+
+The schema and migration artifacts were generated with the pinned CLI and passed offline `prisma migration check`. The reviewed migration subsequently applied all ten operations successfully; migration status is up to date, and schema-only plus full schema/marker verification passed. No test financial records were created during verification. Before deploying this code to another environment, review the migration, verify the intended database's actual marker/schema through the normal approved deployment process and apply the appropriate migration path. Index/constraint creation may lock the payment table; schedule deployment accordingly. The emitted contract expects these new fields and must not be treated as deployable against the old schema.
+
+Balance formula: expenses paid - shares + confirmed sent - confirmed received. Pending/rejected payments do not count. New actions validate same-group active identities, debt/credit and pending reservations under a group-row lock; cross-group integrity and status rules are application checks, not new database CHECK constraints. Financial reads take the same lock so mutable statuses cannot mix snapshots. External SQL must obey the locking protocol to retain this guarantee. Historical unknown statuses are not silently reinterpreted: they make balances unavailable and need explicit investigation. Schema verification confirmed the required payment fields, constraints and indexes.
+
+The group owner is the confirmation authority, including transfers between other members; guest recipients cannot confirm. This supersedes the earlier recipient-confirmation plan below. Actual PostgreSQL concurrency behaviour still needs dedicated testing; migration application and schema verification succeeded.
+
 ## Implementation and testing update - 19 September 2026
 
-This section records the current implementation and its testing results. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
+This earlier section predates the repayment milestone; the update above takes precedence for payment behaviour and migration state. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
 
 ### Completed
 

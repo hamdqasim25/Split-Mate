@@ -14,13 +14,13 @@
 | Equal splitting and expense persistence (20 September 2026) | Server validation, deterministic integer-pence shares, review/edit/confirm UI, atomic expense/participants/activity and saved-expense lists |
 | Custom splits and group UI (20 September 2026) | Editable shares, exact-total validation, reset to equal, persisted custom amounts and shared responsive group panels |
 
-Equal/custom splitting and persistence are implemented. Recommended next area: **group balances**, following manual expense-flow verification. Balances, editing, payments and settlements remain pending.
+Repayment reporting and owner review are implemented (18 October 2026). Guests report their own external payments; owners confirm/reject reports or record completed payments directly. Complete-ledger balances include confirmed sent/received totals; pending/rejected payments do not change balances. Creation keys, pending reservations and transaction locks protect against retries and over-settlement. The payment migration is applied on the configured database; schema and contract-marker verification passed. The user has manually verified owner/guest payment flows and dashboard balances.
 
 ## Verification and evidence
 
-The custom-split checkpoint has **334 passing automated tests** (41 added); expense persistence had 293 and the foundation had 220. [tests.md](tests.md) is the authoritative reference for verification commands/results, feature coverage, manual evidence, limitations and test-count history. No live expense writes or browser testing are claimed.
+The latest dashboard checkpoint has **450 passing automated tests**, plus full lint, TypeScript and production build checks. The balance checkpoint had 354 tests and custom splits had 334. See [tests.md](tests.md) for exact commands, coverage and limitations.
 
-Earlier live work verified group creation and a read-only persisted dashboard query against Prisma-hosted PostgreSQL. The developer subsequently reported independent guest claims in separate browser profiles. Protected-group browser validation and real-database race/rollback tests remain outstanding.
+The user reports manually verified equal/custom splits and displayed amounts owed. New payment UI, migration application and real PostgreSQL concurrency remain unverified. This task did not access the live database. Existing balance work has been preserved; no commit or push was performed.
 
 ## Development convention
 

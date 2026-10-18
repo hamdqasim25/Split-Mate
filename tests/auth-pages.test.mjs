@@ -69,9 +69,10 @@ beforeEach(() => {
   state.cursor = 0;
   state.ownerReads = [];
   state.dashboard = {
+    totals: { owed: "0.00", owing: "0.00" },
     groups: [{
       id: 42, name: "Mocked climbing group", description: "Thursday climbing sessions",
-      currency: "GBP", members: 4, createdAt: "2026-09-19T10:00:00Z",
+      currency: "GBP", members: 4, createdAt: "2026-09-19T10:00:00Z", ownerNet: "0.00",
     }],
     activity: [{
       id: 81, groupId: 42, description: "Private owner created the group",
@@ -148,8 +149,8 @@ for (const [path, Page] of [["/dashboard", Dashboard], ["/groups/new", NewGroup]
         && node.props.children.some(child => child?.type === "p" && text(child) === label));
       assert.ok(card, `${label} card renders`);
       const paragraphs = nodes(card).filter(node => node.type === "p").map(text);
-      assert.ok(paragraphs.includes("—"));
-      assert.ok(paragraphs.includes("Available once expenses are added"));
+      assert.ok(paragraphs.includes("£0.00"));
+      assert.ok(paragraphs.includes(label === "You are owed" ? "Across your groups" : "Includes confirmed repayments"));
     }
     assert.doesNotMatch(text(tree), /£40\.00|£12\.00|£75\.00|£45\.00|Weekend Trip|Football|Dinner together|Train tickets/);
   });

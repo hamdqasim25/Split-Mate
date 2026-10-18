@@ -25,6 +25,14 @@
 | `src/data/groups.ts` | Transactional group creation, owner reads and internal authorized-group expense list helper |
 | `src/data/invites.ts` | Minimal token lookup, safe invite data and atomic claims |
 | `src/data/guest-groups.ts` | Authenticated guest data and activity tracking |
+| `src/data/balances.ts` | Locked complete expense/payment ledger reads and exact balance reconciliation |
+| `src/data/payments.ts` | Authorized report/direct/review transactions, idempotency and pending reservations |
+| `src/lib/payments/types.ts` | Safe payment history/action types and status labels |
+| `src/app/actions/payments.ts` | Payment form validation, safe errors and both-path revalidation |
+| `src/components/groups/payment-panel.tsx` | Shared report/direct forms, owner review controls and history |
+| `tests/payments.test.mjs`, `tests/payment-ui.test.mjs` | Financial/permission invariants, mocked concurrency and action/UI integration |
+| `src/components/groups/balance-list.tsx` | Shared paid/share/sent/received/net section, empty and unavailable states |
+| `tests/balances.test.mjs` | Exact arithmetic, ledger consistency, batched reads and simulated concurrent inserts |
 | `src/data/expenses.ts` | Authenticated context, server validation, split review and atomic expense persistence |
 | `src/lib/expenses/types.ts` | Form, review, action state and safe expense list types |
 | `src/lib/expenses/money.ts` | Exact integer-pence parsing, equal splitting and decimal formatting |
@@ -45,7 +53,7 @@
 | `src/prisma/db.ts` | PostgreSQL runtime |
 | `src/prisma/contract.prisma` | Authored nine-model contract |
 | `src/prisma/contract.json`, `contract.d.ts` | Generated artifacts; do not hand-edit |
-| `migrations/` | Applied migration history, refs and snapshots |
+| `migrations/` | Historical migrations, refs/snapshots, including the applied 20261018T0957_payment_reporting migration |
 | `tests/*.test.mjs`, `tests/helpers/` | Node tests and isolated runtime/database doubles |
 | `docs/tests.md` | Permanent testing reference and checkpoints |
 

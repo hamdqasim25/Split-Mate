@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -7,6 +8,8 @@ import GuestSignOut from "@/components/groups/guest-sign-out";
 import ExpenseList from "@/components/expenses/expense-list";
 import MemberList from "@/components/groups/member-list";
 import ActivityList from "@/components/groups/activity-list";
+import BalanceList from "@/components/groups/balance-list";
+import PaymentPanel from "@/components/groups/payment-panel";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -49,6 +52,8 @@ export default async function GuestGroupPage({ params }: { params: Promise<{ sha
         </header>
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <div className="min-w-0 space-y-6">
+            <BalanceList balances={result.balances} />
+            <PaymentPanel access={{ kind: "guest", shareToken }} members={members} currentMemberId={currentGuest.id} payments={result.payments} requestKey={randomUUID()} available={result.balances.status === "ready"} />
             <section aria-labelledby="expenses-heading" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <h2 id="expenses-heading" className="text-xl font-semibold">Expenses</h2>
               <p className="mt-1 text-sm text-slate-500">What your group has spent, and how each expense is shared.</p>

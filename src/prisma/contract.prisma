@@ -62,6 +62,8 @@ model GroupMember {
   expenseShares    ExpenseParticipant[]
   paymentsSent     Payment[]            @relation("PaymentPayer")
   paymentsReceived Payment[]            @relation("PaymentReceiver")
+  paymentsRecorded Payment[]            @relation("PaymentRecorder")
+  paymentsReviewed Payment[]            @relation("PaymentReviewer")
   activityEvents   ActivityEvent[]
   guestSessions    GuestSession[]
 
@@ -111,10 +113,17 @@ model Payment {
   createdAt        TimestamptzString  @default(now())
   sentAt           TimestamptzString?
   confirmedAt      TimestamptzString?
+  requestKey       String?             @unique
+  creationKind     String?
+  recordedByMemberId Int?
+  reviewedByMemberId Int?
+  reviewedAt       TimestamptzString?
 
   group    Group       @relation(fields: [groupId], references: [id])
   payer    GroupMember @relation("PaymentPayer", fields: [payerMemberId], references: [id])
   receiver GroupMember @relation("PaymentReceiver", fields: [receiverMemberId], references: [id])
+  recorder GroupMember? @relation("PaymentRecorder", fields: [recordedByMemberId], references: [id])
+  reviewer GroupMember? @relation("PaymentReviewer", fields: [reviewedByMemberId], references: [id])
 
   @@index([groupId])
   @@index([payerMemberId])

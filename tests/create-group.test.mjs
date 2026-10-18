@@ -16,6 +16,7 @@ const hooks = registerHooks({
         shortCircuit: true,
       };
     }
+    if (specifier.startsWith("@/")) return { url: new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href, shortCircuit: true };
     return nextResolve(specifier, context);
   },
 });

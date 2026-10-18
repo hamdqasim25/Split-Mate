@@ -89,16 +89,16 @@ test("successful access refreshes stale timestamps together without extending ex
   assert.ok(Date.parse(seen) >= before && Date.parse(seen) <= Date.now());
   assert.equal(state.rows.GroupMember[0].lastActiveAt, seen);
   assert.equal(state.rows.GuestSession[0].expiresAt, expiry);
-  assert.deepEqual(state.writes, ["GuestSession.updateAll", "GroupMember.updateAll"]);
+  assert.deepEqual(state.writes, ["Group.updateAll", "GuestSession.updateAll", "GroupMember.updateAll"]);
   state.writes = [];
   await getGroupForGuest(token);
-  assert.deepEqual(state.writes, [], "repeat access within five minutes causes no writes");
+  assert.deepEqual(state.writes, ["Group.updateAll"], "repeat access only takes the financial consistency lock, without activity writes");
   assert.equal(state.rows.ActivityEvent.length, 1, "page reads do not create feed events");
 });
 test("member activity can refresh independently of a fresh session timestamp", async () => {
   await join(); state.rows.GroupMember[0].lastActiveAt = null;
   await getGroupForGuest(token);
-  assert.deepEqual(state.writes, ["GroupMember.updateAll"]);
+  assert.deepEqual(state.writes, ["Group.updateAll", "GroupMember.updateAll"]);
 });
 for (const failAt of ["GroupMember.all", "ActivityEvent.all", "Expense.all", "GuestSession.updateAll", "GroupMember.updateAll"]) test(`failure at ${failAt} rolls back activity updates`, async () => {
   await join(); ageActivity(); state.failAt = failAt;

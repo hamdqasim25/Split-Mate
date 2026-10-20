@@ -114,6 +114,7 @@ export function useState(initial) {
   if (!(index in state.hooks)) state.hooks[index] = typeof initial === "function" ? initial() : initial;
   return [state.hooks[index], value => { state.hooks[index] = typeof value === "function" ? value(state.hooks[index]) : value; }];
 }
+export function useRef(initial) { return useState({ current: initial })[0]; }
 export function renderWithState(component, props) {
   state.hookIndex = 0; state.rendering = true;
   try { return component(props); } finally { state.rendering = false; }

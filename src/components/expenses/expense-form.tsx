@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import ExpenseReview from "@/components/expenses/expense-review";
 import type { ExpenseFormContext, ExpenseFormState } from "@/lib/expenses/types";
 
-const inputClass = "mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20";
+const inputClass = "mt-2 w-full rounded-xl border border-line bg-surface px-4 py-3 text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20";
 
 export default function ExpenseForm({ context, action }: {
   context: ExpenseFormContext;
@@ -17,10 +17,10 @@ export default function ExpenseForm({ context, action }: {
     input={input} review={review} action={formAction} pending={pending} error={state.error}
   />;
   return (
-    <form className="mt-8 space-y-6 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8"
+    <form className="mt-8 space-y-6 rounded-2xl border border-line bg-surface p-6 sm:p-8"
       aria-label="Expense details" action={formAction}>
-      <p className="text-sm leading-6 text-slate-600">Choose who paid and who took part. You can adjust each share on the next step before saving.</p>
-      {state.error && <p role="alert" className="text-sm text-red-700">{state.error}</p>}
+      <p className="text-sm leading-6 text-muted">Choose who paid and who took part. You can adjust each share on the next step before saving.</p>
+      {state.error && <p role="alert" className="text-sm text-danger">{state.error}</p>}
       <fieldset disabled={pending} className="space-y-6">
       <legend className="sr-only">Expense details</legend>
       <div>
@@ -41,10 +41,10 @@ export default function ExpenseForm({ context, action }: {
       </div>
       <fieldset>
         <legend className="text-sm font-semibold">Participants</legend>
-        <p id="expense-participants-help" className="mt-2 text-sm text-slate-600">Select everyone included in this expense.</p>
+        <p id="expense-participants-help" className="mt-2 text-sm text-muted">Select everyone included in this expense.</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {context.members.map((member) => (
-            <label key={member.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 p-3">
+            <label key={member.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-line p-3">
               <input type="checkbox" name="participantIds" value={member.id} aria-describedby="expense-participants-help"
                 defaultChecked={input?.participantIds.includes(String(member.id)) ?? false} className="h-5 w-5 shrink-0 accent-emerald-700" />
               <span className="break-words text-sm">{member.name}</span>
@@ -57,7 +57,7 @@ export default function ExpenseForm({ context, action }: {
         {pending ? "Calculating split…" : "Review split"}
       </button>
       </fieldset>
-      <p role="status" className="text-sm text-slate-600">{pending ? "Calculating your split…" : ""}</p>
+      <p role="status" className="text-sm text-muted">{pending ? "Calculating your split…" : ""}</p>
     </form>
   );
 }

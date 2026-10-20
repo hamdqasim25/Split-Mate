@@ -35,11 +35,11 @@ export default async function Dashboard() {
   );
 
   return (
-    <main className="min-h-screen bg-[#f8faf7] px-6 py-12 font-sans text-slate-900 sm:py-20">
+    <main className="min-h-screen bg-canvas px-6 py-12 font-sans text-foreground sm:py-20">
       <div className="mx-auto max-w-6xl">
         <Link
           href="/"
-          className="text-sm font-semibold text-emerald-800 hover:text-emerald-950"
+          className="text-sm font-semibold text-accent hover:text-accent"
         >
           ← Back to home
         </Link>
@@ -50,7 +50,7 @@ export default async function Dashboard() {
               Your dashboard
             </h1>
 
-            <p className="mt-4 max-w-xl text-lg leading-8 text-slate-600">
+            <p className="mt-4 max-w-xl text-lg leading-8 text-muted">
               Welcome back, {user.name}
             </p>
           </div>
@@ -58,7 +58,7 @@ export default async function Dashboard() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/groups/new"
-              className="inline-flex items-center justify-center rounded-full bg-emerald-800 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-900 active:bg-emerald-950 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700"
+              className="inline-flex items-center justify-center rounded-full bg-emerald-800 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-900 active:bg-emerald-950 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
             >
               + Create group
             </Link>
@@ -66,7 +66,7 @@ export default async function Dashboard() {
             <form action={signOut}>
               <button
                 type="submit"
-                className="inline-flex cursor-pointer items-center justify-center rounded-full border border-emerald-800/30 bg-white px-6 py-3 text-sm font-semibold text-emerald-800 transition hover:border-emerald-800 hover:bg-emerald-50 active:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700"
+                className="inline-flex cursor-pointer items-center justify-center rounded-full border border-accent/30 bg-surface px-6 py-3 text-sm font-semibold text-accent transition hover:border-accent hover:bg-accent-soft active:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
               >
                 Sign out
               </button>
@@ -75,32 +75,32 @@ export default async function Dashboard() {
         </div>
 
         <section className="mt-10 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <p className="text-sm text-slate-500">You are owed</p>
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <p className="text-sm text-muted">You are owed</p>
 
-            <p className="mt-2 break-all text-3xl font-semibold tabular-nums text-emerald-800">
+            <p className="mt-2 break-all text-3xl font-semibold tabular-nums text-accent">
               {totals ? `£${totals.owed}` : "Unavailable"}
             </p>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-muted">
               Across your groups
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <p className="text-sm text-slate-500">You owe</p>
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <p className="text-sm text-muted">You owe</p>
 
             <p className="mt-2 break-all text-3xl font-semibold tabular-nums">
               {totals ? `£${totals.owing}` : "Unavailable"}
             </p>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-muted">
               Includes confirmed repayments
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <p className="text-sm text-slate-500">Active groups</p>
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <p className="text-sm text-muted">Active groups</p>
 
             <p className="mt-2 text-3xl font-semibold">
               {groups.length}
@@ -108,7 +108,7 @@ export default async function Dashboard() {
           </div>
         </section>
 
-        {!totals && <p role="alert" className="mt-4 text-sm text-amber-900">Totals unavailable because an owner balance could not be verified. Check the group balances; no partial totals are shown.</p>}
+        {!totals && <p role="alert" className="mt-4 text-sm text-warning">Totals unavailable because an owner balance could not be verified. Check the group balances; no partial totals are shown.</p>}
 
         <section className="mt-12">
           <div className="flex items-center justify-between">
@@ -118,19 +118,19 @@ export default async function Dashboard() {
           </div>
 
           {groups.length === 0 && (
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
+            <div className="mt-5 rounded-2xl border border-line bg-surface p-6">
               <h3 className="text-xl font-semibold">
                 No groups yet
               </h3>
 
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-muted">
                 Create your first SPLITMate group to start tracking shared
                 expenses.
               </p>
 
               <Link
                 href="/groups/new"
-                className="mt-4 inline-block font-semibold text-emerald-800 underline"
+                className="mt-4 inline-block font-semibold text-accent underline"
               >
                 Create your first group
               </Link>
@@ -142,15 +142,15 @@ export default async function Dashboard() {
               <Link
                 key={group.id}
                 href={`/groups/${group.id}`}
-                className="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-emerald-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+                className="group rounded-2xl border border-line bg-surface p-6 transition hover:border-accent hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="break-words text-xl font-semibold group-hover:text-emerald-900">
+                    <h3 className="break-words text-xl font-semibold group-hover:text-accent">
                       {group.name}
                     </h3>
 
-                    <p className="mt-2 text-sm text-slate-500">
+                    <p className="mt-2 text-sm text-muted">
                       {group.members}{" "}
                       {group.members === 1 ? "member" : "members"} ·{" "}
                       {group.currency}
@@ -159,14 +159,14 @@ export default async function Dashboard() {
 
                   <span
                     aria-hidden="true"
-                    className="shrink-0 text-lg text-slate-400 transition group-hover:translate-x-1 group-hover:text-emerald-800"
+                    className="shrink-0 text-lg text-muted transition group-hover:translate-x-1 group-hover:text-accent"
                   >
                     →
                   </span>
                 </div>
 
                 {group.description && (
-                  <p className="mt-3 break-words text-sm text-slate-600">
+                  <p className="mt-3 break-words text-sm text-muted">
                     {group.description}
                   </p>
                 )}
@@ -175,7 +175,7 @@ export default async function Dashboard() {
                   {group.ownerNet === null ? "Balance unavailable" : group.ownerNet === "0.00" ? "Even" : group.ownerNet.startsWith("-") ? `You owe £${group.ownerNet.slice(1)}` : `You are owed £${group.ownerNet}`}
                 </p>
 
-                <p className="mt-5 text-sm text-slate-500">
+                <p className="mt-5 text-sm text-muted">
                   Created{" "}
                   <time dateTime={group.createdAt}>
                     {dateFormat.format(new Date(group.createdAt))}
@@ -191,9 +191,9 @@ export default async function Dashboard() {
             Recent activity
           </h2>
 
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-white">
+          <div className="mt-5 rounded-2xl border border-line bg-surface">
             {activity.length === 0 && (
-              <p className="p-5 text-sm text-slate-600">
+              <p className="p-5 text-sm text-muted">
                 No activity yet. Group updates will appear here.
               </p>
             )}
@@ -201,21 +201,21 @@ export default async function Dashboard() {
             {activity.map((item) => (
               <div
                 key={item.id}
-                className="flex flex-col gap-3 border-b border-slate-100 p-5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-3 border-b border-line p-5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0 break-words">
                   <p className="font-semibold">
                     {item.description}
                   </p>
 
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-muted">
                     {groupNames.get(item.groupId)}
                   </p>
                 </div>
 
                 <time
                   dateTime={item.createdAt}
-                  className="shrink-0 text-sm text-slate-500"
+                  className="shrink-0 text-sm text-muted"
                 >
                   {activityDateFormat.format(
                     new Date(item.createdAt),

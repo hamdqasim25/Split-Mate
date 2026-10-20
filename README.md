@@ -22,7 +22,10 @@ Completed:
 - Owner dashboard shows separate owed/owing totals and each group's owner balance using complete ledgers and confirmed repayments. Unverifiable balances make totals unavailable rather than partial.
 - Complete-ledger GBP balances: expenses paid minus shares, plus confirmed repayments sent minus received.
 - Guest payment reporting, owner confirmation/rejection and direct recording of completed external payments, with idempotency and pending reservations.
-- Automated testing: **450 tests passing**; see [verification results](docs/tests.md).
+- Member-card repayment actions, expandable balance breakdowns and separate payment history on owner/guest pages.
+- Shared light/dark toggle with persisted selection and system-preference fallback across application screens.
+- Compact member rows with collapsed breakdowns/pending reviews and a 44px native theme toggle that works before hydration.
+- Automated testing: **472 tests passing**; see [verification results](docs/tests.md).
 
 **Next development area: Deployment verification and expense retry safety**
 

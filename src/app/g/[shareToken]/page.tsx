@@ -14,18 +14,18 @@ export default async function InvitePage({ params }: { params: Promise<{ shareTo
   if (group && await getGuestForGroup(group.id)) redirect(`/g/${shareToken}/group`);
   const invite = await resolveInvite(shareToken);
   return (
-    <main className="min-h-screen bg-[#f8faf7] px-6 py-12 font-sans text-slate-900 sm:py-20">
+    <main className="min-h-screen bg-canvas px-6 py-12 font-sans text-foreground sm:py-20">
       <div className="mx-auto max-w-lg">
-        <Link href="/" className="font-semibold text-emerald-800">SPLITMate</Link>
-        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
+        <Link href="/" className="font-semibold text-accent">SPLITMate</Link>
+        <section className="mt-8 rounded-2xl border border-line bg-surface p-6">
           {invite.status !== "valid" ? <>
             <h1 className="text-2xl font-semibold">Invite unavailable</h1>
-            <p className="mt-4 text-slate-600">{invite.status === "disabled" ? "This invite link is no longer active." : "This invite link is invalid or unavailable."} Ask the group owner for help.</p>
+            <p className="mt-4 text-muted">{invite.status === "disabled" ? "This invite link is no longer active." : "This invite link is invalid or unavailable."} Ask the group owner for help.</p>
           </> : <>
             <h1 className="break-words text-3xl font-semibold">{invite.group.name}</h1>
-            <p className="mt-4 text-slate-600">Choose your name to join this group.</p>
+            <p className="mt-4 text-muted">Choose your name to join this group.</p>
             {invite.members.length > 0 ? <ClaimMemberForm shareToken={shareToken} members={invite.members} /> :
-              <p className="mt-6 text-slate-600">There are currently no unclaimed member identities available. Ask the group owner for help.</p>}
+              <p className="mt-6 text-muted">There are currently no unclaimed member identities available. Ask the group owner for help.</p>}
           </>}
         </section>
       </div>

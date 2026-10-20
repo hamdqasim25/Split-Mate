@@ -88,10 +88,10 @@ export default function CreateGroupForm() {
 
   return (
     <form className="mt-10 space-y-8" onSubmit={handleSubmit}>
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+      <section className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
         <label
           htmlFor="group-name"
-          className="block text-sm font-semibold text-slate-900"
+          className="block text-sm font-semibold text-foreground"
         >
           Group name
         </label>
@@ -106,14 +106,14 @@ export default function CreateGroupForm() {
           maxLength={100}
           required
           disabled={isSubmitting}
-          className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 disabled:cursor-not-allowed disabled:bg-slate-100"
+          className="mt-4 w-full rounded-xl border border-line bg-surface px-4 py-3 disabled:cursor-not-allowed disabled:bg-subtle"
         />
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+      <section className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
         <h2 className="text-lg font-semibold">Add members</h2>
 
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-muted">
           You are added automatically as the group owner.
         </p>
 
@@ -144,7 +144,7 @@ export default function CreateGroupForm() {
                 }
                 maxLength={100}
                 disabled={isSubmitting}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 disabled:cursor-not-allowed disabled:bg-slate-100"
+                className="w-full rounded-xl border border-line bg-surface px-4 py-3 disabled:cursor-not-allowed disabled:bg-subtle"
               />
             </div>
           ))}
@@ -154,7 +154,7 @@ export default function CreateGroupForm() {
           type="button"
           onClick={addMember}
           disabled={isSubmitting || memberNames.length >= 50}
-          className="mt-5 text-sm font-semibold text-emerald-800 disabled:cursor-not-allowed disabled:text-slate-400"
+          className="mt-5 text-sm font-semibold text-accent disabled:cursor-not-allowed disabled:text-muted"
         >
           + Add another member
         </button>
@@ -164,7 +164,7 @@ export default function CreateGroupForm() {
         <div
           role="alert"
           aria-live="polite"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800"
+          className="rounded-xl border border-danger bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
         >
           {error}
         </div>
@@ -173,7 +173,7 @@ export default function CreateGroupForm() {
       <div className="flex justify-end gap-3">
         <Link
           href="/dashboard"
-          className="rounded-full border border-slate-300 px-6 py-3 text-sm font-semibold"
+          className="rounded-full border border-line px-6 py-3 text-sm font-semibold"
         >
           Cancel
         </Link>

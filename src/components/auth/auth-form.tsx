@@ -9,7 +9,7 @@ type Props = {
   accountCreated?: boolean;
 };
 
-const inputStyle = "mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700";
+const inputStyle = "mt-2 w-full rounded-xl border border-line bg-surface px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 const passwordGuidance = "Use at least 15 characters and no more than 72 UTF-8 bytes. Some characters use more than one byte.";
 
 export default function AuthForm({ mode, destination, accountCreated = false }: Props) {
@@ -72,13 +72,13 @@ export default function AuthForm({ mode, destination, accountCreated = false }: 
   }
 
   return (
-    <main className="min-h-screen bg-[#f8faf7] px-6 py-12 font-sans text-slate-900 sm:py-20">
+    <main className="min-h-screen bg-canvas px-6 py-12 font-sans text-foreground sm:py-20">
       <div className="mx-auto max-w-md">
-        <Link href="/" className="text-xl font-bold tracking-tight">SPLIT<span className="text-emerald-800">Mate</span></Link>
+        <Link href="/" className="text-xl font-bold tracking-tight">SPLIT<span className="text-accent">Mate</span></Link>
         <h1 className="mt-8 text-3xl font-semibold tracking-tight">{registering ? "Create account" : "Log in"}</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">{registering ? "Create an owner account to organise your groups. Guest members do not need an account." : "Welcome back. Log in to manage your groups."}</p>
-        {accountCreated && !registering && <p role="status" className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">Account created. Log in to continue.</p>}
-        <form onSubmit={handleSubmit} method="post" action={`/api/auth/${mode}`} aria-busy={pending} className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="mt-3 text-sm leading-6 text-muted">{registering ? "Create an owner account to organise your groups. Guest members do not need an account." : "Welcome back. Log in to manage your groups."}</p>
+        {accountCreated && !registering && <p role="status" className="mt-5 rounded-xl bg-accent-soft p-4 text-sm text-accent">Account created. Log in to continue.</p>}
+        <form onSubmit={handleSubmit} method="post" action={`/api/auth/${mode}`} aria-busy={pending} className="mt-6 rounded-2xl border border-line bg-surface p-6 shadow-sm">
           <fieldset disabled={pending} className="space-y-5 disabled:opacity-70">
             <legend className="sr-only">{registering ? "Create an owner account" : "Owner login"}</legend>
             {registering && <div>
@@ -92,18 +92,18 @@ export default function AuthForm({ mode, destination, accountCreated = false }: 
             <div>
               <label htmlFor="password" className="text-sm font-semibold">Password</label>
               <input id="password" name="password" type="password" autoComplete={registering ? "new-password" : "current-password"} required aria-describedby={registering ? "password-guidance" : undefined} className={inputStyle} />
-              {registering && <p id="password-guidance" className="mt-2 text-xs leading-5 text-slate-500">{passwordGuidance}</p>}
+              {registering && <p id="password-guidance" className="mt-2 text-xs leading-5 text-muted">{passwordGuidance}</p>}
             </div>
-            <button type="submit" disabled={pending} className="w-full rounded-full bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700 disabled:cursor-wait">
+            <button type="submit" disabled={pending} className="w-full rounded-full bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:cursor-wait">
               {pending ? (registering ? "Creating account…" : "Logging in…") : (registering ? "Create account" : "Log in")}
             </button>
           </fieldset>
           <p role="status" className="sr-only">{pending ? "Please wait." : ""}</p>
-          {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
+          {error && <p role="alert" className="mt-4 text-sm text-danger">{error}</p>}
         </form>
-        <p className="mt-6 text-sm text-slate-600">
+        <p className="mt-6 text-sm text-muted">
           {registering ? "Already have an account? " : "New to SPLITMate? "}
-          <Link href={`/${registering ? "login" : "register"}?next=${encodeURIComponent(safeDestination)}`} className="font-semibold text-emerald-800 hover:underline">{registering ? "Log in" : "Create account"}</Link>
+          <Link href={`/${registering ? "login" : "register"}?next=${encodeURIComponent(safeDestination)}`} className="font-semibold text-accent hover:underline">{registering ? "Log in" : "Create account"}</Link>
         </p>
       </div>
     </main>

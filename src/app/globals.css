@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8faf7;
+  --foreground: #17251f;
+  --surface: #ffffff;
+  --subtle: #f1f5f3;
+  --muted: #52625a;
+  --line: #cbd5ce;
+  --accent: #065f46;
+  --accent-soft: #e9f6ed;
+  --danger: #991b1b;
+  --danger-soft: #fef2f2;
+  --warning: #78350f;
+  --warning-soft: #fffbeb;
+  color-scheme: light;
 }
-
+:root[data-theme="dark"] {
+  --background: #101a17;
+  --foreground: #edf5f0;
+  --surface: #17241f;
+  --subtle: #20332b;
+  --muted: #b1c5ba;
+  --line: #425d4e;
+  --accent: #8be0b0;
+  --accent-soft: #203c2e;
+  --danger: #ffb8b8;
+  --danger-soft: #421f25;
+  --warning: #f5d18b;
+  --warning-soft: #3b3020;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  --background: #101a17;
+  --foreground: #edf5f0;
+  --surface: #17241f;
+  --subtle: #20332b;
+  --muted: #b1c5ba;
+  --line: #425d4e;
+  --accent: #8be0b0;
+  --accent-soft: #203c2e;
+  --danger: #ffb8b8;
+  --danger-soft: #421f25;
+  --warning: #f5d18b;
+  --warning-soft: #3b3020;
+  color-scheme: dark;
+  }
+}
 @theme inline {
-  --color-background: var(--background);
+  --color-canvas: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+body { background: var(--background); color: var(--foreground); font-family: Arial, Helvetica, sans-serif; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+* { --tw-ring-offset-color: var(--surface); }
+input, select, textarea { color: var(--foreground); }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+button:disabled, fieldset:disabled { cursor: not-allowed; }
+.theme-when-dark { display: none; }
+[data-theme="dark"] .theme-when-dark { display: inline; }
+[data-theme="dark"] .theme-when-light { display: none; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Shared columns align amounts across rows, with no fixed row heights. */
+.balance-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
+.balance-row-name { grid-column: 1; grid-row: 1; }
+.balance-row-amount { grid-column: 2; grid-row: 1; }
+.balance-payment-trigger { grid-column: 1; grid-row: 2; }
+.balance-breakdown { grid-column: 2; grid-row: 2; }
+.balance-breakdown[open] { grid-column: 1 / -1; grid-row: auto; }
+.balance-breakdown[open] > summary { justify-content: flex-start; }
+@media (min-width: 768px) {
+  .balance-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 8rem 7rem; }
+  .balance-payment-trigger { grid-column: 3; grid-row: 1; }
+  .balance-breakdown:not([open]) { grid-column: 4; grid-row: 1; }
 }

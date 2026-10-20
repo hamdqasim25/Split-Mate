@@ -34,7 +34,7 @@ test("equal remainder pennies remain exact and labels distinguish owed, owes and
   assertBalanced(result);
   assert.deepEqual(result.members.map(row => row.net), ["5.00", "-5.00", "0.00"]);
   const rendered = text(BalanceList({ balances: result }));
-  for (const label of ["Is owed £5.00", "Owes £5.00", "Even", "Awaiting-confirmation and rejected payments do not change balances"]) assert.ok(rendered.includes(label));
+  for (const label of ["Is owed £5.00", "Owes £5.00", "Even", "Balances include confirmed payments only"]) assert.ok(rendered.includes(label));
 });
 test("custom zero shares, different payers and nonparticipant payer reconcile", () => {
   const result = calculateBalances(members, [expense(1, "10.01"), expense(2, "4.25", 2)], [share(1, 2, "10.01"), share(1, 3, "0.00"), share(2, 1, "4.25")]);

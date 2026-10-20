@@ -1,5 +1,17 @@
 # SPLITMate Testing
 
+## Mobile toggle and compact rows — 21 October 2026
+
+All 472 tests pass. New coverage reproduces the legacy media-query API failure and checks native activation without hydration, navigation-replaced controls, single toggles per click, missing subscription APIs, collapsed pending reviews, aligned compact row markup and form-intent preservation across disclosure-related renders. Lint, TypeScript and production build pass; staged/unstaged whitespace checks pass. No financial services or live records were changed in this follow-up.
+
+Browser tooling reports no available surface. Actual touch/keyboard behaviour, mobile failure reproduction, 360px/390px/desktop layouts, overflow, visible member density and long-name/large-balance rendering remain unverified. Manually check both themes, reload/navigation persistence, disclosure expansion and unchanged retry behaviour on the affected device. The reproduced legacy-API defect and pre-hydration click dependency are confirmed code findings; their connection to that particular device remains unconfirmed.
+
+## Theme and member-card payment checkpoint — 20 October 2026
+
+The full suite passes 467 tests. Payment UI coverage now checks guest-card isolation, fixed owner senders, exact recipient defaults and partial amounts, reservations, pending review placement, separate history, expandable details, cancel/focus callbacks, retry keys across refreshed eligibility, and rapid duplicate-submit protection. Existing financial, permission, transaction and idempotency tests remain in the full suite. `theme.test.mjs` covers first-visit system preference, persisted selection, system/storage events, blocked storage, independent head-bootstrap execution and at least 4.5:1 contrast for semantic text/alert token pairs.
+
+Lint, TypeScript and production build pass. The first sandboxed build could not fetch the existing Google Fonts; the network-enabled retry passed. The emitted production HTML bootstrap was executed independently and selected dark mode before hydration. These checks do not establish browser rendering or hydration behaviour: no browser surfaces were available, and opening the in-app browser failed. Desktop/mobile layout, real keyboard focus and flash-free rendering remain manual checks. No live financial records were changed.
+
 ## Approach and tools
 
 Tests use Node's built-in `node:test` runner and `node:assert/strict`, with Node 24 module hooks to replace database, cookie, navigation and server-only imports. TypeScript services execute with Node's TypeScript support; TSX page/component tests use the installed TypeScript transpiler and lightweight React-hook doubles.

@@ -10,6 +10,8 @@ const { default: PaymentPanel, PaymentForm, PaymentReview } = await import("../s
 const { default: BalanceList } = await import("../src/components/groups/balance-list.tsx");
 const { default: OwnerPage } = await import("../src/app/groups/[groupId]/page.tsx");
 const { default: GuestPage } = await import("../src/app/g/[shareToken]/group/page.tsx");
+const { getLedgerForGroup } = await import("../src/data/balances.ts");
+const { paymentOptions, canConfirmPayment } = await import("../src/lib/payments/eligibility.ts");
 hooks.deregister();
 beforeEach(async () => {
   reset();
@@ -39,7 +41,7 @@ function text(tree) {
   return typeof tree === "object" ? text(tree.props?.children) : String(tree);
 }
 const history = (status = "SENT", receiverMemberId = 10) => ({ id: 1, payerMemberId: 2, receiverMemberId, payerName: "Guest", receiverName: "Owner", amount: "5.00", status, createdAt: "2026-10-18T12:00:00.000Z" });
-const props = owner => ({ access: owner ? { kind: "owner", groupId: 1 } : { kind: "guest", shareToken: token }, members: [{ id: 2, name: "Guest" }, { id: 10, name: "Owner" }], currentMemberId: owner ? 10 : 2, requestKey: randomUUID() });
+const props = owner => ({ access: owner ? { kind: "owner", groupId: 1 } : { kind: "guest", shareToken: token }, recipients: [{ id: 10, name: "Owner", maximum: "10.01" }], senderId: 2, requestKey: randomUUID() });
 
 test("guest report action refreshes both views, pending leaves balances unchanged, owner confirmation refreshes again", async () => {
   const reported = await guestPaymentAction(token, {}, form());
@@ -94,8 +96,9 @@ for (const owner of [true, false]) test(`${owner ? "owner" : "guest"} page inclu
   const tree = await (owner ? OwnerPage({ params: Promise.resolve({ groupId: "1" }) }) : GuestPage({ params: Promise.resolve({ shareToken: token }) }));
   const panel = nodes(tree).find(node => node.type === PaymentPanel);
   assert.ok(panel);
-  assert.equal(panel.props.currentMemberId, owner ? 10 : 2);
-  assert.equal(panel.props.access.kind, owner ? "owner" : "guest");
+  const cardProps = nodes(tree).find(node => node.type === BalanceList).props;
+  assert.equal(cardProps.currentMemberId, owner ? 10 : 2);
+  assert.equal(cardProps.access.kind, owner ? "owner" : "guest");
   assert.equal(panel.props.payments[0].status, "CONFIRMED");
   const balances = nodes(tree).find(node => node.type === BalanceList).props.balances;
   assert.equal(balances.members.find(row => row.id === 2).net, "-5.01");
@@ -114,16 +117,16 @@ test("guest has no sender selector or confirmation controls; labels explain exte
 test("owner controls distinguish receipt from verification with another recipient", () => {
   assert.match(text(PaymentReview({ groupId: 1, payment: history(), currentMemberId: 10 })), /Confirm receipt/);
   const other = text(PaymentReview({ groupId: 1, payment: history("SENT", 3), currentMemberId: 10 }));
-  assert.match(other, /Verify with the recipient.*Confirm payment.*Reject report/);
-  assert.match(text(PaymentForm(props(true))), /completed payment.*external payment.*matching report/s);
+  assert.match(other, /Verify with the recipient.*Confirm payment.*Reject/);
+  assert.match(text(PaymentForm(props(true))), /Record payment.*external payment already completed.*matching report/s);
 });
 
 test("history includes all text statuses and accessible empty/unavailable states", () => {
   const panel = PaymentPanel({ ...props(true), payments: [history(), { ...history("CONFIRMED"), id: 2 }, { ...history("REJECTED"), id: 3 }], available: true });
   for (const label of ["Awaiting confirmation", "Confirmed", "Rejected", "does not transfer money"]) assert.ok(text(panel).includes(label));
-  assert.equal(nodes(panel).filter(node => node.type === PaymentReview).length, 1);
+  assert.equal(nodes(panel).filter(node => node.type === PaymentReview).length, 0);
   const unavailable = PaymentPanel({ ...props(false), payments: [], available: false });
-  assert.match(text(unavailable), /New payments are unavailable.*No repayments/s);
+  assert.match(text(unavailable), /No repayments/);
   assert.equal(nodes(unavailable).filter(node => node.type === PaymentForm).length, 0);
 });
 
@@ -157,4 +160,167 @@ test("form retains key and values on failure and rotates key plus refreshes only
   assert.notEqual(nodes(tree).find(node => node.props?.name === "requestKey").props.value, formProps.requestKey);
   assert.equal(nodes(tree).find(node => node.props?.name === "amount").props.value, "");
   assert.equal(state.refreshes, 1);
+});
+
+test("guest actions are restricted to their own card; owner actions fix each eligible sender", async () => {
+  const ledger = await getLedgerForGroup(1);
+  for (const owner of [false, true]) {
+    const access = owner ? { kind: "owner", groupId: 1 } : { kind: "guest", shareToken: token };
+    const tree = BalanceList({ ...ledger, access, currentMemberId: owner ? 10 : 2 });
+    const forms = nodes(tree).filter(node => node.type === PaymentForm && node.props.recipients.length);
+    assert.equal(forms.length, 1);
+    assert.equal(forms[0].props.senderId, 2);
+    const formTree = PaymentForm(forms[0].props);
+    const sender = nodes(formTree).find(node => node.props?.name === "payerMemberId");
+    assert.equal(sender?.props.value, owner ? 2 : undefined);
+    assert.equal(sender?.props.type, owner ? "hidden" : undefined);
+    assert.equal(nodes(tree).filter(node => node.type === "details").length, 2);
+    assert.equal(nodes(tree).filter(node => node.type === "summary").length, 2);
+    assert.match(text(tree), /You/);
+    assert.match(text(tree), /View breakdown/);
+    assert.deepEqual(nodes(tree).filter(node => node.type === "h3").map(node => text(node).replace("You", "")), ["Jaher", "Owner"]);
+  }
+  const otherGuest = BalanceList({ ...ledger, access: { kind: "guest", shareToken: token }, currentMemberId: 10 });
+  assert.equal(nodes(otherGuest).filter(node => node.type === PaymentForm && node.props.recipients.length).length, 0);
+});
+
+test("full pending reservation explains waiting and places owner review only in sender card", async () => {
+  const data = form(); data.set("amount", "10.01");
+  await guestPaymentAction(token, {}, data);
+  const ledger = await getLedgerForGroup(1);
+  const guest = BalanceList({ ...ledger, access: { kind: "guest", shareToken: token }, currentMemberId: 2 });
+  assert.match(text(guest), /10.01 awaiting confirmation/);
+  assert.equal(nodes(guest).filter(node => node.type === PaymentForm && node.props.recipients.length).length, 0);
+  assert.equal(nodes(guest).filter(node => node.type === PaymentReview).length, 0);
+  const owner = BalanceList({ ...ledger, access: { kind: "owner", groupId: 1 }, currentMemberId: 10 });
+  const reviews = nodes(owner).filter(node => node.type === PaymentReview);
+  assert.equal(reviews.length, 1); assert.equal(reviews[0].props.canConfirm, true);
+  assert.match(text(PaymentReview(reviews[0].props)), /Confirm receipt/);
+  assert.equal(nodes(PaymentPanel({ payments: ledger.payments })).filter(node => node.type === PaymentReview || node.type === PaymentForm).length, 0);
+});
+
+test("eligibility shares exact outgoing/incoming reservations with validation and supports other recipients", async () => {
+  const ledger = await getLedgerForGroup(1);
+  ledger.balances.members.push({ ...ledger.balances.members[1], id: 30, name: "Other creditor", net: "3.00" });
+  ledger.balances.members.find(member => member.id === 10).net = "7.01";
+  const pending = { ...history(), amount: "2.01" };
+  const options = paymentOptions(ledger.balances, [pending], 2);
+  assert.deepEqual(options.map(row => [row.id, row.maximum]), [[10, "5.00"], [30, "3.00"]]);
+  assert.equal(canConfirmPayment(ledger.balances, [pending], pending), true);
+  ledger.balances.members.find(member => member.id === 10).isActive = false;
+  assert.equal(canConfirmPayment(ledger.balances, [pending], pending), false);
+  assert.deepEqual(paymentOptions(ledger.balances, [pending], 2).map(row => row.id), [30]);
+  assert.deepEqual(paymentOptions({ status: "unavailable" }, [], 2), []);
+});
+
+test("single recipient defaults to exact maximum; multiple recipients require selection and permit partial amounts", () => {
+  const single = PaymentForm(props(false));
+  assert.equal(nodes(single).find(node => node.props?.name === "receiverMemberId").props.value, "10");
+  assert.equal(nodes(single).find(node => node.props?.name === "amount").props.value, "10.01");
+  const options = { ...props(true), recipients: [{ id: 10, name: "Owner", maximum: "5.00" }, { id: 30, name: "Other", maximum: "3.01" }] };
+  let tree = renderWithState(PaymentForm, options);
+  assert.equal(nodes(tree).find(node => node.props?.name === "receiverMemberId").props.value, "");
+  nodes(tree).find(node => node.props?.name === "receiverMemberId").props.onChange({ target: { value: "30" } });
+  tree = renderWithState(PaymentForm, options);
+  assert.equal(nodes(tree).find(node => node.props?.name === "amount").props.value, "3.01");
+  nodes(tree).find(node => node.props?.name === "amount").props.onChange({ target: { value: "0.01" } });
+  tree = renderWithState(PaymentForm, options);
+  assert.equal(nodes(tree).find(node => node.props?.name === "amount").props.value, "0.01");
+});
+
+test("open and cancel preserve intent, move focus and never nest forms", t => {
+  const previousAnimationFrame = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = callback => callback();
+  t.after(() => { if (previousAnimationFrame) globalThis.requestAnimationFrame = previousAnimationFrame; else delete globalThis.requestAnimationFrame; });
+  const options = props(false);
+  let tree = renderWithState(PaymentForm, options);
+  let triggerFocus = 0, recipientFocus = 0;
+  const trigger = nodes(tree).find(node => node.props?.["aria-controls"]);
+  trigger.props.ref.current = { focus() { triggerFocus++; } };
+  nodes(tree).find(node => node.type === "select").props.ref.current = { focus() { recipientFocus++; } };
+  trigger.props.onClick(); tree = renderWithState(PaymentForm, options);
+  assert.equal(nodes(tree).find(node => node.type === "form").props.hidden, false);
+  assert.equal(recipientFocus, 1);
+  nodes(tree).find(node => node.type === "button" && text(node) === "Cancel").props.onClick();
+  tree = renderWithState(PaymentForm, options);
+  assert.equal(nodes(tree).find(node => node.type === "form").props.hidden, true);
+  assert.equal(triggerFocus, 1);
+  assert.equal(nodes(tree).filter(node => node.type === "form").length, 1);
+  assert.equal(nodes(tree).find(node => node.props?.name === "requestKey").props.value, options.requestKey);
+});
+
+test("rapid repeated submit is blocked before React pending state updates", async () => {
+  renderWithState(PaymentForm, props(false));
+  const action = state.actions.at(-1);
+  const first = action({}, form());
+  const second = await action({}, form());
+  assert.deepEqual(second, {});
+  assert.ok((await first).success);
+  assert.equal(state.rows.Payment.length, 1);
+});
+
+test("stale or inactive reports permit rejection but hide confirmation", () => {
+  const tree = PaymentReview({ groupId: 1, payment: history(), currentMemberId: 10, canConfirm: false });
+  assert.equal(nodes(tree).filter(node => node.props?.value === "confirm").length, 0);
+  assert.equal(nodes(tree).filter(node => node.props?.value === "reject").length, 1);
+});
+
+test("uncertain submission retains its open retry form when refreshed eligibility is exhausted", async t => {
+  const previous = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = callback => callback();
+  t.after(() => { if (previous) globalThis.requestAnimationFrame = previous; else delete globalThis.requestAnimationFrame; });
+  const options = props(false);
+  let tree = renderWithState(PaymentForm, options);
+  nodes(tree).find(node => node.props?.["aria-controls"]).props.onClick();
+  tree = renderWithState(PaymentForm, options);
+  state.failAt = "Payment.create";
+  const data = form(); data.set("requestKey", options.requestKey);
+  assert.ok((await state.actions.at(-1)({}, data)).error);
+  tree = renderWithState(PaymentForm, { ...options, recipients: [], requestKey: randomUUID() });
+  assert.equal(nodes(tree).find(node => node.type === "form").props.hidden, false);
+  assert.equal(nodes(tree).find(node => node.props?.name === "requestKey").props.value, options.requestKey);
+  assert.equal(nodes(tree).find(node => node.props?.name === "receiverMemberId").props.value, "10");
+  assert.equal(nodes(tree).find(node => node.props?.name === "amount").props.value, "10.01");
+  assert.match(text(tree), /Previously selected recipient/);
+});
+
+test("server options cap enormous exact balances to the existing per-payment limit", async () => {
+  const ledger = await getLedgerForGroup(1);
+  ledger.balances.members.find(member => member.id === 2).net = "-900719925474099.99";
+  ledger.balances.members.find(member => member.id === 10).net = "900719925474099.99";
+  assert.equal(paymentOptions(ledger.balances, [], 2)[0].maximum, "999999999.99");
+});
+
+test("compact rows align name and amount, with pending review and breakdown collapsed", async () => {
+  await guestPaymentAction(token, {}, form());
+  const ledger = await getLedgerForGroup(1);
+  ledger.balances.members[0].name = "A very long member name that must wrap without hiding any controls";
+  const tree = BalanceList({ ...ledger, access: { kind: "owner", groupId: 1 }, currentMemberId: 10 });
+  const rows = nodes(tree).filter(node => node.type === "li");
+  assert.equal(rows.length, ledger.balances.members.length);
+  for (const row of rows) {
+    assert.match(row.props.className, /balance-row/);
+    assert.match(nodes(row).find(node => node.type === "h3").props.className, /balance-row-name/);
+    assert.match(nodes(row).find(node => node.props?.className?.includes("balance-row-amount")).props.className, /text-right text-base/);
+    assert.ok(nodes(row).filter(node => node.type === "details").every(node => !node.props.open));
+  }
+  const pending = nodes(tree).find(node => node.type === "details" && text(node).includes("View pending reports"));
+  assert.ok(pending);
+  assert.match(text(pending), /5.00 awaiting confirmation/);
+  assert.equal(nodes(pending).filter(node => node.type === PaymentReview).length, 1);
+  const historyTree = PaymentPanel({ payments: ledger.payments });
+  assert.equal(nodes(historyTree).filter(node => node.type === "details" || node.type === PaymentReview).length, 0);
+});
+
+test("disclosure-related rerenders preserve partial amount, selected recipient and retry key", () => {
+  const options = props(false);
+  let tree = renderWithState(PaymentForm, options);
+  nodes(tree).find(node => node.props?.name === "amount").props.onChange({ target: { value: "1.25" } });
+  // Native details keep children mounted; an unrelated parent render may supply
+  // a new suggested maximum and server key, neither replaces this form intent.
+  tree = renderWithState(PaymentForm, { ...options, requestKey: randomUUID(), recipients: [{ id: 10, name: "Owner", maximum: "6.00" }] });
+  assert.equal(nodes(tree).find(node => node.props?.name === "amount").props.value, "1.25");
+  assert.equal(nodes(tree).find(node => node.props?.name === "receiverMemberId").props.value, "10");
+  assert.equal(nodes(tree).find(node => node.props?.name === "requestKey").props.value, options.requestKey);
+  assert.match(nodes(tree).find(node => node.props?.["aria-controls"]).props.className, /min-h-11/);
 });

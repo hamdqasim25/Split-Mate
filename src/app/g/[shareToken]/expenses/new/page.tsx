@@ -19,15 +19,15 @@ export default async function GuestExpensePage({ params }: { params: Promise<{ s
     context = await getExpenseFormContext({ kind: "guest", shareToken });
   } catch {
     console.error("Guest expense form loading failed unexpectedly.");
-    return <main className="min-h-screen bg-[#f8faf7] p-6 text-slate-900"><h1 className="text-2xl font-semibold">Expense form temporarily unavailable</h1><p>Please refresh and try again.</p></main>;
+    return <main className="min-h-screen bg-canvas p-6 text-foreground"><h1 className="text-2xl font-semibold">Expense form temporarily unavailable</h1><p>Please refresh and try again.</p></main>;
   }
   if (!context) redirect(`/g/${shareToken}`);
   return (
-    <main className="min-h-screen bg-[#f8faf7] px-6 py-12 font-sans text-slate-900 sm:py-20">
+    <main className="min-h-screen bg-canvas px-6 py-12 font-sans text-foreground sm:py-20">
       <div className="mx-auto max-w-2xl">
-        <Link href={`/g/${shareToken}/group`} className="text-sm font-semibold text-emerald-800">Back to group</Link>
+        <Link href={`/g/${shareToken}/group`} className="text-sm font-semibold text-accent">Back to group</Link>
         <h1 className="mt-8 text-3xl font-semibold">Add expense</h1>
-        <p className="mt-3 break-words text-slate-600">{context.group.name}</p>
+        <p className="mt-3 break-words text-muted">{context.group.name}</p>
         <ExpenseForm context={context} action={guestExpenseAction.bind(null, shareToken)} />
       </div>
     </main>

@@ -15,17 +15,17 @@ export default async function CreateGroupPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8faf7] px-6 py-12 font-sans text-slate-900 sm:py-20">
+    <main className="min-h-screen bg-canvas px-6 py-12 font-sans text-foreground sm:py-20">
       <div className="mx-auto max-w-3xl">
         <Link
           href="/dashboard"
-          className="text-sm font-semibold text-emerald-800 hover:text-emerald-950"
+          className="text-sm font-semibold text-accent hover:text-accent"
         >
           ← Back to dashboard
         </Link>
 
         <div className="mt-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-800">
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent">
             New group
           </p>
 
@@ -33,7 +33,7 @@ export default async function CreateGroupPage() {
             Create a group
           </h1>
 
-          <p className="mt-4 max-w-xl text-lg leading-8 text-slate-600">
+          <p className="mt-4 max-w-xl text-lg leading-8 text-muted">
             Give your group a name and add the people who will be sharing
             expenses.
           </p>

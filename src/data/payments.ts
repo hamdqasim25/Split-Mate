@@ -7,6 +7,7 @@ import { isValidToken } from "@/lib/auth/tokens";
 import { parsePence, penceToDecimal } from "@/lib/expenses/money";
 import { getLedgerForGroup } from "@/data/balances";
 import type { PaymentAccess } from "@/lib/payments/types";
+import { paymentCapacity } from "@/lib/payments/eligibility";
 
 type Client = Pick<typeof db, "orm">;
 type Ledger = Awaited<ReturnType<typeof getLedgerForGroup>>;
@@ -75,19 +76,10 @@ function validateCapacity(ledger: Ledger, senderId: number, receiverId: number, 
   const sender = ledger.balances.members.find(member => member.id === senderId);
   const receiver = ledger.balances.members.find(member => member.id === receiverId);
   if (!sender || !receiver) throw new PaymentError("Both members must belong to this group.");
-  // These canonical aggregate strings may exceed the single-amount parser bound.
-  const net = (value: string) => BigInt(value.replace(".", ""));
-  const debt = -net(sender.net);
-  const credit = net(receiver.net);
+  const { debt, credit, availableDebt, availableCredit } = paymentCapacity(sender.net, receiver.net, ledger.payments, senderId, receiverId, excludeId);
   if (debt <= BigInt(0) || credit <= BigInt(0)) throw new PaymentError("The sender must currently owe money and the recipient must currently be owed money. Refresh the balances.");
-  let outgoing = BigInt(0), incoming = BigInt(0);
-  for (const payment of ledger.payments) {
-    if (payment.status !== "SENT" || payment.id === excludeId) continue;
-    if (payment.payerMemberId === senderId) outgoing += BigInt(parsePence(payment.amount));
-    if (payment.receiverMemberId === receiverId) incoming += BigInt(parsePence(payment.amount));
-  }
   const proposed = BigInt(parsePence(amount));
-  if (proposed > debt - outgoing || proposed > credit - incoming) {
+  if (proposed > availableDebt || proposed > availableCredit) {
     throw new PaymentError("This amount exceeds the available debt or credit after other awaiting-confirmation reports. Review pending reports and current balances; the amount has not been changed.");
   }
 }

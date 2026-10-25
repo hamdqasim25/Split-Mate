@@ -1,85 +1,74 @@
-# SPLITMate Development Roadmap
+# SPLITMate roadmap
 
-## Completed
+This is the single source for feature status, known limitations and future work. "Implemented" means the code and relevant automated coverage exist; it does not imply every live-database or browser scenario has been verified. See [testing evidence](tests.md) for that distinction.
 
-- Owner authentication and database-backed sessions.
-- Atomic group creation and persisted dashboard/groups.
-- Owner-only details, members/activity and share-link display/copy.
-- Guest invite resolution and secure member claiming.
-- GuestSession authentication and protected guest group access.
-- Guest member/activity display, five-minute activity tracking and device sign-out.
-- Automated tests and milestone verification; see [tests.md](tests.md).
+The product principle remains: only the owner needs an account. Guests should be able to open an invitation, choose their existing name and participate with minimal friction. Financial history belongs to their group membership, whether or not they later create an account.
 
-- Shared expense backend foundation: authenticated GroupMember resolution, same-group authorization and minimal active-member form context.
-- One reusable owner/guest expense form with payer default, participant multi-select and server-calculated confirmation.
-- Validated GBP expense persistence, deterministic equal splitting in integer pence, atomic participants/EXPENSE_CREATED and shared expense lists.
+## Implemented capabilities
 
-- Editable custom shares, exact-total validation and reset to equal; natural member order and improved owner/guest group pages.
+| Capability | What people can do |
+| --- | --- |
+| Owner accounts | Register, sign in and sign out through separate, hashed, database-backed owner sessions |
+| Group creation and dashboard | Create GBP groups with named guests, receive an owner membership and secure share link, and see persisted groups with separate owed/owing totals |
+| Guest participation | Claim an eligible existing name without registering; return through a protected group page using a hashed guest session; sign out on the device |
+| Group information | View active members, joined/waiting states, recent activity and saved expense shares |
+| Expense creation | Choose who paid and participated, review deterministic equal or custom shares and save all records together |
+| Balances | See complete-ledger balances, effective confirmed repayment effects, historical inactive members and explicit unavailable states when records cannot be reconciled |
+| Repayments | Guests report their own external transfers; owners confirm/reject or directly record completed payments, including between other members |
+| Retry-safe payments | Reuse a payment request key after an uncertain result; reserve pending debt/credit and avoid duplicate review effects |
+| Expense associations and reconciliation | Allocate repayments to expenses, review historical associations from evidence and retain exclusion history |
+| Saved expense management | Owners edit any expense with stale-form protection or soft-delete it while retaining history and excluding only its linked payment allocations |
+| Permanent group deletion | Owners explicitly confirm removal of the group and dependent history/access while preserving other groups and accounts |
+| Appearance | Shared light/dark preference, compact member cards, expandable breakdowns and a native 44px theme control |
 
-- Complete-ledger GBP member balances on owner/guest pages, exact paid/share/net totals, historical inactive members and explicit reconciliation failure.
+The configured database has previously reported successful allocation-migration deployment and schema verification. Environment-specific evidence belongs in [database design](database-design.md#reported-migration-state); it is not a claim that all environments are ready.
 
-- Guest external-payment reporting; owner confirmation/rejection and direct recording; exact confirmed-payment balance adjustments, pending reservations and durable creation keys. Migration applied and schema verified on the configured database.
+## Agreed immediate priorities and deployment gates
 
-## Next: Deployment verification and expense retry safety
+These priorities carry forward the existing roadmap; no delivery dates are committed. Idempotency means that retrying one request has the same effect as sending it once. Concurrency means requests happening at the same time; rollback means undoing every part of a failed transaction. Rate limiting restricts how often an action can be attempted.
 
-The user has manually verified owner/guest payment flows and dashboard balances. Verify PostgreSQL lock/rollback behaviour under concurrency. Next implementation work should add durable expense-submission idempotency to prevent duplicate expenses after lost responses.
+| Work | User benefit | What completion means |
+| --- | --- | --- |
+| Verify real PostgreSQL concurrency and rollback | Simultaneous claims, payments and edits cannot leave contradictory records | Run controlled competing requests and injected failures against a designated test database; verify locks, unique keys and all-or-nothing writes, including deletion races; record reproducible evidence |
+| Durable expense-submission idempotency | Retrying after a lost response does not charge the group twice | A persisted submission identity returns the original expense for matching retries and rejects conflicting reuse; verify lost responses and concurrent retries, including activity counts |
+| Rate limiting before public deployment | Reduce abusive login, registration and claim attempts | Define and implement server-side attempt limits and useful retry feedback, then verify that protection cannot be bypassed through ordinary endpoint access |
+| Complete deployment/browser verification | People can rely on the intended flows on phones and desktops | Verify each target environment's schema and execute the outstanding owner/guest, deletion, reconciliation, cookie and accessibility checks in tests.md; do not treat one working form as proof of every flow |
 
-## Later
+## Known limitations
 
-- Expense editing and percentage splitting.
-- Durable expense-submission idempotency for safe retries after lost responses.
-- Broader payment lifecycle controls only after explicit product decisions; current confirmation authority is the group owner.
-- Optional account linking without duplicating GroupMember/history.
-- Member management and invite disable/regeneration controls.
-- Session recovery and multi-group guest access.
-- Broader split methods, settlement improvements and notifications.
+| Limitation | Current consequence |
+| --- | --- |
+| Group and expense creation lack durable retry identities | Separate successful requests can create duplicates; disabled submit buttons are not a guarantee after a lost response |
+| One guest identity per browser; no recovery or identity-switching interface | Signing out, losing or expiring a guest cookie leaves the member claimed without a recovery flow |
+| Historical payments may not fit expense-association rules | Unresolved confirmed payments make balances unavailable; pending/confirmed unassociated payments block deletion and financial edits; old netted transfers or permanently removed expenses need a separately reviewed recovery approach |
+| GBP only, equal/custom splitting | Percentage splits, other currencies and exchange-rate conversion are unavailable |
+| Owner review is the current payment authority | Guest recipients cannot confirm; terminal payment statuses cannot be reversed |
+| No restoration for deleted expenses; permanent group deletion removes history | These are deliberate current deletion semantics, not an archive or refund mechanism |
+| No live push updates | Another open browser must refresh after changes |
+| Complete-ledger reads grow with history | Financial reads use a group lock and memory proportional to history; dashboard groups are not one simultaneous snapshot |
+| Targeted automated coverage is not live proof | PostgreSQL contention/rollback, full HTTP/browser journeys, production cookies and broad accessibility checks remain incomplete |
 
-Rate limiting is required before public deployment. Live database concurrency/rollback tests and server-side creation idempotency remain separate work. [README](../README.md) holds concise current progress; [architecture](architecture.md) defines access boundaries.
+## Future work without assigned priority
 
----
+These are retained proposals, not scheduled commitments. Product and security decisions are needed before implementation where noted.
 
-<details>
-<summary>Historical original notes - not current implementation</summary>
+| Proposal | User benefit | What completion would mean |
+| --- | --- | --- |
+| Group-creation retry safety | Avoid duplicate groups after an uncertain submission | Persist an intent key with payload matching and prove retries return one group/member/event set; group names must not be used as keys |
+| Guest session recovery and multiple-group access | Return to a claimed identity and use several groups without losing access | An explicitly designed identity-verification/recovery flow, safe per-group session selection and tests that prevent impersonation |
+| Optional account linking | Keep all participating groups accessible through an account | Link the verified existing GroupMember to the account without duplicating membership or moving financial records; retain Skip/guest participation |
+| Member management | Let owners maintain the group roster | Owner-authorized add/deactivate controls, duplicate-name policy, activity and same-group checks, while preserving historical records |
+| Invitation disable/regeneration controls | Let owners stop new claims or replace a shared URL | Owner-only controls enforce existing access policy, invalidate old tokens on regeneration and explain effects on existing guests |
+| Percentage splitting | Divide expenses by agreed proportions | Define percentage validation and penny allocation; shares always sum exactly to the total through review and persistence |
+| Settlement suggestions | Help members see who could pay whom | Define a deterministic suggestion policy compatible with existing expense allocations; suggestions must not move money or mark it paid |
+| Broader payment lifecycle controls | Resolve mistakes beyond current rejection/reconciliation | Agree cancellation/reversal permissions and audit/balance effects first, then verify each approved transition |
+| Historical-payment recovery | Resolve records that cannot satisfy current association rules | Investigate actual histories and approve an explicit recovery procedure without inventing expenses or changing transfers silently |
+| Notifications | Help people notice relevant changes | Agree events, channels and preferences before implementation; protect private group information |
 
-## Original notes — preserved
+## Unprioritised ideas
 
-The following notes are retained as originally written. For current implementation status, use the dated update above.
+Earlier planning also proposed expense categories, receipt/image attachments, comments or notes, payment-method labels, and multiple currencies/exchange rates. Preserve these as ideas for later discussion. Their scope, acceptance criteria and priority have not been agreed. A `/groups` index is not currently present; it is not an agreed requirement merely because older notes mentioned it.
 
+## Maintaining this roadmap
 
-### Stage 1 — Planning ✅
-- Define problem
-- Define project requirements
-- Define core features
-
-### Stage 2 — System Design ✅
-- Application architecture
-- Database ERD
-- Database documentation
-
-### Stage 3 — Application Setup ✅
-- Create Git repository
-- Initialise Next.js
-- Build initial UI structure
-
-### Stage 4 — Database Implementation 🚧
-- Create database
-- Write SQL schema
-- Create tables
-- Define primary keys
-- Define foreign keys
-- Add constraints
-- Test relationships
-
-### Stage 5 — Backend Integration
-- Connect Next.js to database
-- Implement database queries
-- Create API/backend logic
-
-### Stage 6 — Core Features
-- Users
-- Groups
-- Expenses
-- Expense splitting
-- Payments
-
-</details>
+When a feature is delivered, update its status here and remove the corresponding limitation only when resolved. Explain the user benefit and acceptance criteria for newly agreed work. Keep detailed behaviour in [architecture](architecture.md), database procedures in [database design](database-design.md), and evidence in [tests](tests.md). Do not recreate a second progress report or add delivery dates without agreement.

@@ -1,173 +1,215 @@
-# SPLITMate Architecture
+# How SPLITMate works
 
-## Runtime and identity
+SPLITMate keeps a shared record of group expenses and repayments. An expense records who initially paid; a repayment records money subsequently transferred between members outside the app. The owner oversees the group, while guests can participate without accounts.
 
-Next.js App Router hosts pages, route handlers, Server Actions and server-only data services. React and Tailwind provide the UI; `src/prisma/db.ts` connects the pinned Prisma 8 RC runtime to Prisma-hosted PostgreSQL. There is no separate FastAPI backend.
+## Contents
 
-A User is an account; a GroupMember is an identity inside one group. Only owners require accounts. All financial relationships reference GroupMember, including guests with null userId.
+- [People and access](#people-and-access)
+- [Creating and joining a group](#creating-and-joining-a-group)
+- [Expenses and splits](#expenses-and-splits)
+- [Understanding balances](#understanding-balances)
+- [Repayments and owner review](#repayments-and-owner-review)
+- [Reconciling older payments](#reconciling-older-payments)
+- [Editing and deletion](#editing-and-deletion)
+- [Activity and presentation](#activity-and-presentation)
+- [Developer reference](#developer-reference)
 
-## Authentication
+## People and access
 
-| Concern | Owner | Guest |
+An account (`User`) and a person's place in a group (`GroupMember`) are different things. Hamdi has an account and is also a member of Friday Football. Ismaeel can be a member of that group without an account. Every expense, share and repayment belongs to group-member identities, so guests have the same financial history as account holders. A future optional account must link to the existing membership, not replace its history.
+
+A session is the secure browser credential that remembers who someone is. Owner and guest sessions are separate. A group link identifies a group; it is not proof that the visitor is a particular member. The server checks identity and permission on every protected action, even when a button is hidden.
+
+| Action | Owner | Claimed guest |
 | --- | --- | --- |
-| Establish identity | bcrypt-verified login | Claim an eligible owner-defined member through an enabled invite |
-| Session model | UserSession → User | GuestSession → GroupMember |
-| Expiry | Eight hours | 30 days; activity does not extend expiry |
-| Cookie | Owner-specific host-only HttpOnly cookie | Separate guest-specific host-only HttpOnly cookie |
-| Access check | Verified owner ID and Group.createdBy | Valid session, active claimed MEMBER with null userId, matching group |
-| Sign-out | Revoke browser owner sessions, clear owner cookies | Revoke browser guest sessions, clear guest cookies; preserve claimedAt |
+| Create groups and view an account dashboard | Yes | No |
+| View their group's members, expenses, balances and activity | Yes | Yes, with a valid session for that group |
+| Add an expense; select active payers/participants | Yes | Yes |
+| Edit or delete a saved expense | Yes, including guest-created expenses | No |
+| Report their own repayment | Owner can record completed payments directly | Yes; awaiting owner review |
+| Confirm/reject reports; record completed payments between members | Yes | No, even when the guest received the money |
+| Reconcile historical payment associations | Yes | No |
+| Permanently delete the group | Yes, after explicit confirmation | No |
 
-Both session types use 32 random bytes and store only SHA-256 token hashes. Shared helpers validate canonical base64url tokens. Cookies use SameSite=Lax; production uses Secure and the `__Host-` prefix. Owner issuance also supports an HTTPS development cookie. Guest issuance uses the local cookie outside production.
+Financial actions require an active member identity in the same group. A member ID supplied by a browser is never sufficient authorization. Owner-only group deletion checks the authenticated account and group ownership rather than trusting a membership role alone.
 
-Registration normalizes email and hashes passwords with bcrypt cost 12; passwords are not trimmed and require 15 characters minimum, 72 UTF-8 bytes maximum. Registration does not issue a session. HTTP mutation endpoints enforce same origin; Server Actions use Next.js's action request protection and revalidate identity/input server-side.
+## Creating and joining a group
 
-Session reads reject malformed, missing, expired or unusable credentials. Server Components do not mutate cookies during rendering. Explicit sign-out clears cookies only after successful revocation.
+The owner registers, signs in, opens `/groups/new`, names the group and adds guest names. The server creates the group, an already-claimed owner membership, unclaimed guest memberships and a `GROUP_CREATED` activity entry together. A failure rolls all of these back rather than leaving half a group. A random reusable share token is generated on the server.
 
-## Guest flow
+Group and member names are trimmed, repeated whitespace is collapsed, and names must be 1-100 characters. Names must be distinct after Unicode compatibility normalization and lowercase comparison, including the owner's name; use initials to distinguish people with the same name. Groups support GBP, an optional description of up to 1,000 characters and 0-50 guests. A group with only its owner is valid. Unknown input fields, client-supplied owner IDs, roles and tokens are rejected. Successful submission returns to the dashboard. Separate successful submissions can still create separate groups.
 
 ```mermaid
 flowchart TD
-    Invite[Shared invite] --> Lookup[Resolve group token]
-    Lookup --> Existing{Valid same-group guest session?}
-    Existing -->|Yes| Group[Protected guest group page]
-    Existing -->|No| Enabled{Sharing enabled?}
-    Enabled -->|Yes| Names[Eligible member names]
-    Names --> Claim[Transactional conditional claim]
-    Claim --> Records[claimedAt + hashed GuestSession + MEMBER_CLAIMED]
-    Records --> Cookie[Issue guest cookie]
-    Cookie --> Group
-    Enabled -->|No| Unavailable[Invite unavailable]
-    Group --> Data[Current identity, active members, recent activity]
-    Data --> Activity[Throttled activity timestamps]
+    A[Owner creates group and named members] --> B[Owner shares secure invitation]
+    B --> C{Valid guest session for this group?}
+    C -->|Yes| G[Open protected group page]
+    C -->|No| D{Invitations enabled?}
+    D -->|No| E[Invitation unavailable]
+    D -->|Yes| F[Choose an eligible unclaimed name]
+    F --> H[Claim name and create guest session together]
+    H --> G
 ```
 
-Claim eligibility is active, unclaimed, role MEMBER and null userId, in the group resolved from the token. Conditional `updateAll()` writes retain guards in SQL: the group write coordinates claiming with link changes, and the member write prevents two successful claims. Session/event creation shares the transaction. This RC's single-row `update()` first resolves an ID, so it is not used for these guarded writes.
+Guests choose existing names; they cannot invent names during claiming. Eligible names are active, unclaimed MEMBER records without linked accounts. Competing claims are guarded so only one can succeed. Claiming records the time, creates a guest session and adds `MEMBER_CLAIMED` activity in one transaction.
 
-Sharing controls new invitations, not existing membership. Disabling sharing preserves valid guest access; inactive membership blocks it. Rotating a token would make old URLs unresolvable, including for existing guests. Rotation/disable UI is not implemented.
+One guest identity is remembered per browser. Signing out revokes that browser's guest session but does not release the name or sign out an owner account. Losing or expiring the cookie also leaves the name claimed. Recovery and multiple-group guest-session management are outstanding work in the [roadmap](dev-roadmap.md).
 
-## Routing and data boundaries
+Disabling invitations prevents new claims but preserves access for existing valid guests. Inactive membership blocks access. Changing the share token would invalidate the old URL, including for existing guests using it. Owner controls for disabling/regenerating links are not yet available. Share links only with intended members.
 
-| Route | Behaviour |
+## Expenses and splits
+
+An owner or guest enters a description, amount, payer and participants, then reviews the split before saving. The current member is the default payer, but another active member may have paid. The payer need not participate: Hamdi can buy tickets only for Ismaeel and Jaher. Active members who have not claimed their names can still pay or receive shares.
+
+Amounts use integer pennies for calculation, avoiding decimal rounding errors. Equal splitting assigns any leftover pennies in ascending internal member-ID order, regardless of checkbox order. £10.00 across three members becomes £3.34, £3.33 and £3.33. Even 1p can be split as 1p, 0p and 0p. Custom shares can include zero but must add up exactly to the total; Reset to equal restores the deterministic split.
+
+The server requires a 1-1,000-character description, GBP 0.01 to GBP 999,999,999.99, at most two decimal places, and 1-51 distinct participants. It rejects negative shares, extra precision, currency symbols, commas, scientific notation, duplicate IDs and members from another group. Every selected participant must have exactly one share. Currency comes from the group.
+
+Review does not save records. Confirmation rechecks identity, membership and all amounts, then saves the expense, every share and `EXPENSE_CREATED` activity together. The activity actor is the person submitting, who may differ from the payer. Shares matching the equal baseline are labelled EQUAL; other valid shares are CUSTOM. For new expenses, Back and edit preserves details and starts a new equal split. A failed save preserves proposed values where a fresh authorized review remains possible. Leaving the page discards the draft. Pending buttons reduce repeat clicks but do not make expense retries safe after a lost successful response.
+
+## Understanding balances
+
+A ledger is the complete set of expense and payment records used to calculate balances. For each member:
+
+```text
+Net balance = active expenses paid - active expense shares
+            + effective confirmed repayments sent
+            - effective confirmed repayments received
+```
+
+Positive means the member is owed money; negative means they owe money; zero means even. "Active expenses" here means expenses that have not been deleted. An effective repayment amount is the part allocated to expenses that have not been deleted. Pending and rejected payments never change the balance.
+
+For example, Hamdi pays £30 for himself, Ismaeel and Jaher with £10 shares. Hamdi is owed £20; the others each owe £10. Ismaeel reports sending £10: balances remain unchanged until the owner confirms it. After confirmation, Ismaeel is even and Hamdi is owed £10.
+
+Totals include the complete ledger, even though the expense list shows only the latest 50 entries. Historical inactive members retain their financial effects. The dashboard shows each group's owner balance and separately totals amounts owed to and owed by the owner; it does not hide one by subtracting the other. Each group is read consistently, but the dashboard is not one simultaneous snapshot across all groups.
+
+Invalid records or unresolved confirmed payments make balances unavailable rather than misleadingly partial. If any owned group cannot provide a reliable owner balance, both dashboard summary totals are unavailable. Empty valid groups show zero.
+
+## Repayments and owner review
+
+A payment allocation says which expense a repayment covers. For example, Ismaeel can allocate a £15 repayment as £10 for football and £5 for dinner, provided Hamdi paid both expenses and Ismaeel participated in both. Up to 500 allocations are supported per payment, and their positive penny amounts must exactly equal the payment total.
+
+```mermaid
+flowchart LR
+    A[Guest reports external payment] --> B[SENT: awaiting owner review]
+    B -->|Owner verifies| C[CONFIRMED: effective allocations affect balances]
+    B -->|Owner rejects| D[REJECTED: no balance effect]
+    E[Owner records a verified completed payment] --> C
+```
+
+Owner confirmation is the agreed product behaviour, including transfers between two other members. The owner should verify those transfers with their recipients. Guests cannot confirm their own debts or payments received. The app does not verify bank transfers itself.
+
+New payments require distinct active sender/recipient members, outstanding debt and credit, valid expense associations and available capacity. Pending reports reserve the corresponding debt and credit to prevent overlapping reports from claiming the same capacity. Rejection releases the reservation. Confirmation checks the current ledger again; a stale report fails safely rather than silently changing its amount. Owners may reject stale reports involving inactive members, but new payments and confirmations require active participants. An equivalent pending report directs the owner to review that report instead of recording another transfer.
+
+Each creation request has a unique retry key. Retrying the same group, actor, creation mode, members, amount and original allocations returns the existing payment; changing those details with the same key fails. Errors retain the key and entered values, including after an uncertain response. Acknowledged success clears the form and rotates the key. Reloading or opening a new form starts a new intent, so check payment history before creating a fresh report after a crash. Repeated identical review decisions do not create another event. Confirmed/rejected statuses cannot currently be reversed.
+
+## Reconciling older payments
+
+Older payments may lack expense associations. Reconciliation means the owner identifies those associations from actual evidence, rather than the system guessing from names, dates or amounts. The owner uses Reconcile/Review associations in payment history. The original amount, sender, recipient and status stay unchanged; old and new associations are recorded in activity.
+
+An unresolved confirmed payment makes the group's balances unavailable. An unresolved pending report retains its reservation. Either unresolved pending or confirmed payments block expense deletion and financial edits because the app cannot know which expense they affect. Rejected payments do not block those changes. Description-only expense edits remain possible.
+
+Reconciliation can preserve known historical overpayments without rewriting the transfer amount. It still requires existing expenses paid by the recipient and shared by the sender. Older netted transfers (one payment settling several people's debts indirectly), or transfers for expenses previously permanently removed, may not satisfy those conditions. These cases remain unresolved and need investigation and a separately reviewed recovery approach. Do not invent expenses or associations to bypass the blocker.
+
+Previously excluded allocations cannot be moved or revived. Version checks reject an old reconciliation form after another change, including when values were changed and later changed back.
+
+## Editing and deletion
+
+### Editing a saved expense
+
+Only the owner can edit saved expenses, including ones entered by guests. The original shares load into the review. Changing the total does not silently redistribute them; new participants start at zero and removed participants leave the proposed split. The owner must resolve the remainder before saving. Back/edit preserves custom allocations.
+
+Inactive members may retain their existing historical payer/participant roles but cannot be newly selected in another role. Payment associations also constrain edits: an owner cannot change a linked payer, remove a linked payment sender from participants or reduce their share below pending/confirmed allocations without resolving the associations based on actual history.
+
+The expense ID and original creation date survive editing. A version based on the saved expense, shares and latest audit event prevents an old browser tab from overwriting or deleting a newer version, even if values were later restored. A duplicate edit is rejected as stale and requires reopening the expense. Refreshing the edit route resets its draft when the saved version changes, preventing old inputs from being paired with a new version.
+
+### Deleting one expense
+
+Expense deletion is a soft deletion: it disappears from ordinary lists and balances, but its original record, shares and identifying activity remain for audit. Repeating a completed deletion does not add another event. There is no restoration path.
+
+Linked repayments remain visible with their original amounts and statuses. Only allocations for the deleted expense are excluded from balances and pending reservations. Other allocations continue to count. Each affected payment gets an exclusion activity entry.
+
+For example, a confirmed £15 payment covers £10 football and £5 dinner. Deleting football excludes its £10 allocation; dinner's £5 still counts. If a single expense was fully settled and it is then deleted, both its expense shares and linked payment effects disappear from balances, leaving those members even for that expense. This is not a refund instruction or a claim that the bank transfer was reversed.
+
+A pending report with some excluded allocations requires fresh owner review before its remaining amount can be confirmed. A report whose allocations are all excluded cannot be confirmed. An old confirmation form cannot revive an excluded amount.
+
+### Permanently deleting a group
+
+Group deletion works even with invitations disabled or a non-GBP group. The owner can confirm deletion in a dialog that names the group and warns about permanent removal. Cancel receives focus first; Escape cancels when idle. During submission, controls prevent repeated requests and errors remain visible for retry.
+
+This removes the group, all expenses (including soft-deleted ones), shares, payments, allocations, activity, members and guest sessions together. No group-deletion activity is retained because the whole history is removed. Other groups, accounts and owner sessions remain. Existing guest credentials and invitation links stop working; cookies on other devices may remain but no longer authenticate. After deletion the owner returns to the recalculated dashboard. A repeated deletion request reports the group unavailable.
+
+## Activity and presentation
+
+Activity identifies the responsible member and affected object. Group pages show up to 10 recent events; the dashboard shows the latest five across owned groups. Guest-visible events include creation/claim/member changes, expense creation/update/deletion, payment sent/recorded/confirmed/rejected, reconciliation and allocation exclusions. Owner account details, session credentials and payment retry keys are not exposed.
+
+Expense rows show payer, total, date and expandable shares. Member cards show balances, optional breakdowns and relevant payment controls; payment history is separate. Mutation responses refresh the owner group, guest group and dashboard data. Another open browser must refresh; there is no live push.
+
+A shared light/dark control remembers a valid preference locally or follows the device setting until the user chooses. Storage failures fall back to an in-page preference. The 44px native toggle works before React becomes interactive, with compatibility for older media-query listeners. Disclosures keep forms mounted so closing a breakdown does not discard retry keys or drafts. Browser/accessibility verification limits belong in [tests.md](tests.md).
+
+## Developer reference
+
+### Runtime and source boundaries
+
+```mermaid
+flowchart TD
+    A[Owner or guest browser] -->|HTTPS requests| B[Next.js pages and server actions]
+    B --> C[Server identity and permission checks]
+    C --> D[Data services: validate and calculate]
+    D --> E[Prisma contract and database runtime]
+    E --> F[Prisma-hosted PostgreSQL]
+    F -->|Safe results| B
+    B -->|Rendered screens and feedback| A
+```
+
+Next.js App Router hosts UI, route handlers and Server Actions; there is no separate FastAPI backend. React and Tailwind provide presentation. Database code stays server-side.
+
+| Location | Responsibility |
 | --- | --- |
-| `/` | Session-aware landing actions |
-| `/register`, `/login` | Owner authentication; allowed return paths are dashboard/group creation |
-| `/dashboard` | Owned groups, separate owed/owing totals, per-group owner balances, active-member counts and latest five owned-group events |
-| `/groups/new` | Owner-only creation form → POST /api/groups |
-| `/groups/[groupId]` | Ownership checked server-side; active members, latest 10 events and share UI |
-| `/groups/[groupId]/expenses/new` | Owner session and active OWNER GroupMember required; shared expense form |
-| `/g/[shareToken]/expenses/new` | Matching active claimed guest session required; same shared expense form |
-| `/g/[shareToken]` | Invite; existing same-group guests redirect to /group even when sharing is disabled |
-| `/g/[shareToken]/group` | Matching guest session required; failures redirect to invite without private lists |
-| `/g/[shareToken]/joined` | Compatibility redirect to the protected /group destination |
+| `src/app/` | Pages, HTTP routes and actions; explicit owner/guest entry points |
+| `src/components/` | Shared forms, review, history, members and theme controls |
+| `src/data/` | Authorized group, guest, expense, balance, payment and deletion services |
+| `src/lib/auth/` | Credentials, session lifecycle, HTTP validation and safe errors |
+| `src/lib/expenses/`, `src/lib/payments/` | Exact money, validation, allocation and eligibility helpers |
+| `src/prisma/` | Authored contract, generated artifacts and database runtime |
+| `tests/` | Node tests and isolated runtime/database doubles |
 
-Successful claims go directly to the guest group page. Guest sign-out returns to the invite without making the identity claimable again. Invalid token paths use a fixed safe destination. Unexpected protected-group/action failures produce generic messages.
+### Routes and requests
 
-Guest output contains group/current-member identity, active member names/joined status, the latest 50 expenses and up to 10 events ordered by timestamp and ID descending. Allowed events are GROUP_CREATED, MEMBER_CLAIMED, MEMBER_ADDED, MEMBER_REMOVED, EXPENSE_CREATED, PAYMENT_SENT, PAYMENT_RECORDED, PAYMENT_CONFIRMED and PAYMENT_REJECTED. Other event types need an explicit visibility decision. Owner account data and authentication fields are excluded. Expense lists expose only description, amount, payer name, date, ID participant count, split method and participant IDs/names/amounts; inactive payers retain their historical display name.
+| Route | Boundary |
+| --- | --- |
+| `/`, `/register`, `/login` | Session-aware landing and account access; allowed login return paths are dashboard/group creation |
+| `/api/auth/register`, `/api/auth/login`, `/api/auth/logout` | Validated POST endpoints |
+| `/dashboard`, `/groups/new`, `/api/groups` | Owner dashboard and session-derived group creation |
+| `/groups/[groupId]` | Owner-only detail; no `/groups` index exists |
+| `/groups/[groupId]/expenses/new` | Active owner member creates expenses |
+| `/groups/[groupId]/expenses/[expenseId]/[operation]` | Owner edit/delete, scoped to the group |
+| `/groups/[groupId]/payments/[paymentId]/reconcile` | Owner reconciliation |
+| `/g/[shareToken]` | Invite or redirect for an existing same-group guest |
+| `/g/[shareToken]/group`, `/g/[shareToken]/expenses/new` | Protected guest group and expense form |
+| `/g/[shareToken]/joined` | Compatibility redirect to the protected group |
 
-Guest group reads and activity updates share a transaction. lastSeenAt and lastActiveAt each refresh when at least five minutes old; observed-value guards avoid overwriting newer timestamps. No page-view ActivityEvents are created. Guest pages are dynamic and set noindex/no-referrer metadata.
+`POST /api/groups` enforces same origin, JSON content type and a 16 KiB body limit. `requireUser()` supplies the owner ID to `createGroup`; success returns HTTP 201 with only id/name/description/currency/createdAt. Expected failures return safe structured errors; database internals are not exposed. Dashboard projections exclude share tokens; the authorized owner detail service may return one for copying.
 
-## Expense validation, review and persistence
+Owner and guest expense routes deliberately choose their authentication mode; having both cookies never silently switches identity. Server Actions use Next.js action request protection and revalidate identity and input. Guest pages are dynamic with noindex/no-referrer metadata; failed access redirects safely without private lists.
 
-`src/data/expenses.ts` provides a read-only `getExpenseFormContext` service. The owner route explicitly chooses owner authentication; the guest route chooses guest authentication. Having both cookies never silently switches identities. The service resolves credentials itself, checks ownership for owners and same-group membership for both flows, then loads active members in addedAt order with ID as a tie-breaker. Active unclaimed guests remain valid payer/participant options.
+### Session security
 
-The client receives only the group name/currency, current member ID/name and active member IDs/names. Account IDs, session details, share tokens and activity fields are excluded. Disabled invitations preserve existing guest access, following the existing policy. No expense context reads write activity or financial records.
+| Detail | Owner | Guest |
+| --- | --- | --- |
+| Lifetime | Eight hours | 30 days, not extended by activity |
+| Database relationship | UserSession to User | GuestSession to GroupMember |
+| Access | Verified account and Group.createdBy | Matching active, claimed MEMBER with null userId |
+| Sign-out | Revoke browser owner sessions | Revoke browser guest sessions, preserve claimedAt |
 
-Both pages render `ExpenseForm`, with description, amount, a payer select defaulted to the current GroupMember and independent participant checkboxes. Route-bound Server Actions call `previewExpense` to calculate a review. The shared ExpenseReview shows description, total, payer and editable amounts beside participant names. BigInt totals show assigned and remaining amounts; save is disabled unless valid nonnegative shares match the total exactly. Reset to equal restores the server baseline. Participant display order follows the group member list, independently of remainder allocation. Back and edit preserves expense details and starts a new equal split; confirm and save calls `createExpense`, then redirects to the appropriate group page after commit. Pending buttons reduce accidental repeat clicks. Entries are not retained after leaving the page.
+Both session types use 32 random bytes, canonical base64url validation and SHA-256 token hashes in storage. Cookies are separate, host-only, HttpOnly and SameSite=Lax; production uses Secure and `__Host-`. Owner issuance also supports HTTPS development cookies; guests use local cookies outside production. Invalid/expired credentials fail closed. Cookies are cleared only after successful revocation, not mutated during Server Component rendering.
 
-Validation trims descriptions (1–1000 characters), requires a positive GBP amount with at most two decimal places (£0.01–£999,999,999.99), and requires 1–51 distinct participants. Scientific notation, currency symbols, commas, duplicate IDs, malformed IDs, inactive members and foreign-group members are rejected. The payer may be outside the participant selection. Active unclaimed guests may pay or participate. Currency comes from the group; other currencies are rejected in this milestone.
+Registration normalizes email and uses bcrypt cost 12. Passwords are not trimmed; the minimum is 15 characters and maximum 72 UTF-8 bytes. Registration does not issue a session. Logs must never expose passwords, hashes, tokens, cookies or connection strings.
 
-`money.ts` converts decimal text to integer pence with BigInt arithmetic. Equal splitting sorts by ascending GroupMember ID, divides the pence total and gives one extra penny to the first remainder-count members. £10.00 across three members becomes £3.34/£3.33/£3.33, independent of selection order. Tiny totals may produce zero-pence shares (1p across three is 1p/0p/0p). Exact pound strings go to existing Decimal columns; no JavaScript floating-point pound arithmetic is used.
+Guest activity timestamps update at most once per five minutes with observed-value guards against overwriting newer values. These updates do not extend expiry or create page-view events.
 
-Save authenticates again and validates each proposed share: every selected participant must appear exactly once, no additional member is allowed, amounts must be nonnegative decimal strings with at most two places, and their integer-pence sum must equal the expense total. It persists these exact validated amounts. Actor IDs, redirect URLs and previous action state are not trusted. A failed save retains proposed values alongside a freshly authorized review where possible. The confirmation flag expresses the UI action, not authorization. A previously loaded form context is not authority to write financial data.
+### Consistency under simultaneous requests
 
-One `db.transaction` covers validation, the Expense with splitMethod EQUAL when shares match the deterministic baseline, otherwise CUSTOM, every ExpenseParticipant and EXPENSE_CREATED. The event actor is the authenticated GroupMember, which can differ from the chosen payer. A guarded no-op group update locks currency and serializes group expense saves. Selected membership rows are locked in ID order using guarded updateAll calls so they stay active and in-group until commit. Any failed write throws and rolls back all records. Review requests never write records. Locking behaviour still needs live PostgreSQL concurrency verification.
+A transaction groups writes so they all succeed or all roll back. Financial operations take a guarded no-op group-row update before reading or changing the ledger; this obtains a database lock, making cooperating requests wait their turn. Required member rows are locked in ID order. Payment and management operations recheck authentication after waiting. Claiming uses guarded `updateAll()` writes; this Prisma RC's single-row `update()` first resolves an ID and is not used for those guards.
 
-`getExpensesForGroup` in `src/data/groups.ts` is an internal read helper called only after group authorization. It batches payer and participant reads and returns the latest 50 expenses with deterministic date/ID ordering. Both group pages use the same `ExpenseList` component with expandable persisted shares in natural member order. Shared MemberList and ActivityList components provide joined/waiting states, current identity and consistent cards. Responsive group headers put Add expense beside the group identity.
-
-## Member balances and repayments
-
-`src/data/balances.ts` reads complete expenses, batched shares and all payment history. Net = expenses paid - allocated shares + confirmed repayments sent - confirmed repayments received. The existing money parser validates individual amounts; BigInt pence preserves exact aggregate arithmetic beyond the single-expense bound and Number safe-integer limit. Pending/rejected payments have no financial effect. Expense allocations must reconcile; unknown payment statuses, invalid money, duplicates and foreign/missing members produce an unavailable balance state. Historical inactive participants remain included, even when their only history is a payment. No values are silently repaired.
-
-`getLedgerForGroup` is internal, not a public endpoint. Owner/guest group services authorize first, then call it within a transaction (the helper starts one when none is supplied). It takes the same guarded no-op GBP group-row update lock used by expense saves **before** reading expenses, shares and mutable payment statuses. Balances and returned payment history therefore share a consistent financial view under cooperating application writes. `src/data/payments.ts` holds that lock through balance validation, payment mutation and activity recording. Authentication is rechecked after lock acquisition; owner session reads accept the transaction connection to avoid needing another pooled connection while holding a lock.
-
-The installed Prisma RC exposes callback transactions, but no isolation-level option. The group lock serializes finances within a group and is held until commit/rollback; financial page reads therefore issue a no-op UPDATE, with row-lock contention and write overhead. Group/member fields keep the same values. All future expense/payment mutation paths must obey this protocol; direct SQL writers bypassing it are outside this guarantee. Existing expense lists/activity panels are separate reads and are not a whole-page snapshot. Actual PostgreSQL concurrency has not been verified. Full-ledger reads use memory proportional to group history; there is no per-member read query.
-
-Guests report payments only from their authenticated active GroupMember. Owners can record confirmed payments between active members, including unclaimed members. Sender must owe money, recipient must be owed money, both must be in the group and distinct, and amounts must be positive GBP with at most two decimal places. Pending outgoing reports reserve sender debt; pending incoming reports reserve recipient credit. Confirmation excludes its own reservation but checks other reservations and current balances. Stale reports fail without changing their amount; the owner may reject them to release reservations. A matching pending sender/recipient/amount blocks direct recording and guides the owner to confirm the existing report.
-
-Statuses are SENT (Awaiting confirmation), CONFIRMED and REJECTED. Only the owner can move SENT to either terminal status; terminal payments cannot be reversed. Repeated identical decisions succeed without another event. Owners should verify third-party transfers with their recipients. An owner may reject a report involving inactive members, but new payments and confirmations require active sender/recipient/actor records, locked in ID order. Historical confirmed payments continue to count after deactivation.
-
-Creation uses a UUID request key backed by a database unique constraint. A retry checks group, actor, creation mode, sender, recipient and amount against the original record and returns it without another write/event. Reusing a key with different details fails. Forms retain values and key after an error/lost response; a successful save rotates the key. Reloading or opening another form starts a new intent, so a new key is not proof that an external payment happened twice. Pending reservation limits and the equivalent-report check provide additional protection, but the app cannot verify real-world transfers.
-
-Creation, confirmation and rejection write PAYMENT_SENT, PAYMENT_RECORDED, PAYMENT_CONFIRMED or PAYMENT_REJECTED activity with the actual authenticated actor in the same transaction. Guarded status updates prevent repeated application. The payment row retains recorder/reviewer identities and review time. Safe public history omits idempotency and audit identity fields.
-
-`balance-list.tsx` displays prominent net totals and expandable paid/share/sent/received details. It places report/direct forms and pending-report review controls from `payment-panel.tsx` in the relevant member cards. The default export of `payment-panel.tsx` renders a separate history box directly below balances, without duplicate action controls. Payment Server Actions revalidate dashboard, owner and guest group paths; successful client actions refresh the current route. Another open browser must refresh to see changes; there is no live push. SPLITMate records external payments and does not transfer money or suggest settlements.
-
-The payment migration was applied to the configured database on 18 October 2026; schema and contract-marker verification passed. See [database design](database-design.md) for deployment requirements and [testing evidence](tests.md) for the distinction between mocked and live checks.
-
-## Limits and next work
-
-One current guest cookie per browser; no session recovery, identity switching or multi-group guest-session UI. Rate limiting and live database concurrency/rollback testing remain outstanding. Group creation has no server-side idempotency guarantee.
-
-Expense submission has no durable idempotency key: a replay or retry after a lost successful response can create another expense. Pending UI does not guarantee exactly-once saving. Expense editing, percentage splits and transfer suggestions are not implemented. The user has manually verified owner/guest payment flows and dashboard balances. Next: verify PostgreSQL concurrency in a designated test environment and address expense-submission idempotency. See [testing evidence](tests.md), [owner data flow](group-creation.md) and [database design](database-design.md).
-
----
-
-<details>
-<summary>Historical original notes - not current implementation</summary>
-
-## Original notes — preserved
-
-The following notes are retained as originally written. For current implementation status, use the dated update above.
-
-
-![SPLITMate System Architecture](images/system-architecture.png)
-
-## Overview
-
-SplitMate will use a client-server architecture consisting of a web frontend, REST API backend and relational PostgreSQL database.
-
-The frontend will be responsible for presenting the user interface and communicating with the backend through HTTPS requests.
-
-The backend will contain the application's business logic, including expense calculations, balance calculations, group management and payment tracking.
-
-PostgreSQL will provide persistent storage for users, groups, expenses and payments.
-
-## Planned Architecture
-
-The main components are:
-
-* **Frontend:** Next.js, React and TypeScript
-* **Backend:** Python and FastAPI
-* **Database:** PostgreSQL
-* **API:** RESTful API
-* **Version Control:** Git and GitHub
-
-## Data Flow
-
-When a user creates an expense, the frontend sends the expense information to the FastAPI backend through the REST API.
-
-The backend validates the request, calculates the relevant participant shares and stores the expense and participant information in PostgreSQL.
-
-When the user views their group balance, the backend retrieves the relevant expenses and payments and calculates their current net balance.
-
-## Design Considerations
-
-A relational database was selected because SplitMate contains several strongly related entities, including users, groups, expenses, participants and payments.
-
-The application will separate presentation, business logic and data storage to make the system easier to maintain, test and extend.
-
-</details>
-
-### Dashboard financial totals
-
-The dashboard resolves the active OWNER GroupMember by group ID and authenticated user ID, never by name. It reuses `getLedgerForGroup` in sequential single-group transactions, retaining the existing group-lock protocol. Each ledger is consistent; the dashboard is not a simultaneous cross-group snapshot. Full histories feed signed BigInt-pence aggregation, keeping positive and negative group balances separate. Missing/ambiguous owner membership, unsupported currency, invalid ledgers or ledger read failures make both summary totals unavailable. Valid empty ledgers and empty dashboards show zero. Payment actions and expense creation invalidate `/dashboard`; only confirmed repayments affect totals.
-
-### Member-card payment controls and appearance
-
-Server-rendered recipient options use `src/lib/payments/eligibility.ts`, sharing the existing exact reservation calculation with authoritative payment validation. Options exclude inactive/self/non-creditor recipients, deduct pending incoming/outgoing reservations and respect the existing per-payment amount bound. UI eligibility is a snapshot; actions still recheck permissions, balances and reservations under the existing transaction lock. Guests only get their own reporting control; owners get fixed-sender forms on debtor cards. Pending reports stay with their sender, with confirmation eligibility checked separately from rejection. Open forms preserve their request key and values after uncertain failures or cancel/reopen; successful submissions rotate the key. No new financial rules or schema changes were introduced.
-
-The root layout adds a shared appearance header. `src/lib/theme.ts` initializes the theme synchronously in the document head, using a valid `splitmate-theme` localStorage choice or device preference. It follows system changes until an explicit choice exists and synchronizes storage changes between tabs. Storage failures fall back to an in-page preference. Only the root theme attributes differ before hydration. Semantic Tailwind tokens in `globals.css` style existing screens in both themes; green filled buttons retain their brand colour. No theme dependency was added. Real browser layout/keyboard testing remains outstanding because no browser surface was available during implementation.
-
-The theme button now uses native delegated click activation from the head bootstrap, covering touch and keyboard activation before hydration and after navigation without a second React handler. It has a minimum 44px target. Media-query subscription supports both `addEventListener` and legacy `addListener`; lack of a subscription API cannot disable manual selection. The former unconditional `addEventListener` call was reproduced throwing before the toggle handler registered. That confirms a compatibility defect, not the precise cause on the user's uninspected phone.
-
-Member balances use compact shared grid columns, 14px names and 16px right-aligned amounts. Mobile actions wrap below the summary; wider layouts place secondary actions alongside it. Rows have no fixed height or internal scroll area. Breakdown and pending-report disclosures start closed; pending totals are display-only exact-pence sums. Native disclosures keep their children mounted, preserving form values, retry keys and review feedback. Payment history remains a separate box below balances. Financial services and rules are unchanged by this compact-layout update.
+Financial reads also take the group lock, with write overhead and possible contention. The RC exposes callback transactions without an isolation-level option. All future mutation paths must follow the lock and append-only audit convention; direct SQL bypassing it falls outside the guarantee. Lists/activity are separate reads, not a whole-page snapshot. Complete-ledger reads use memory proportional to history. Real PostgreSQL contention and rollback remain unverified; simulated tests are not proof of those behaviours. See [verification scope](tests.md).

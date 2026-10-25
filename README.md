@@ -1,188 +1,51 @@
 # SPLITMate
 
-SPLITMate tracks shared group expenses while keeping accounts optional for guests. The current application uses Next.js App Router, TypeScript, Tailwind CSS, Prisma 8 RC and Prisma-hosted PostgreSQL.
+SPLITMate helps friends track shared expenses and repayments without requiring everyone to create an account. For example, Hamdi can pay for a football pitch, split the cost with the group and see which repayments still need confirmation.
 
-## Current Progress
+Only the group owner needs an account. Guests open a shared link and choose a name the owner has already added. SPLITMate records money paid outside the app; it does not transfer money.
 
-Completed:
+## What you can do
 
-- Owner registration, login and sign-out with hashed, database-backed UserSession authentication.
-- Persisted dashboard/groups and transactional group creation with owner/guest GroupMembers.
-- Owner-only group detail page, member list, recent activity and reusable share-link UI.
-- Owner-only permanent group deletion with an accessible header confirmation, atomic dependent-data cleanup, revoked guest access and refreshed dashboard totals. See [group deletion](docs/group-deletion.md).
-- Public guest invites and concurrency-safe member claiming with MEMBER_CLAIMED logging.
-- Hashed GuestSession authentication and cross-group access isolation.
-- Protected guest group page showing the current identity, active members and recent activity.
-- Throttled guest activity tracking and device sign-out without resetting claimedAt.
-- Shared expense context resolves authenticated owners and guests to active same-group GroupMembers and returns only safe form data.
-- Reusable expense form for both flows: description, amount, current-member payer default and participant checkboxes. Available from each group page.
-- Server-validated equal splitting in integer pence, split review/edit/confirmation, and transactional expense/participant creation with EXPENSE_CREATED logging.
-- Editable custom shares with exact assigned/remaining totals, reset to equal and server validation.
-- Improved owner/guest headers, identity, member states and activity panels.
-- Saved expense lists on owner and guest group pages, including payer, total, date, participant count and expandable split amounts.
-- Owner-only saved expense editing and confirmed deletion, with preserved custom shares, stale-edit protection, atomic activity logging and refreshed balances/dashboard totals. See [expense management](docs/expense-management.md).
-- Owner dashboard shows separate owed/owing totals and each group's owner balance using complete ledgers and confirmed repayments. Unverifiable balances make totals unavailable rather than partial.
-- Complete-ledger GBP balances: expenses paid minus shares, plus confirmed repayments sent minus received.
-- Guest payment reporting, owner confirmation/rejection and direct recording of completed external payments, with idempotency and pending reservations.
-- Payment allocation drafts safely handle blank/intermediate input and successful form reset, with inline errors and unchanged strict validation/idempotent retries. See [allocation behavior and regression](docs/payment-allocations.md).
-- Member-card repayment actions, expandable balance breakdowns and separate payment history on owner/guest pages.
-- Shared light/dark toggle with persisted selection and system-preference fallback across application screens.
-- Compact member rows with collapsed breakdowns/pending reviews and a 44px native theme toggle that works before hydration.
-- Automated verification commands and dated results are recorded in [verification results](docs/tests.md).
+- Create a group, add guest names and share its invitation link.
+- Record GBP expenses with equal or custom shares and see member balances.
+- Report repayments, have the owner confirm or reject them, and review payment history.
+- Associate repayments with expenses and reconcile older payments where evidence supports the association.
+- Edit or remove expenses as owner, or permanently delete an entire group with confirmation.
+- Use owner and guest screens in light or dark mode.
 
-**Next development area: Deployment verification and expense retry safety**
+The [roadmap](docs/dev-roadmap.md) is the authoritative list of completed features, limitations and future work. Implementation does not mean every browser or live-database scenario has been verified; see [testing evidence](docs/tests.md).
 
-Equal/custom splitting, expense persistence and owner editing/deletion are implemented for GBP groups. Explicit payment allocations now associate exact pence with one or more expenses. Deletion retains audit history while excluding only the deleted expense and its allocated repayments; other expenses/payments remain effective. Owners reconcile historical unassociated payments before ambiguous deletion or financial edits. Pending/rejected payments do not change balances. Percentage splits and transfer suggestions remain pending. Browser verification of these management flows remains outstanding.
+## Local setup
 
-**New allocation migration prepared, not applied:** `20261022T2235_expense_payment_allocations` adds PaymentAllocation and Expense.deletedAt. The generated contract requires this schema before running the updated application. Existing payments are not automatically backfilled; unresolved confirmed payments show unavailable balances until owner reconciliation. See [deployment, reconciliation and manual checks](docs/payment-allocations.md). No live schema verification was performed for this change.
+The application uses Next.js App Router, React, TypeScript, Tailwind CSS, Prisma 8 RC and Prisma-hosted PostgreSQL. Next.js runs both the interface and server logic.
 
-**Payment migration applied:** `migrations/app/20261018T0957_payment_reporting/` adds payment idempotency/audit fields. It was applied to the configured database on 18 October 2026; migration status, schema and contract-marker verification passed. Other environments must verify their own migration status. See [database requirements](docs/database-design.md).
+1. Use Node 24 and npm. The test harness relies on Node module hooks.
+2. Install the locked dependencies from the repository root:
 
-## Access model
+   ```powershell
+   npm ci
+   ```
 
-Only the owner needs an account. Guests open a shared link, choose an existing unclaimed name and enter the protected group page. Disabling invitations blocks new claims while existing valid guests retain access. Owner and guest sessions remain separate.
+3. Arrange private environment configuration for the intended database. Application code and Prisma CLI configuration read `DATABASE_URL`; administrative commands explicitly use `DIRECT_URL`. Use the existing pooled application and direct administrative connections. Never print or commit their values. Environment files are ignored; changing sensitive configuration requires approval.
+4. Check the [database deployment requirements](docs/database-design.md#developer-reference). Ordinary setup must not initialize/reset the database, apply migrations or upgrade Prisma. The configured database has reported migration evidence, but another environment must be checked independently before running this code.
+5. Start the development server:
 
-One guest identity is remembered per browser. Signing out, losing or expiring its cookie leaves that member claimed; session recovery is not implemented. Invite links should only be shared with intended members.
+   ```powershell
+   npm run dev
+   ```
 
-## Development
+   Open the local address printed by Next.js. Register an owner account, then sign in to create a group. Use separate browser profiles to try distinct guest identities.
 
-Use Node 24 (the test harness uses Node module hooks), `npm ci` and `npm run dev` with privately configured database connections. Use the locally installed Prisma CLI; do not upgrade the RC packages or apply migrations as part of ordinary setup.
+On Windows, use `npm.cmd` or `npx.cmd` if PowerShell blocks the `.ps1` wrappers. Production build/start commands are `npm run build` and `npm run start`. Builds may need network access for the existing Google Fonts. Verification commands and their scope are in [tests.md](docs/tests.md#commands).
 
-See [tests and verification](docs/tests.md) for commands, coverage, manual evidence and limitations.
+## Reading guide
 
-**Documentation convention:** future milestones must update relevant documentation, this README's progress and `docs/tests.md` whenever behaviour or testing changes.
+| Document | Read or update it for |
+| --- | --- |
+| [Architecture](docs/architecture.md) | Owner/guest journeys, permissions, expenses, balances, repayments and deletion rules |
+| [Database design](docs/database-design.md) | Stored information, relationships, history protection and developer migration procedures |
+| [Roadmap](docs/dev-roadmap.md) | Completed capabilities, limitations, agreed priorities and unprioritised ideas |
+| [Testing](docs/tests.md) | Commands, coverage, reported evidence and outstanding checks |
+| `agents.md` (local repository instructions) | Agent permissions, approval requirements and development safeguards |
 
-## Documentation
-
-- [Architecture, authentication and routing](docs/architecture.md)
-- [Database design](docs/database-design.md)
-- [Group creation and owner reads](docs/group-creation.md)
-- [Project structure](docs/project-structure.md)
-- [Testing](docs/tests.md)
-- [Progress history](docs/progress-report.md) and [roadmap](docs/dev-roadmap.md)
-- [Requirements](docs/requirements.md) and [user stories](docs/user-stories.md)
-
-Original notes and diagrams below are historical, not current implementation guidance.
-
----
-
-<details>
-<summary>Historical original notes - not current implementation</summary>
-
-## Original notes — preserved
-
-The following notes are retained as originally written. For current implementation status, use the dated update above.
-
-
-SplitMate is a group expense management application designed to
-simplify tracking shared expenses and repayments between friends.
-
-See the current development roadmap progress:
-[Development Roadmap](docs/dev-roadmap.md)
-
-## Problem
-
-When a large group participates in an activity, one person may pay
-for everyone. Tracking who owes what through WhatsApp messages,
-notes or spreadsheets can become difficult.
-
-See the user stories:
-[User Stories](docs/user-stories.md)
-
-## Solution
-
-SplitMate maintains a centralised expense ledger that calculates
-individual balances and provides an optimised settlement plan.
-
-## Planned Features
-
-- User accounts
-- Groups
-- Group invitations
-- Shared expenses
-- Equal and unequal splitting
-- Balance calculation
-- Payment tracking
-- Settlement optimisation
-- Notifications
-
-## Planned Technology
-
-Frontend:
-Next.js / React / TypeScript
-
-Backend:
-Python / FastAPI
-
-Database:
-PostgreSQL
-
-Deployment:
-Docker / Cloud infrastructure
-
-CI/CD:
-GitHub Actions
-
-See the planned application requirements:
-[Requirements](docs/requirements.md)
-
-## System Architecture
-
-The following diagram illustrates the planned architecture of SplitMate
-and the communication between the frontend, backend and database.
-
-See the full system architecture documentation:
-[Architecture Design](docs/architecture.md)
-
-![SplitMate System Architecture](docs/images/system-architecture.png)
-
-## Database Design
-
-SplitMate uses PostgreSQL to store users, groups, expenses,
-participants and repayments.
-
-The database follows a relational structure with foreign keys
-used to maintain relationships between users, groups and expenses.
-
-See the full database design documentation:
-[Database Design](docs/database-design.md)
-
-![SplitMate Database ERD](docs/images/database-erd.png)
-
-## Current Progress
-
-SPLITMate is currently in the backend authentication stage.
-
-Completed:
-
-- Project requirements and feature planning
-- Initial system design
-- Database ERD
-- Database schema design
-- Next.js project setup
-- Initial dashboard and group creation pages
-- Prisma and PostgreSQL setup
-- Prisma data contract generation
-- Initial database migration created and applied
-- Database tables, relationships, indexes, and constraints created
-- Database migration status verified
-- Next.js successfully connected to PostgreSQL through Prisma
-- Test user successfully created and retrieved from the database
-- `bcryptjs` installed for password hashing
-- Server-only transactional group creation service; authentication and UI integration are pending ([backend details](docs/group-creation.md))
-
-Currently working on:
-
-- Building the user registration API
-- Validating registration data
-- Hashing user passwords securely
-- Saving registered users to PostgreSQL
-
-Next:
-
-- Implement user login and authentication
-- Connect group creation to the database
-- Add group member functionality
-- Begin expense and payment functionality
-
-</details>
+The local instruction file keeps its existing lowercase filename and ignore policy; it is not a published repository link. Update each document only when its responsibility changes. Do not repeat milestone histories here.

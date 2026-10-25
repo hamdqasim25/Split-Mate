@@ -1,373 +1,188 @@
-# SPLITMate Database Design
+# SPLITMate database design
 
-## Expense payment allocations - 24 October 2026
+The database is the durable record of who belongs to a group, what was paid, each person's share and which repayments the owner has confirmed. It uses PostgreSQL, a relational database: related records are connected by identifiers rather than by matching people's names.
 
-Prepared, **not applied**: `20261022T2235_expense_payment_allocations`, from the payment-reporting contract to storage hash `fac998bb7eb1661f1c59582e8485caee9e1a9532fece05aaa8a55d3a075a44c4`. Offline migration validation passes; the configured database was not migrated or schema-verified in this task. This section supersedes older payment calculation statements below.
+This guide explains the stored information and its protection. The [architecture guide](architecture.md) explains user journeys and financial rules; the [developer reference](#developer-reference) below contains exact source locations and operating procedures.
 
-The authored contract now has ten models. New PaymentAllocation references Payment and Expense, stores exact BigInt `amountPence`, has a unique payment/expense pair, and indexes both foreign keys. Expense gains nullable `deletedAt`; deletion retains rows and shares for audit. Seven additive migration operations create the table, column, unique constraint, indexes and foreign keys. There is no automatic data backfill, deletion or invented historical association.
+## Contents
 
-Positive allocation amounts, totals equal to the original payment, same-group membership and expense payer/participant relationships are validated in the application under the group lock; these are not database CHECK constraints. Confirmed balance effects use only allocations whose expense is not deleted. Unresolved historical confirmed payments make balances unavailable. Pending reservations also exclude deleted allocations. See [allocation semantics and deployment workflow](payment-allocations.md).
+- [What is stored and why](#what-is-stored-and-why)
+- [How records relate](#how-records-relate)
+- [Protecting financial history](#protecting-financial-history)
+- [Developer reference](#developer-reference)
 
-## Repayment migration - 18 October 2026
+## What is stored and why
 
-Applied and verified on the configured database on 18 October 2026: `migrations/app/20261018T0957_payment_reporting/`. The new emitted contract has storage hash `6164bc09235f61a5ae59c7e5d465734a240c6fc0c9f4d8da37a3c1d986e3dbde`; the migration starts from the committed owner-session contract `68a78b5e428f40a6abc3edbcfc0c5467e9dcf2e16fe8552a103abeac5354b988`. The local `db` ref still points to the older initial schema, so planning used the explicit current-contract origin. Existing migrations and the ref were preserved.
+The authored contract currently defines ten models. A model describes a kind of record, such as an expense or member.
 
-Ten additive operations add five nullable Payment columns (`requestKey`, `creationKind`, `recordedByMemberId`, `reviewedByMemberId`, `reviewedAt`), a unique request-key constraint, two audit-member indexes and two foreign keys. Nullability preserves existing rows without inventing historical audit data or keys. All new application creations require a UUID key and recorder. Status remains String; the application enforces SENT -> CONFIRMED/REJECTED or direct CONFIRMED creation. No backfill or destructive operation is included.
+| Model | Information and purpose | Friday Football example |
+| --- | --- | --- |
+| User | Account name, unique email, password hash and creation time | Hamdi's registered account; the password itself is not stored |
+| UserSession | Account link, hashed session token and expiry | Remembers Hamdi's signed-in browser |
+| Group | Name, optional description, currency, owner account, unique share token, sharing flag and creation time | Friday Football, owned by Hamdi, using GBP |
+| GroupMember | Group, display name, optional account link, role, claim/activity times and active state | Ismaeel belongs to Friday Football without an account |
+| Expense | Group, description, amount, payer member, split method, creation time and optional deletion time | Hamdi paid £30 for a pitch |
+| ExpenseParticipant | Expense, member and exact amount owed | Ismaeel's £10 share of that pitch |
+| Payment | Group, sender/recipient members, amount, review state/times, retry key and audit identities | Ismaeel reported sending Hamdi £10 |
+| PaymentAllocation | Payment, expense and exact amount in pence | 1,000 pence of that payment covers the pitch |
+| ActivityEvent | Group, optional acting member, event type, description, affected object and time | Hamdi confirmed Ismaeel's payment |
+| GuestSession | Member link, hashed session token, creation/activity times and expiry | Remembers Ismaeel's claimed identity on one browser |
 
-The schema and migration artifacts were generated with the pinned CLI and passed offline `prisma migration check`. The reviewed migration subsequently applied all ten operations successfully; migration status is up to date, and schema-only plus full schema/marker verification passed. No test financial records were created during verification. Before deploying this code to another environment, review the migration, verify the intended database's actual marker/schema through the normal approved deployment process and apply the appropriate migration path. Index/constraint creation may lock the payment table; schedule deployment accordingly. The emitted contract expects these new fields and must not be treated as deployable against the old schema.
+A password hash is a one-way representation used to verify a password without retaining it. Session token hashes similarly avoid storing the raw browser credentials. Group share tokens are stored as unique tokens; they identify invitations and do not authenticate a particular member.
 
-Balance formula: expenses paid - shares + confirmed sent - confirmed received. Pending/rejected payments do not count. New actions validate same-group active identities, debt/credit and pending reservations under a group-row lock; cross-group integrity and status rules are application checks, not new database CHECK constraints. Financial reads take the same lock so mutable statuses cannot mix snapshots. External SQL must obey the locking protocol to retain this guarantee. Historical unknown statuses are not silently reinterpreted: they make balances unavailable and need explicit investigation. Schema verification confirmed the required payment fields, constraints and indexes.
+A User is not a GroupMember. Hamdi's account can own several groups, each with its own membership identity. Ismaeel's `userId` can be null, meaning no account is linked. All financial relationships point to GroupMember so guest participation never depends on creating an account.
 
-The group owner is the confirmation authority, including transfers between other members; guest recipients cannot confirm. This supersedes the earlier recipient-confirmation plan below. Actual PostgreSQL concurrency behaviour still needs dedicated testing; migration application and schema verification succeeded.
+## How records relate
 
-## Implementation and testing update - 19 September 2026
-
-This earlier section predates the repayment milestone; the update above takes precedence for payment behaviour and migration state. Original notes are preserved separately below as historical material; their older plans and status statements are not current behaviour.
-
-### Completed
-
-The authored source is [`src/prisma/contract.prisma`](../src/prisma/contract.prisma), with generated JSON/types beside it. Prisma-hosted PostgreSQL stores nine models. Integer primary keys auto-increment; timestamps use `TimestamptzString`; money fields use `Decimal`.
-
-| Model | Identity and relationships |
-| --- | --- |
-| User | Account: name, unique email, passwordHash; creates groups |
-| UserSession | Owner-only session: userId, unique tokenHash, createdAt, expiresAt |
-| Group | createdBy references User; name, description, currency, unique shareToken, shareLinkEnabled, createdAt |
-| GroupMember | groupId, nullable userId, name, role, claimedAt, lastActiveAt, isActive, addedAt |
-| ActivityEvent | groupId; optional actor memberId references GroupMember; eventType, description, entityType, entityId, createdAt |
-| GuestSession | Separate guest identity session: groupMemberId, unique tokenHash, createdAt, lastSeenAt, expiresAt |
-| Expense | groupId and paidByMemberId referencing GroupMember; description, amount, splitMethod |
-| ExpenseParticipant | expenseId, memberId referencing GroupMember, amountOwed; unique expense/member pair |
-| Payment | groupId, payerMemberId and receiverMemberId referencing GroupMember; amount, status, sentAt, confirmedAt |
+The arrows below mean "contains or refers to", not a sequence of actions. The same payment can cover several expenses, and one expense can receive several repayments through allocation records.
 
 ```mermaid
-erDiagram
-    User ||--o{ UserSession : authenticates
-    User ||--o{ Group : creates
-    User o|--o{ GroupMember : optionally_links
-    Group ||--o{ GroupMember : contains
-    Group ||--o{ ActivityEvent : records
-    GroupMember o|--o{ ActivityEvent : acts
-    GroupMember ||--o{ GuestSession : identifies
-    Group ||--o{ Expense : contains
-    GroupMember ||--o{ Expense : pays
-    Expense ||--o{ ExpenseParticipant : splits
-    GroupMember ||--o{ ExpenseParticipant : participates
-    Group ||--o{ Payment : contains
-    GroupMember ||--o{ Payment : sends
-    GroupMember ||--o{ Payment : receives
+flowchart TD
+    U[User: registered account] --> US[UserSession: account browser access]
+    U -->|owns| G[Group]
+    U -. optional account link .-> M[GroupMember: person in this group]
+    G --> M
+    M --> GS[GuestSession: guest browser access]
+    G --> E[Expense]
+    M -->|payer| E
+    E --> S[ExpenseParticipant: one member share]
+    M --> S
+    G --> P[Payment]
+    M -->|sender or recipient| P
+    P --> A[PaymentAllocation: pence for an expense]
+    E --> A
+    G --> V[ActivityEvent]
+    M -. optional actor .-> V
 ```
 
-`User` and `GroupMember` are not interchangeable. Guests are created with null `userId` and `claimedAt`; the owner has role OWNER, a User link and a claimed timestamp. One creation transaction writes the Group, members, secure token and GROUP_CREATED event attributed to the owner's GroupMember.
+For a £30 pitch split three ways, the app stores one Expense and three ExpenseParticipant records. A £10 repayment stores a Payment and a PaymentAllocation identifying the pitch. Confirming that payment changes its review state and records activity; it does not erase the original expense or alter the participants' shares.
 
-UserSession and GuestSession are both implemented, with separate cookies and identity checks. Both store SHA-256 token hashes rather than raw tokens. Guest claiming atomically sets claimedAt/lastActiveAt, creates the session and logs MEMBER_CLAIMED. Guest group reads refresh lastSeenAt/lastActiveAt with a five-minute throttle and do not extend expiry. Guest sign-out deletes the browser's session without resetting claimedAt or deleting its GroupMember. See [authentication architecture](architecture.md).
+The database rejects references to missing records and certain duplicates, such as adding the same participant twice to one expense. The application must also check business meaning: an existing member of another group is still an invalid payer for this group's expense. A database relationship alone cannot prove that a caller has permission.
 
-### Constraints and read behaviour
+## Protecting financial history
 
-Unique constraints cover User email, Group shareToken, both session tokenHash fields and the ExpenseParticipant expense/member pair. Member-name uniqueness is validated by the creation service, not a database constraint. Roles/statuses/event types are strings. Foreign keys alone do not enforce every same-group relationship; future financial handlers must validate those relationships.
+### Amounts and audit records
 
-Dashboard reads scope Group.createdBy to the verified owner, count only active GroupMembers and fetch at most five events across owned groups. They never select shareToken. Group has no active/archive field, so the active-group total counts all owned groups.
+Expense amounts, shares and payment totals use exact database Decimal values. Calculations use integer pence; allocation amounts use BigInt, a whole-number type. This prevents fractional rounding errors such as losing a penny during a split. The [balance and allocation rules](architecture.md#understanding-balances) define which amounts count.
 
-### Applied migration history
+Activity records store a structured event type as well as readable text. The type, not the wording, determines the meaning. Related state changes and their activity entries are written together in transactions: either the complete change is saved or none of it is. The acting member can differ from the payer, so the history can explain who entered or reviewed a transaction.
 
-- `20260906T2009_initial_schema`
-- `20260913T2223_guest_members_and_activity`
-- `20260917T1942_owner_user_sessions`
+Payment records retain who recorded/reviewed them and when. Older rows may lack newer audit fields; migrations do not invent missing history. Old payments without expense associations require explicit evidence-based reconciliation. Some historical transfers cannot yet be reconciled; their limitations are explained in [architecture](architecture.md#reconciling-older-payments).
 
-The UserSession migration was reported applied and verified with migration status and schema verification. Group creation was subsequently live-tested; a read-only dashboard query also succeeded. This documentation update does not change or apply migrations and does not repeat a full schema audit.
+### Removing an expense versus removing a group
 
-Use the existing pooled application connection and direct administrative connection as configured privately. Do not edit applied migrations; any future schema change requires a new reviewed migration. Use the pinned local Prisma CLI, not `prisma@latest`.
+| Action | What people see | What remains stored |
+| --- | --- | --- |
+| Delete one expense | It disappears from normal expense lists and calculations | The expense with `deletedAt`, its shares, payment history and identifying activity remain |
+| Permanently delete a group | The group and its access disappear | No group financial/activity history remains; other groups and account records are preserved |
 
-### Next
+Deleting an expense is like crossing an item out while keeping the record of what happened. Linked payments are not erased or refunded. Their allocations to that expense stop affecting balances and pending reservations; allocations to other expenses still count. Excluded allocations are frozen and cannot be reassigned to undo the exclusion. There is no expense restoration path.
 
-Expense creation and splitting, using the existing GroupMember-based financial models. The owner/guest access milestones required no new migration. See the [roadmap](dev-roadmap.md) and [testing limits](tests.md).
+Deleting the whole group is deliberately different: after explicit owner confirmation, the app removes all of that group's dependent records, including soft-deleted expenses and guest sessions. It retains no deletion event within the removed group. Guest cookies on other devices may still exist, but the removed session records make them unusable. No cascading deletion should be introduced casually; the service uses an explicit dependency order.
 
-### Future
+Inactive membership does not erase financial history. Former participants remain represented in historical expenses and calculations. Optional account linking must keep the existing membership and its financial identity.
 
-Expense splitting and balances require deterministic Decimal handling. Repayments use a sender SENT / receiver CONFIRMED lifecycle. These tables do not imply completed financial workflows. Optional account linking must preserve the existing GroupMember and its history.
+## Developer reference
 
-The original ERD below is historical and does not describe today's nine-model contract.
+The contract is the application's blueprint for stored records. Emitting it generates files the runtime and editor use. A migration is a separately reviewed change to the actual database structure; generating a contract does not apply that change.
 
----
+### Authoritative files and configuration
 
-<details>
-<summary>Historical original notes - not current implementation</summary>
+| File | Responsibility |
+| --- | --- |
+| [src/prisma/contract.prisma](../src/prisma/contract.prisma) | Authored schema; authoritative model/field definitions |
+| `src/prisma/contract.json`, `src/prisma/contract.d.ts` | Generated runtime contract and TypeScript types; regenerate and commit with approved schema changes, never hand-edit |
+| [src/prisma/db.ts](../src/prisma/db.ts) | Application runtime using the generated contract and DATABASE_URL |
+| [prisma.config.ts](../prisma.config.ts) | CLI configuration; loads dotenv and defaults its connection to DATABASE_URL |
+| [package.json](../package.json) and package-lock.json | Dependency declarations and exact locked installation |
+| `migrations/app/` | Migration history and local refs |
+| `migrations/snapshots/` | Generated contract snapshots |
 
-## Original notes — preserved
+Use locked dependencies and the locally installed CLI. The documented RC toolchain is `prisma` 8.0.0-rc.13, `@prisma/orm-postgres` 8.0.0-rc.9 and `@prisma/cli-engine` 0.3.0. Package declarations use ranges; `npm ci` respects the lockfile. Do not automatically upgrade Prisma or use `npx prisma@latest`. Next.js configuration does not install an automatic contract-emission plugin; explicitly emit after approved source changes.
 
-The following notes are retained as originally written. For current implementation status, use the dated update above.
+The canonical database is Prisma-hosted PostgreSQL. Use the existing pooled `DATABASE_URL` for application traffic and securely loaded direct `DIRECT_URL` for explicit administrative commands. Do not replace either with localhost, print credentials, commit environment files or alter sensitive configuration without approval. An empty DIRECT_URL is not an acceptable administrative target. The CLI's default configuration is not a substitute for explicitly selecting the intended administrative connection.
 
+### Schema and application constraints
 
-## Overview
+Primary keys are auto-incrementing Int values. Timestamps use `TimestamptzString`. Roles, payment statuses and event types are strings rather than database enums.
 
-SPLITMate uses a relational database to store users, groups, shared expenses, expense participants, and payments between users.
+Unique constraints include User.email, Group.shareToken, both session tokenHash fields, ExpenseParticipant `(expenseId, memberId)`, Payment.requestKey when non-null, and PaymentAllocation `(paymentId, expenseId)`. PaymentAllocation has indexes supporting payment/expense references. Group member display-name uniqueness is an application creation rule, not a database unique constraint.
 
-The database is designed so that:
+The application, under the group lock, enforces positive payment/allocation amounts, exact allocation totals, same-group relationships, expense payer/participant compatibility, permissions, status transitions and reservation capacity. These are not database CHECK constraints. Foreign keys must not be mistaken for those checks.
 
-- users can belong to multiple groups;
-- groups can contain multiple users;
-- expenses belong to a group and record who originally paid;
-- each expense can be split between multiple participants;
-- the amount owed by each participant can be stored individually;
-- repayments between users can be recorded and tracked separately from expenses.
+Expense editing/deletion versions use SHA-256 and include ordered shares and the latest expense audit-event ID. Reconciliation versions include its audit revision. Preserve the append-only activity and locking protocol when adding mutation paths. Financial reads also acquire the group lock; direct SQL writers bypassing this protocol fall outside its consistency guarantee. Real PostgreSQL contention and rollback require further verification, as recorded in [tests.md](tests.md).
 
-This structure keeps the data normalised and separates the original expense from the later payments used to settle balances.
+Permanent group deletion removes GuestSession, PaymentAllocation, ExpenseParticipant, Payment, Expense, ActivityEvent and GroupMember records before Group, within one transaction. It scopes every operation to the group and preserves User/UserSession and other groups. See [group-deletion.ts](../src/data/group-deletion.ts).
 
----
+### Reported migration state
 
-## Entity Relationship Diagram
+This table records previously reported evidence, not a fresh database check and not proof that every environment is migrated.
 
-![SPLITMate Database ERD](./images/database-erd.png)
+| Migration | Purpose | Reported evidence |
+| --- | --- | --- |
+| `20260906T2009_initial_schema` | Initial database | Previously reported applied and verified |
+| `20260913T2223_guest_members_and_activity` | GroupMember financial identities, guests and activity | Previously reported applied and verified; immutable |
+| `20260917T1942_owner_user_sessions` | Owner sessions | Previously reported applied and verified |
+| `20261018T0957_payment_reporting` | Payment retry/audit fields | Applied on the configured database on 18 October 2026; status, schema and full contract-marker verification reported successful |
+| `20261022T2235_expense_payment_allocations` | PaymentAllocation and Expense.deletedAt | Supplied deployment report confirms successful application and schema verification on the configured database; deployment date is not specified in the supplied correction |
 
-The ERD contains six main tables:
+The allocation deployment report supersedes earlier "prepared but unapplied" notes. It does not establish browser behaviour, historical-payment reconciliation or real concurrency/rollback safety. Independently verify another environment before deploying application code that expects these fields.
 
-1. `USERS`
-2. `GROUPS`
-3. `GROUP_MEMBERS`
-4. `EXPENSES`
-5. `EXPENSE_PARTICIPANTS`
-6. `PAYMENTS`
+The payment-reporting migration added ten operations: five nullable audit/idempotency columns, a unique request-key constraint, indexes and foreign keys. The allocation migration added seven operations for the allocation table, deletion timestamp and associated constraints/indexes. Both were additive, preserving existing rows without guessing historical values or associations. Offline migration validation was previously reported passing.
 
----
+Relevant storage hashes for reviewed migration origins/targets:
 
-## Tables
+| Contract stage | Storage hash |
+| --- | --- |
+| Owner sessions | `68a78b5e428f40a6abc3edbcfc0c5467e9dcf2e16fe8552a103abeac5354b988` |
+| Payment reporting | `6164bc09235f61a5ae59c7e5d465734a240c6fc0c9f4d8da37a3c1d986e3dbde` |
+| Expense payment allocations | `fac998bb7eb1661f1c59582e8485caee9e1a9532fece05aaa8a55d3a075a44c4` |
 
-### USERS
+Earlier planning reported that the local `db` ref still pointed to the initial schema and therefore used an explicit current-contract origin. Do not treat a local ref or a historical hash as proof of live state, advance refs blindly or manually mark a migration applied. Inspect the intended database and approved migration path.
 
-Stores account information for each SPLITMate user.
+### Contract and migration workflow
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer / UUID | Primary Key | Unique identifier for the user |
-| `name` | String | Not Null | User's display name |
-| `email` | String | Unique, Not Null | User's email address |
-| `password_hash` | String | Not Null | Securely hashed password |
-| `created_at` | Timestamp | Not Null | Date and time the account was created |
+Never automatically apply a migration. Applied migrations are immutable, especially `20260913T2223_guest_members_and_activity`; future changes require a new migration. Never assume affected tables are empty. Do not reset, truncate, remove or overwrite production data as a shortcut.
 
-A user can create groups, join multiple groups, pay for expenses, participate in expenses, and send or receive payments.
+1. Inspect the authored contract, locked toolchain and actual target environment. Explain proposed file/schema changes and obtain required approval before changing or regenerating files.
+2. Edit only the approved authored contract, then emit generated artifacts:
 
----
+   ```powershell
+   npx.cmd --no-install prisma contract emit
+   ```
 
-### GROUPS
+3. Inspect the emitter output. Generate a new migration plan with the locally installed RC CLI, using a verified origin and reviewed name. Confirm that version's plan/compile options before use; do not copy old `@latest` commands. Review the generated operations, destructive effects, existing data and any transformation/backfill requirements. Compile if needed and inspect the result.
+4. Run offline validation:
 
-Stores information about each expense-sharing group.
+   ```powershell
+   npx.cmd --no-install prisma migration check
+   ```
 
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer / UUID | Primary Key | Unique identifier for the group |
-| `name` | String | Not Null | Name of the group |
-| `description` | String / Text | Nullable | Optional description of the group |
-| `currency` | String | Not Null | Currency used by the group, such as GBP |
-| `created_by` | Integer / UUID | Foreign Key → `USERS.id` | User who created the group |
-| `created_at` | Timestamp | Not Null | Date and time the group was created |
+5. Securely load the intended nonempty DIRECT_URL, inspect migration status and preview the complete intended path. Review prerequisites separately, including locking from indexes/constraints and any reconciliation needed for historical data.
+6. Explain the concrete preview and risks, obtain explicit deployment approval and apply only that approved path. Application code using new fields must not run against the old schema.
+7. Check migration status and schema after application; use full contract-marker verification when required. Restart the development server to load regenerated contracts. Record the environment scope, date, commands/results and remaining limits without credentials.
 
-One user can create multiple groups, while each group has one creator.
+The exact retained allocation-deployment commands below are a reference for an environment that still needs this migration, not an instruction to rerun an already applied migration.
 
----
+Inspect first:
 
-### GROUP_MEMBERS
-
-Junction table used to represent the many-to-many relationship between users and groups.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer / UUID | Primary Key | Unique membership record |
-| `group_id` | Integer / UUID | Foreign Key → `GROUPS.id` | Group the user belongs to |
-| `user_id` | Integer / UUID | Foreign Key → `USERS.id` | User who belongs to the group |
-| `role` | String / Enum | Not Null | User's role within the group, for example `admin` or `member` |
-| `joined_at` | Timestamp | Not Null | Date and time the user joined the group |
-
-Recommended constraint:
-
-```sql
-UNIQUE (group_id, user_id)
+```powershell
+npx.cmd --no-install prisma migration status --db "$env:DIRECT_URL"
+npx.cmd --no-install prisma db migrate --show --to 20261022T2235_expense_payment_allocations --db "$env:DIRECT_URL"
 ```
 
-This prevents the same user from being added to the same group more than once.
+Only after explicit approval and a matching safe preview:
 
----
-
-### EXPENSES
-
-Stores expenses created inside a group.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer / UUID | Primary Key | Unique identifier for the expense |
-| `group_id` | Integer / UUID | Foreign Key → `GROUPS.id` | Group the expense belongs to |
-| `description` | String / Text | Not Null | Description of the expense |
-| `amount` | Decimal | Not Null | Total value of the expense |
-| `paid_by` | Integer / UUID | Foreign Key → `USERS.id` | User who originally paid the expense |
-| `split_method` | String / Enum | Not Null | Method used to split the expense, such as `equal` or `custom` |
-| `created_at` | Timestamp | Not Null | Date and time the expense was created |
-
-A group can contain many expenses, but each expense belongs to one group.
-
-The `paid_by` field records the person who initially covered the cost. The amount owed by each participant is stored separately in `EXPENSE_PARTICIPANTS`.
-
----
-
-### EXPENSE_PARTICIPANTS
-
-Stores the users included in each expense and the amount each person owes.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer / UUID | Primary Key | Unique participant record |
-| `expense_id` | Integer / UUID | Foreign Key → `EXPENSES.id` | Expense being split |
-| `user_id` | Integer / UUID | Foreign Key → `USERS.id` | User included in the expense |
-| `amount_owed` | Decimal | Not Null | Amount allocated to the user |
-| `created_at` | Timestamp | Not Null | Date and time the participant record was created |
-
-Recommended constraint:
-
-```sql
-UNIQUE (expense_id, user_id)
+```powershell
+npx.cmd --no-install prisma db migrate --to 20261022T2235_expense_payment_allocations --db "$env:DIRECT_URL"
+npx.cmd --no-install prisma migration status --db "$env:DIRECT_URL"
+npx.cmd --no-install prisma db verify --schema-only --db "$env:DIRECT_URL"
 ```
 
-This ensures a user only appears once within a particular expense split.
+Full schema/contract-marker verification, when required:
 
-This table also allows SPLITMate to support different splitting methods without changing the main `EXPENSES` table. For example, an expense can be divided equally or each participant can be assigned a custom amount.
-
----
-
-### PAYMENTS
-
-Stores repayments made between members of a group.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer / UUID | Primary Key | Unique identifier for the payment |
-| `group_id` | Integer / UUID | Foreign Key → `GROUPS.id` | Group in which the repayment was made |
-| `payer_id` | Integer / UUID | Foreign Key → `USERS.id` | User sending the payment |
-| `receiver_id` | Integer / UUID | Foreign Key → `USERS.id` | User receiving the payment |
-| `amount` | Decimal | Not Null | Amount being repaid |
-| `status` | String / Enum | Not Null | Current payment state, for example `pending` or `confirmed` |
-| `created_at` | Timestamp | Not Null | Date and time the payment was recorded |
-| `confirmed_at` | Timestamp | Nullable | Date and time the payment was confirmed |
-
-Payments are deliberately kept separate from expenses. An expense records who originally paid for something, while a payment represents money later transferred between users to settle an outstanding balance.
-
-Useful validation rules include:
-
-- `payer_id` must not equal `receiver_id`;
-- `amount` must be greater than zero;
-- both users should be members of the group referenced by `group_id`;
-- `confirmed_at` should remain `NULL` until the payment is confirmed.
-
----
-
-## Relationships
-
-The main relationships in the database are:
-
-| Relationship | Cardinality | Description |
-|---|---|---|
-| `USERS` → `GROUPS` | One-to-Many | One user can create multiple groups |
-| `USERS` → `GROUP_MEMBERS` | One-to-Many | One user can have memberships in multiple groups |
-| `GROUPS` → `GROUP_MEMBERS` | One-to-Many | One group can contain multiple members |
-| `GROUPS` → `EXPENSES` | One-to-Many | One group can contain multiple expenses |
-| `USERS` → `EXPENSES` | One-to-Many | One user can pay for multiple expenses |
-| `EXPENSES` → `EXPENSE_PARTICIPANTS` | One-to-Many | One expense can contain multiple participants |
-| `USERS` → `EXPENSE_PARTICIPANTS` | One-to-Many | One user can participate in multiple expenses |
-| `GROUPS` → `PAYMENTS` | One-to-Many | One group can contain multiple repayment records |
-| `USERS` → `PAYMENTS` (`payer_id`) | One-to-Many | One user can send multiple payments |
-| `USERS` → `PAYMENTS` (`receiver_id`) | One-to-Many | One user can receive multiple payments |
-
-The `GROUP_MEMBERS` table resolves the many-to-many relationship between `USERS` and `GROUPS`, while `EXPENSE_PARTICIPANTS` resolves the many-to-many relationship between `USERS` and `EXPENSES`.
-
----
-
-## Example Data Flow
-
-A typical SPLITMate transaction could work as follows:
-
-1. A user creates a group.
-2. Other users are added through `GROUP_MEMBERS`.
-3. One member pays for a shared activity and creates an `EXPENSES` record.
-4. Each person included in the expense receives an `EXPENSE_PARTICIPANTS` record containing their individual `amount_owed`.
-5. SPLITMate calculates balances from the expense and participant records.
-6. When one user repays another, a `PAYMENTS` record is created.
-7. The repayment can initially have a `pending` status and later be changed to `confirmed`, with `confirmed_at` recording when this happened.
-8. Confirmed payments are included when calculating the group's outstanding balances.
-
----
-
-## Design Decisions
-
-### Separate expenses and repayments
-
-Expenses and repayments represent different events and are therefore stored separately. This avoids changing historical expense records whenever users settle their balances.
-
-### Junction tables for many-to-many relationships
-
-`GROUP_MEMBERS` and `EXPENSE_PARTICIPANTS` prevent repeated data and make the database easier to extend. They also allow additional information to be stored about the relationship itself, such as a member's `role` or a participant's `amount_owed`.
-
-### Group-level currency
-
-Currency is stored on the `GROUPS` table so all expenses and repayments within a group use the same currency. This simplifies balance calculations for the first version of SPLITMate.
-
-### Payment confirmation
-
-The `status` and `confirmed_at` fields allow SPLITMate to distinguish between a payment that has been claimed and one that has actually been confirmed. This helps prevent balances from being changed prematurely.
-
----
-
-## Integrity and Validation
-
-In addition to foreign keys, the application/database should enforce several constraints:
-
-```text
-USERS.email                      must be unique
-GROUP_MEMBERS(group_id,user_id)  must be unique
-EXPENSE_PARTICIPANTS(expense_id,user_id) must be unique
-EXPENSES.amount                  must be > 0
-EXPENSE_PARTICIPANTS.amount_owed must be >= 0
-PAYMENTS.amount                  must be > 0
-PAYMENTS.payer_id                must not equal PAYMENTS.receiver_id
+```powershell
+npx.cmd --no-install prisma db verify --db "$env:DIRECT_URL"
 ```
 
-At application level, SPLITMate should also verify that users referenced by an expense or payment are members of the relevant group.
-
----
-
-## Future Improvements
-
-The current schema is intentionally focused on the first version of SPLITMate. Possible later additions include:
-
-- group invitations;
-- expense categories;
-- receipts or image attachments;
-- comments or notes;
-- payment methods;
-- notifications;
-- audit/history records;
-- support for multiple currencies and exchange rates.
-
-These features can be added later without significantly changing the core database structure.
-
-## Database Implementation
-
-The database design has now moved from the planning stage into implementation.
-
-The schema is being created using SQL and follows the relationships defined in the ERD.
-
-The main tables include:
-
-- Users
-- Groups
-- Group Members
-- Expenses
-- Expense Splits
-- Payments
-
-Primary keys are used to uniquely identify records, while foreign keys maintain relationships between tables.
-
-Constraints will also be used to protect data integrity, including:
-
-- NOT NULL constraints
-- UNIQUE constraints
-- Foreign key constraints
-- CHECK constraints where appropriate
-
-</details>
+For future migrations, select the newly reviewed target rather than reusing this allocation target. Preserve the distinction between an offline migration check, live schema verification and tests of real transactions under load.

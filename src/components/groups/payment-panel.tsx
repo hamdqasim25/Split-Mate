@@ -2,9 +2,13 @@
 
 import { useActionState, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import PaymentAllocationFields from "@/components/groups/payment-allocation-fields";
+import { effectivePaymentPence } from "@/lib/payments/allocations";
+import { formatPence } from "@/lib/expenses/money";
 import { guestPaymentAction, ownerPaymentAction, reviewPaymentAction } from "@/app/actions/payments";
 import { paymentStatusLabel } from "@/lib/payments/types";
-import type { PaymentAccess, PaymentActionState, PaymentHistory } from "@/lib/payments/types";
+import type { PaymentAccess, PaymentActionState, PaymentHistory, PaymentExpense } from "@/lib/payments/types";
 
 type Recipient = { id: number; name: string; maximum: string };
 const control = "mt-1 w-full rounded-lg border border-line bg-surface p-3";
@@ -17,8 +21,8 @@ function focusCard(element: HTMLElement | null) {
   element?.closest("li")?.querySelector<HTMLElement>("h3")?.focus();
 }
 
-export function PaymentForm({ access, recipients, senderId, requestKey }: {
-  access: PaymentAccess; recipients: Recipient[]; senderId: number; requestKey: string;
+export function PaymentForm({ access, recipients, senderId, requestKey, expenses = [] }: {
+  access: PaymentAccess; recipients: Recipient[]; senderId: number; requestKey: string; expenses?: PaymentExpense[];
 }) {
   const router = useRouter();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -71,6 +75,7 @@ export function PaymentForm({ access, recipients, senderId, requestKey }: {
           {values.receiverMemberId && !recipients.some(member => String(member.id) === values.receiverMemberId) && <option value={values.receiverMemberId}>Previously selected recipient (retry)</option>}
         </select></div>
         <div><label htmlFor={prefix + "-amount"}>Amount paid (GBP)</label><input id={prefix + "-amount"} name="amount" required inputMode="decimal" maxLength={32} className={control} value={values.amount} onChange={e => setValues({ ...values, amount: e.target.value })} /></div>
+        <PaymentAllocationFields key={key} prefix={prefix + "-allocation"} amount={values.amount} expenses={expenses.filter(expense => expense.paidByMemberId === Number(values.receiverMemberId) && expense.shares.some(share => share.memberId === senderId))} />
         <div className="flex flex-wrap gap-3">
           <button type="submit" className={button}>{pending ? "Saving..." : owner ? "Record confirmed payment" : "Report payment"}</button>
           <button type="button" className="rounded-lg border border-line px-4 py-3" onClick={() => { setOpen(false); trigger.current?.focus(); }}>Cancel</button>
@@ -97,6 +102,8 @@ export function PaymentReview({ groupId, payment, currentMemberId, canConfirm = 
   }, {});
   const receipt = payment.receiverMemberId === currentMemberId;
   return <form ref={element} action={action} className="mt-3">
+    <input type="hidden" name="allocationVersion" value={payment.allocationVersion ?? ""} />
+    <PaymentAllocations payment={payment} />
     <p className="mb-3 text-sm text-muted">{!canConfirm ? "This report cannot be confirmed against current balances or active members. Check the group; reject an incorrect report." : receipt ? "Confirm only after you have received this money." : "Verify with the recipient that they received this money before confirming."}</p>
     <fieldset disabled={pending} className="flex flex-wrap gap-3"><legend className="sr-only">Review this payment</legend>
       {canConfirm && <button name="decision" value="confirm" className={button}>{pending ? "Saving..." : receipt ? "Confirm receipt" : "Confirm payment"}</button>}
@@ -106,18 +113,33 @@ export function PaymentReview({ groupId, payment, currentMemberId, canConfirm = 
   </form>;
 }
 
-export default function PaymentHistoryList({ payments }: { payments: PaymentHistory[] }) {
+function paymentEffect(payment: PaymentHistory) { try { return effectivePaymentPence(payment); } catch { return null; } }
+
+function PaymentAllocations({ payment }: { payment: PaymentHistory }) {
+  const effective = paymentEffect(payment);
+  return <div className="mt-2 text-sm">
+    {effective === null ? <p className="text-warning">Expense associations need owner reconciliation. Confirmed balances may be unavailable until resolved.</p> : <>
+      <p className="tabular-nums">{effective === BigInt(0) ? "No amount remains to confirm or apply." : `${payment.status === "SENT" ? "Remaining for confirmation" : "Non-excluded amount"}: £${formatPence(effective)}`}</p>
+      <ul className="mt-1 space-y-1">{payment.allocations!.map(allocation => <li key={allocation.expenseId} className="break-words text-xs text-muted">{allocation.description} — £{formatPence(BigInt(allocation.amountPence))}{allocation.excluded ? " — excluded because the expense was deleted" : ""}</li>)}</ul>
+    </>}
+  </div>;
+}
+
+export default function PaymentHistoryList({ payments, ownerGroupId, currentMemberId }: { payments: PaymentHistory[]; ownerGroupId?: number; currentMemberId?: number }) {
   return <section aria-labelledby="payments-heading" className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
     <h2 id="payments-heading" className="text-xl font-semibold">Payment history</h2>
     <p className="mt-2 text-sm text-muted">External payments recorded by your group. SPLITMate does not transfer money.</p>
     {payments.length === 0 ? <p className="mt-3 text-sm text-muted">No repayments recorded yet.</p> : <ul className="mt-3 space-y-4">
       {payments.map(payment => <li key={payment.id} className="rounded-xl border border-line p-4">
         <p className="break-words font-semibold">{payment.payerName} to {payment.receiverName} &mdash; &pound;{payment.amount}</p>
-        <p className="mt-1 text-sm font-semibold">{paymentStatusLabel(payment.status)}</p>
+        <p className="mt-1 text-sm font-semibold">{paymentEffect(payment) === BigInt(0) ? "Excluded — expense deleted" : paymentStatusLabel(payment.status)}</p>
+        <PaymentAllocations payment={payment} />
+        {ownerGroupId && paymentEffect(payment) !== BigInt(0) && <Link href={`/groups/${ownerGroupId}/payments/${payment.id}/reconcile`} className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-accent">{payment.allocations?.length ? "Review expense associations" : "Reconcile expense associations"}</Link>}
+        {ownerGroupId && currentMemberId && payment.status === "SENT" && (paymentEffect(payment) === null || paymentEffect(payment) === BigInt(0)) && <PaymentReview groupId={ownerGroupId} currentMemberId={currentMemberId} payment={payment} canConfirm={false} />}
         <p className="mt-1 break-words text-xs text-muted">Recorded <time dateTime={payment.createdAt}>{payment.createdAt.replace("T", " ").replace(".000Z", " UTC").replace("Z", " UTC")}</time></p>
         {payment.sentAt && <p className="mt-1 break-words text-xs text-muted">Sent <time dateTime={payment.sentAt}>{payment.sentAt.replace("T", " ").replace("Z", " UTC")}</time></p>}
         {payment.confirmedAt && <p className="mt-1 break-words text-xs text-muted">Confirmed <time dateTime={payment.confirmedAt}>{payment.confirmedAt.replace("T", " ").replace("Z", " UTC")}</time></p>}
-        {payment.status === "SENT" && <p className="mt-2 text-sm text-muted">Not yet applied to balances.</p>}
+        {payment.status === "SENT" && paymentEffect(payment) !== BigInt(0) && <p className="mt-2 text-sm text-muted">Non-excluded amounts are not yet applied to balances.</p>}
       </li>)}
     </ul>}
   </section>;

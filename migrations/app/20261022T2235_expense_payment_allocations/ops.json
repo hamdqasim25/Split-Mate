@@ -1,0 +1,287 @@
+[
+  {
+    "id": "table.paymentAllocation",
+    "label": "Create table \"paymentAllocation\"",
+    "summary": "Creates table \"paymentAllocation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "paymentAllocation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"paymentAllocation\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAllocation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"paymentAllocation\"",
+        "sql": "CREATE TABLE \"public\".\"paymentAllocation\" (\n  \"amountPence\" int8 NOT NULL,\n  \"expenseId\" int4 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"paymentId\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"paymentAllocation\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAllocation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.expense.deletedAt",
+    "label": "Add column \"deletedAt\" to \"expense\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deletedAt",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deletedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "deletedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deletedAt\"",
+        "sql": "ALTER TABLE \"public\".\"expense\" ADD COLUMN \"deletedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deletedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "deletedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.paymentAllocation.paymentAllocation_paymentId_expenseId_key",
+    "label": "Add unique constraint on \"paymentAllocation\" (paymentId, expenseId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "paymentAllocation_paymentId_expenseId_key",
+        "table": "paymentAllocation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"paymentAllocation_paymentId_expenseId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAllocation_paymentId_expenseId_key",
+          "public",
+          "\"public\".\"paymentAllocation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"paymentAllocation_paymentId_expenseId_key\"",
+        "sql": "ALTER TABLE \"public\".\"paymentAllocation\" ADD CONSTRAINT \"paymentAllocation_paymentId_expenseId_key\" UNIQUE (\"paymentId\", \"expenseId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"paymentAllocation_paymentId_expenseId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAllocation_paymentId_expenseId_key",
+          "public",
+          "\"public\".\"paymentAllocation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.paymentAllocation.paymentAllocation_expenseId_idx_69d413fa",
+    "label": "Create index \"paymentAllocation_expenseId_idx_69d413fa\" on \"paymentAllocation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "paymentAllocation_expenseId_idx_69d413fa",
+        "table": "paymentAllocation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"paymentAllocation_expenseId_idx_69d413fa\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAllocation_expenseId_idx_69d413fa\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"paymentAllocation_expenseId_idx_69d413fa\"",
+        "sql": "CREATE INDEX \"paymentAllocation_expenseId_idx_69d413fa\" ON \"public\".\"paymentAllocation\" (\"expenseId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"paymentAllocation_expenseId_idx_69d413fa\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAllocation_expenseId_idx_69d413fa\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.paymentAllocation.paymentAllocation_paymentId_idx_b2fe9a10",
+    "label": "Create index \"paymentAllocation_paymentId_idx_b2fe9a10\" on \"paymentAllocation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "paymentAllocation_paymentId_idx_b2fe9a10",
+        "table": "paymentAllocation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"paymentAllocation_paymentId_idx_b2fe9a10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAllocation_paymentId_idx_b2fe9a10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"paymentAllocation_paymentId_idx_b2fe9a10\"",
+        "sql": "CREATE INDEX \"paymentAllocation_paymentId_idx_b2fe9a10\" ON \"public\".\"paymentAllocation\" (\"paymentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"paymentAllocation_paymentId_idx_b2fe9a10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAllocation_paymentId_idx_b2fe9a10\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.paymentAllocation.paymentAllocation_paymentId_fkey",
+    "label": "Add foreign key \"paymentAllocation_paymentId_fkey\" on \"paymentAllocation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "paymentAllocation_paymentId_fkey",
+        "table": "paymentAllocation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"paymentAllocation_paymentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAllocation_paymentId_fkey",
+          "public",
+          "\"public\".\"paymentAllocation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"paymentAllocation_paymentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"paymentAllocation\"\nADD CONSTRAINT \"paymentAllocation_paymentId_fkey\"\nFOREIGN KEY (\"paymentId\")\nREFERENCES \"public\".\"payment\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"paymentAllocation_paymentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAllocation_paymentId_fkey",
+          "public",
+          "\"public\".\"paymentAllocation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.paymentAllocation.paymentAllocation_expenseId_fkey",
+    "label": "Add foreign key \"paymentAllocation_expenseId_fkey\" on \"paymentAllocation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "paymentAllocation_expenseId_fkey",
+        "table": "paymentAllocation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"paymentAllocation_expenseId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAllocation_expenseId_fkey",
+          "public",
+          "\"public\".\"paymentAllocation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"paymentAllocation_expenseId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"paymentAllocation\"\nADD CONSTRAINT \"paymentAllocation_expenseId_fkey\"\nFOREIGN KEY (\"expenseId\")\nREFERENCES \"public\".\"expense\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"paymentAllocation_expenseId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAllocation_expenseId_fkey",
+          "public",
+          "\"public\".\"paymentAllocation\""
+        ]
+      }
+    ]
+  }
+]

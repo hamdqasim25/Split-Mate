@@ -58,7 +58,7 @@ function memberId(value: unknown): number {
   return Number(value);
 }
 
-function validateInput(input: unknown) {
+export function validateExpenseInput(input: unknown) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new ExpenseError("Enter expense details.");
   const values = input as Record<string, unknown>;
   if (Object.keys(values).some(key => !["description", "amount", "paidByMemberId", "participantIds", "shares"].includes(key))) {
@@ -100,7 +100,7 @@ function validateInput(input: unknown) {
 
 /** Save revalidates identities and exact amounts; custom shares are never replaced. */
 async function prepareExpense(access: ExpenseAccess, input: unknown, tx: Client, lock: boolean, owner: Awaited<ReturnType<typeof ownerForAccess>>) {
-  const details = validateInput(input);
+  const details = validateExpenseInput(input);
   let resolved = await resolveExpenseAccess(access, tx, owner);
   if (!resolved) throw new ExpenseError("Your access to this group is unavailable. Reopen the group and try again.");
   if (resolved.group.currency !== "GBP") throw new ExpenseError("Expense creation currently supports GBP groups only.");

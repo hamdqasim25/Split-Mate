@@ -8,6 +8,7 @@ const { claimMember } = await import("../src/data/invites.ts");
 const { setGuestSessionCookie } = await import("../src/lib/auth/guest-session.ts");
 const { default: PaymentPanel, PaymentForm, PaymentReview } = await import("../src/components/groups/payment-panel.tsx");
 const { default: BalanceList } = await import("../src/components/groups/balance-list.tsx");
+const { default: AllocationFields } = await import("../src/components/groups/payment-allocation-fields.tsx");
 const { default: OwnerPage } = await import("../src/app/groups/[groupId]/page.tsx");
 const { default: GuestPage } = await import("../src/app/g/[shareToken]/group/page.tsx");
 const { getLedgerForGroup } = await import("../src/data/balances.ts");
@@ -27,9 +28,10 @@ beforeEach(async () => {
 function form(owner = false) {
   const data = new FormData();
   for (const [key, value] of Object.entries({ requestKey: randomUUID(), receiverMemberId: "10", amount: "5.00", ...(owner ? { payerMemberId: "2" } : {}) })) data.set(key, value);
+  data.set("allocationExpenseId", "1"); data.set("allocationAmount", "5.00");
   return data;
 }
-function decision(value) { const data = new FormData(); data.set("decision", value); return data; }
+async function decision(value) { const data = new FormData(); data.set("decision", value); data.set("allocationVersion", (await getLedgerForGroup(1)).payments[0]?.allocationVersion ?? "missing"); return data; }
 function nodes(tree) {
   if (Array.isArray(tree)) return tree.flatMap(nodes);
   if (!tree || typeof tree !== "object") return [];
@@ -40,14 +42,134 @@ function text(tree) {
   if (tree == null || typeof tree === "boolean") return "";
   return typeof tree === "object" ? text(tree.props?.children) : String(tree);
 }
-const history = (status = "SENT", receiverMemberId = 10) => ({ id: 1, payerMemberId: 2, receiverMemberId, payerName: "Guest", receiverName: "Owner", amount: "5.00", status, createdAt: "2026-10-18T12:00:00.000Z" });
+const history = (status = "SENT", receiverMemberId = 10) => ({ id: 1, payerMemberId: 2, receiverMemberId, payerName: "Guest", receiverName: "Owner", amount: "5.00", allocations: [{ expenseId: 1, amountPence: "500", valid: true, excluded: false }], status, createdAt: "2026-10-18T12:00:00.000Z" });
 const props = owner => ({ access: owner ? { kind: "owner", groupId: 1 } : { kind: "guest", shareToken: token }, recipients: [{ id: 10, name: "Owner", maximum: "10.01" }], senderId: 2, requestKey: randomUUID() });
+
+for (const entered of ["5", "5.0", "5.00"]) test(`football payment allocation ${entered} commits once and renders safely after success/reset`, async () => {
+  state.rows.GroupMember.find(row => row.id === 10).name = "Hamdi Qasim";
+  state.rows.Expense[0].description = "football 24th oct";
+  const options = { ...props(true), recipients: [{ id: 10, name: "Hamdi Qasim", maximum: "5.00" }],
+    expenses: (await getLedgerForGroup(1)).paymentExpenses };
+  let tree = renderWithState(PaymentForm, options);
+  const child = nodes(tree).find(node => node.type === AllocationFields);
+  const preview = AllocationFields({ ...child.props, initial: { 1: entered } });
+  assert.match(text(preview), /Assigned £5.00.*Remaining £0.00/);
+  const data = form(true); data.set("requestKey", options.requestKey); data.set("amount", entered); data.set("allocationAmount", entered);
+  const result = await state.actions.at(-1)({}, data);
+  assert.ok(result.success);
+  // Verify the transaction has committed BEFORE rendering the reset child.
+  assert.equal(state.rows.Payment.length, 1);
+  assert.equal(state.rows.Payment[0].status, "CONFIRMED");
+  assert.equal(state.rows.Payment[0].amount, "5.00");
+  assert.equal(state.rows.PaymentAllocation[0].amountPence, 500n);
+  tree = renderWithState(PaymentForm, options);
+  assert.equal(nodes(tree).find(node => node.type === "form").props.hidden, true);
+  const resetChild = nodes(tree).find(node => node.type === AllocationFields);
+  assert.equal(resetChild.props.amount, "", "the actual reset value passed to the money renderer");
+  assert.notEqual(resetChild.key, child.key, "allocations remount only after acknowledged success");
+  assert.doesNotThrow(() => AllocationFields(resetChild.props));
+  assert.match((await ownerPaymentAction(1, {}, data)).success, /already recorded/);
+  assert.equal(state.rows.Payment.length, 1);
+  assert.equal(state.rows.ActivityEvent.filter(row => row.eventType === "PAYMENT_RECORDED").length, 1);
+});
+
+test("clearing and editing the payment total or recipient keeps rendering safe without writes", () => {
+  const options = props(true);
+  let tree = renderWithState(PaymentForm, options);
+  for (const value of ["", ".", "5.", "5.0", "5.00", "bad", "5.001", "£5", "1,000", "-5", "0", "5"]) {
+    nodes(tree).find(node => node.props.name === "amount").props.onChange({ target: { value } });
+    tree = renderWithState(PaymentForm, options);
+    const child = nodes(tree).find(node => node.type === AllocationFields);
+    const preview = AllocationFields({ ...child.props, initial: { 1: "5" } });
+    assert.equal(child.props.amount, value, "draft must not be normalized or replaced");
+    if (["5", "5.0", "5.00"].includes(value)) assert.match(text(preview), /Remaining £0.00/);
+    else assert.match(text(preview), /Remaining unavailable.*payment amount|Remaining unavailable.*Payment amount/);
+  }
+  nodes(tree).find(node => node.props.name === "receiverMemberId").props.onChange({ target: { value: "" } });
+  tree = renderWithState(PaymentForm, options);
+  assert.doesNotThrow(() => AllocationFields(nodes(tree).find(node => node.type === AllocationFields).props));
+  assert.equal(state.rows.Payment.length, 0);
+});
+
+test("allocation edits retain raw invalid input, flag its field and omit unused blanks", () => {
+  const options = { amount: "5.00", prefix: "draft", expenses: [{ id: 1, description: "football 24th oct" }, { id: 2, description: "Unused" }] };
+  let tree = renderWithState(AllocationFields, options);
+  for (const value of ["5", "", ".", "5.", "5.0", "bad", "5.001", "£5", "1,000", "-5", "0", " ", "5.00"]) {
+    nodes(tree).find(node => node.props.id === "draft-1").props.onChange({ target: { value } });
+    tree = renderWithState(AllocationFields, options);
+    const input = nodes(tree).find(node => node.props.id === "draft-1");
+    assert.equal(input.props.value, value);
+    if (["5", "5.0", "5.00"].includes(value)) {
+      assert.equal(input.props["aria-invalid"], false); assert.match(text(tree), /Assigned £5.00.*Remaining £0.00/);
+    } else if (value === "") {
+      assert.equal(input.props.name, undefined); assert.equal(input.props["aria-invalid"], false);
+      assert.match(text(tree), /Assigned £0.00.*Remaining £5.00/);
+    } else {
+      assert.equal(input.props.name, "allocationAmount", "invalid values still reach strict server validation");
+      assert.equal(input.props["aria-invalid"], true);
+      assert.equal(input.props["aria-describedby"], "draft-1-error");
+      assert.ok(nodes(tree).find(node => node.props.id === "draft-1-error"));
+      assert.match(text(tree), /Assigned unavailable.*Remaining unavailable/);
+    }
+    assert.equal(nodes(tree).find(node => node.props.id === "draft-2").props.name, undefined);
+  }
+});
+
+test("blank unused allocation fields submit no zero allocation and preserve exact pennies", async () => {
+  const options = { amount: "5.00", prefix: "unused", expenses: [{ id: 1, description: "football 24th oct" }, { id: 2, description: "Unused" }], initial: { 1: "5", 2: "" } };
+  const tree = AllocationFields(options);
+  const data = form(true); data.delete("allocationExpenseId"); data.delete("allocationAmount");
+  for (const node of nodes(tree)) if (node.type === "input" && node.props.name) data.append(node.props.name, String(node.props.value));
+  assert.deepEqual(data.getAll("allocationExpenseId"), ["1"]);
+  assert.deepEqual(data.getAll("allocationAmount"), ["5"]);
+  // The action also tolerates explicitly paired blank unused fields.
+  data.append("allocationExpenseId", "2"); data.append("allocationAmount", "");
+  assert.ok((await ownerPaymentAction(1, {}, data)).success);
+  assert.equal(state.rows.PaymentAllocation.length, 1);
+  assert.equal(state.rows.PaymentAllocation[0].amountPence, 500n);
+  assert.equal(state.rows.PaymentAllocation[0].expenseId, 1);
+});
+
+for (const field of ["amount", "allocationAmount"]) for (const value of ["", " ", ".", "5.", "5.001", "£5", "-5", "0"]) test(`server rejects ${field} ${JSON.stringify(value)} without recording or coercing`, async () => {
+  const data = form(true); data.set(field, value);
+  const result = await ownerPaymentAction(1, {}, data);
+  assert.ok(result.error); assert.equal(state.rows.Payment.length, 0); assert.equal(state.rows.PaymentAllocation.length, 0);
+});
+
+test("valid but under/over-allocated drafts keep exact totals and server refuses submission", async () => {
+  for (const value of ["4.99", "5.01"]) {
+    const preview = AllocationFields({ expenses: [{ id: 1, description: "Football" }], amount: "5.00", initial: { 1: value }, prefix: "mismatch" });
+    assert.match(text(preview), value === "4.99" ? /Remaining £0.01/ : /Remaining £-0.01/);
+    const data = form(true); data.set("allocationAmount", value);
+    assert.match((await ownerPaymentAction(1, {}, data)).error, /exactly/);
+  }
+  assert.equal(state.rows.Payment.length, 0);
+});
+
+test("post-commit refresh failure retains the same request and retry records no second payment", async () => {
+  const options = props(true); let tree = renderWithState(PaymentForm, options);
+  nodes(tree).find(node => node.props.name === "amount").props.onChange({ target: { value: "5.00" } });
+  tree = renderWithState(PaymentForm, options);
+  const data = form(true); data.set("requestKey", options.requestKey); data.set("allocationAmount", "5");
+  const original = console.error; console.error = () => {};
+  state.revalidated = { push() { throw new Error("Simulated refresh failure after commit"); } };
+  try { assert.ok((await state.actions.at(-1)({}, data)).error); }
+  finally { console.error = original; state.revalidated = []; }
+  assert.equal(state.rows.Payment.length, 1, "response error does not undo a committed payment");
+  tree = renderWithState(PaymentForm, options);
+  assert.equal(nodes(tree).find(node => node.props.name === "requestKey").props.value, options.requestKey);
+  assert.equal(nodes(tree).find(node => node.props.name === "amount").props.value, "5.00");
+  assert.match((await state.actions.at(-1)({}, data)).success, /already recorded/);
+  tree = renderWithState(PaymentForm, options);
+  assert.doesNotThrow(() => AllocationFields(nodes(tree).find(node => node.type === AllocationFields).props));
+  assert.equal(state.rows.Payment.length, 1); assert.equal(state.rows.PaymentAllocation.length, 1);
+});
 
 test("guest report action refreshes both views, pending leaves balances unchanged, owner confirmation refreshes again", async () => {
   const reported = await guestPaymentAction(token, {}, form());
   assert.match(reported.success, /Awaiting owner confirmation/);
   assert.deepEqual(state.revalidated, ["/dashboard", "/groups/1", `/g/${token}/group`]);
-  const reviewed = await reviewPaymentAction(1, 1, {}, decision("confirm"));
+  const reviewed = await reviewPaymentAction(1, 1, {}, await decision("confirm"));
   assert.ok(reviewed.success);
   assert.equal(state.rows.Payment[0].status, "CONFIRMED");
   assert.equal(state.revalidated.length, 6);
@@ -63,8 +185,8 @@ test("direct action records confirmed external payment and idempotent retry succ
 
 test("action rejection is visible and repeated review does not duplicate activity", async () => {
   await guestPaymentAction(token, {}, form());
-  assert.ok((await reviewPaymentAction(1, 1, {}, decision("reject"))).success);
-  assert.match((await reviewPaymentAction(1, 1, {}, decision("reject"))).success, /already reviewed/);
+  assert.ok((await reviewPaymentAction(1, 1, {}, await decision("reject"))).success);
+  assert.match((await reviewPaymentAction(1, 1, {}, await decision("reject"))).success, /already reviewed/);
   assert.equal(state.rows.Payment[0].status, "REJECTED");
   assert.equal(state.rows.ActivityEvent.filter(event => event.eventType === "PAYMENT_REJECTED").length, 1);
 });
@@ -76,7 +198,7 @@ test("actions reject impersonation, duplicate fields, file fields and unauthoriz
   const file = form(); file.set("amount", new Blob(["1"]), "amount.txt");
   assert.ok((await guestPaymentAction(token, {}, file)).error);
   state.cookies.delete("splitmate_owner_session");
-  assert.ok((await reviewPaymentAction(1, 1, {}, decision("confirm"))).error);
+  assert.ok((await reviewPaymentAction(1, 1, {}, await decision("confirm"))).error);
   assert.equal(state.rows.Payment.length, 0);
 });
 
@@ -111,7 +233,7 @@ test("guest has no sender selector or confirmation controls; labels explain exte
   assert.match(text(view), /I've paid.*outside SPLITMate.*owner must confirm/s);
   const panel = PaymentPanel({ ...props(false), payments: [history()], available: true });
   assert.equal(nodes(panel).filter(node => node.type === PaymentReview).length, 0);
-  assert.match(text(panel), /Awaiting confirmation.*Not yet applied/);
+  assert.match(text(panel), /Awaiting confirmation.*not yet applied/);
 });
 
 test("owner controls distinguish receipt from verification with another recipient", () => {
@@ -185,7 +307,7 @@ test("guest actions are restricted to their own card; owner actions fix each eli
 });
 
 test("full pending reservation explains waiting and places owner review only in sender card", async () => {
-  const data = form(); data.set("amount", "10.01");
+  const data = form(); data.set("amount", "10.01"); data.set("allocationAmount", "10.01");
   await guestPaymentAction(token, {}, data);
   const ledger = await getLedgerForGroup(1);
   const guest = BalanceList({ ...ledger, access: { kind: "guest", shareToken: token }, currentMemberId: 2 });
@@ -203,7 +325,7 @@ test("eligibility shares exact outgoing/incoming reservations with validation an
   const ledger = await getLedgerForGroup(1);
   ledger.balances.members.push({ ...ledger.balances.members[1], id: 30, name: "Other creditor", net: "3.00" });
   ledger.balances.members.find(member => member.id === 10).net = "7.01";
-  const pending = { ...history(), amount: "2.01" };
+  const pending = { ...history(), amount: "2.01", allocations: [{ expenseId: 1, amountPence: "201", valid: true, excluded: false }] };
   const options = paymentOptions(ledger.balances, [pending], 2);
   assert.deepEqual(options.map(row => [row.id, row.maximum]), [[10, "5.00"], [30, "3.00"]]);
   assert.equal(canConfirmPayment(ledger.balances, [pending], pending), true);

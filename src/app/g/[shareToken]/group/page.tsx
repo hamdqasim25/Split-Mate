@@ -51,7 +51,7 @@ export default async function GuestGroupPage({ params }: { params: Promise<{ sha
         </header>
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <div className="min-w-0 space-y-6">
-            <BalanceList balances={result.balances} access={{ kind: "guest", shareToken }} currentMemberId={currentGuest.id} payments={result.payments} />
+            <BalanceList balances={result.balances} access={{ kind: "guest", shareToken }} currentMemberId={currentGuest.id} payments={result.payments} paymentExpenses={result.paymentExpenses} />
             <PaymentPanel payments={result.payments} />
             <section aria-labelledby="expenses-heading" className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
               <h2 id="expenses-heading" className="text-xl font-semibold">Expenses</h2>

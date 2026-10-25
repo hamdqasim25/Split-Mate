@@ -1,4 +1,4 @@
-export type ExpenseMember = { id: number; name: string };
+export type ExpenseMember = { id: number; name: string; isActive?: boolean; payerEligible?: boolean; participantEligible?: boolean };
 
 export type ExpenseAccess =
   | { kind: "owner"; groupId: number }

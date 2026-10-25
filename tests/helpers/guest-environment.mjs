@@ -11,7 +11,7 @@ export function reset() {
     rows: {
       Group: [{ id: 1, name: "Football", currency: "GBP", shareToken: token, shareLinkEnabled: true, createdBy: 7 }],
       GroupMember: [{ id: 2, groupId: 1, name: "Jaher", role: "MEMBER", userId: null, claimedAt: null, isActive: true }],
-      GuestSession: [], ActivityEvent: [], User: [], UserSession: [], Expense: [], ExpenseParticipant: [], Payment: [],
+      GuestSession: [], ActivityEvent: [], User: [], UserSession: [], Expense: [], ExpenseParticipant: [], Payment: [], PaymentAllocation: [],
     },
     cookies: new Map(), cookieWrites: [], failAt: null, reads: 0, readOperations: [], writes: [], commits: 0, rollbacks: 0,
     actionState: { error: "" }, pending: false, revalidated: [], createCalls: 0, failCreateAt: null,
@@ -24,21 +24,28 @@ const fieldProxy = new Proxy({}, { get: (_, key) => ({
   asc: () => ({ key, direction: 1 }),
   desc: () => ({ key, direction: -1 }),
 }) });
-function collection(model, getRows, fields, filters = [], order = [], limit = Infinity) {
+function collection(model, getRows, fields, filters = [], order = [], limit = Infinity, includes = []) {
   const predicate = value => typeof value === "function" ? value(fieldProxy)
-    : row => Object.entries(value).every(([key, expected]) => row[key] === expected);
+    : row => Object.entries(value).every(([key, expected]) => expected === null ? row[key] == null : row[key] === expected);
   const matches = row => filters.every(filter => filter(row));
-  const project = row => row && (fields ? Object.fromEntries(fields.map(key => [key, row[key]])) : { ...row });
+  const project = row => row && { ...(fields ? Object.fromEntries(fields.map(key => [key, row[key]])) : row),
+    ...Object.fromEntries(includes.map(([relation, callback]) => {
+      if (model !== "Group" || relation !== "members") throw new Error("Unsupported test relation");
+      return [relation, callback(collection("GroupMember", getRows).where({ groupId: row.id }))];
+    })),
+  };
   function fail(operation) {
     state.operations.push(`${model}.${operation}`);
     if (state.failAt === `${model}.${operation}`) throw new Error("PRIVATE_DATABASE_DETAILS");
   }
   return {
-    select: (...keys) => collection(model, getRows, keys, filters, order, limit),
-    where: value => collection(model, getRows, fields, [...filters, predicate(value)], order, limit),
+    select: (...keys) => collection(model, getRows, keys, filters, order, limit, includes),
+    where: value => collection(model, getRows, fields, [...filters, predicate(value)], order, limit, includes),
+    include: (relation, callback) => collection(model, getRows, fields, filters, order, limit, [...includes, [relation, callback]]),
+    count: () => getRows()[model].filter(matches).length,
     orderBy: callbacks => collection(model, getRows, fields, filters,
-      (Array.isArray(callbacks) ? callbacks : [callbacks]).map(callback => callback(fieldProxy)), limit),
-    limit: value => collection(model, getRows, fields, filters, order, value),
+      (Array.isArray(callbacks) ? callbacks : [callbacks]).map(callback => callback(fieldProxy)), limit, includes),
+    limit: value => collection(model, getRows, fields, filters, order, value, includes),
     async first(value = {}) {
       state.reads++; fail("first");
       state.readOperations.push(`${model}.first`);
@@ -68,18 +75,24 @@ function collection(model, getRows, fields, filters = [], order = [], limit = In
       const index = rows.findIndex(matches);
       return index < 0 ? null : project(rows.splice(index, 1)[0]);
     },
+    async deleteAll() {
+      fail("deleteAll"); state.writes.push(`${model}.deleteAll`);
+      const removed = getRows()[model].filter(matches);
+      getRows()[model] = getRows()[model].filter(row => !matches(row));
+      return removed.map(project);
+    },
     async create(values) {
       fail("create");
       if (model === "Payment" && values.requestKey && getRows()[model].some(row => row.requestKey === values.requestKey)) throw new Error("Duplicate payment request key");
       state.createCalls++;
       if (state.createCalls === state.failCreateAt) throw new Error("PRIVATE_DATABASE_DETAILS");
-      const row = { id: getRows()[model].length + 1, ...values };
+      const row = { id: Math.max(0, ...getRows()[model].map(row => row.id ?? 0)) + 1, ...values };
       getRows()[model].push(row); return project(row);
     },
   };
 }
 function orm(getRows) {
-  return { public: Object.fromEntries(["Group", "GroupMember", "GuestSession", "ActivityEvent", "User", "UserSession", "Expense", "ExpenseParticipant", "Payment"].map(model => [model, collection(model, getRows)])) };
+  return { public: Object.fromEntries(["Group", "GroupMember", "GuestSession", "ActivityEvent", "User", "UserSession", "Expense", "ExpenseParticipant", "Payment", "PaymentAllocation"].map(model => [model, collection(model, getRows)])) };
 }
 export const db = {
   orm: orm(() => state.rows),
@@ -125,7 +138,7 @@ export function installHooks() {
     resolve(specifier, context, next) {
       if (specifier === "server-only") return { url: "data:text/javascript,export {};", shortCircuit: true };
       if (["@/prisma/db", "next/headers", "next/navigation", "next/link", "next/cache"].includes(specifier)
-        || (specifier === "react" && ["claim-member-form.tsx", "guest-sign-out.tsx", "expense-form.tsx", "expense-review.tsx", "share-link.tsx", "payment-panel.tsx"].some(file => context.parentURL?.endsWith(file)))) {
+        || (specifier === "react" && ["delete-group-button.tsx", "claim-member-form.tsx", "guest-sign-out.tsx", "expense-form.tsx", "expense-review.tsx", "delete-expense-form.tsx", "payment-allocation-fields.tsx", "payment-reconciliation-form.tsx", "share-link.tsx", "payment-panel.tsx"].some(file => context.parentURL?.endsWith(file)))) {
         return { url: import.meta.url, shortCircuit: true };
       }
       if (specifier.startsWith("@/")) {

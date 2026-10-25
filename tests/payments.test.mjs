@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { beforeEach, test } from "node:test";
 import { db, installHooks, reset, state, token } from "./helpers/guest-environment.mjs";
 const hooks = installHooks();
-const { createPayment, reviewPayment } = await import("../src/data/payments.ts");
+const { createPayment, reviewPayment: reviewPaymentService } = await import("../src/data/payments.ts");
 const { calculateBalances, getBalancesForGroup, getLedgerForGroup } = await import("../src/data/balances.ts");
 const { createExpense } = await import("../src/data/expenses.ts");
 const { getGroupForOwner } = await import("../src/data/groups.ts");
@@ -25,7 +25,11 @@ beforeEach(async () => {
   state.rows.ExpenseParticipant.push({ id: 1, expenseId: 1, memberId: 2, amountOwed: "20.01" });
   state.rows.ActivityEvent = [];
 });
-const input = (patch = {}) => ({ receiverMemberId: "10", amount: "10.00", requestKey: randomUUID(), ...patch });
+const input = (patch = {}) => ({ receiverMemberId: "10", amount: "10.00", requestKey: randomUUID(), allocations: [{ expenseId: "1", amount: patch.amount ?? "10.00" }], ...patch });
+async function reviewPayment(access, id, decision) {
+  const version = access.kind === "owner" ? (await getLedgerForGroup(access.groupId)).payments.find(row => row.id === Number(id))?.allocationVersion : undefined;
+  return reviewPaymentService(access, id, decision, version);
+}
 const direct = (patch = {}) => input({ payerMemberId: "2", ...patch });
 function net(result, id) { assert.equal(result.status, "ready"); return result.members.find(member => member.id === id).net; }
 function zeroSum(result) {
@@ -153,7 +157,7 @@ test("same request retries before and after confirmation create one payment and 
   assert.equal((await createPayment(guest, proposal)).replay, true);
   assert.equal(state.rows.Payment.length, 1);
   assert.deepEqual(state.rows.ActivityEvent.map(row => row.eventType), ["PAYMENT_SENT", "PAYMENT_CONFIRMED"]);
-  await assert.rejects(createPayment(guest, { ...proposal, amount: "9" }), /different payment details/);
+  await assert.rejects(createPayment(guest, { ...proposal, amount: "9", allocations: [{ expenseId: "1", amount: "9" }] }), /different payment details/);
   await assert.rejects(createPayment(owner, { ...proposal, payerMemberId: "2" }), /different payment details/);
 });
 
@@ -253,7 +257,8 @@ for (const failure of ["Payment.updateAll", "ActivityEvent.create"]) test(`confi
 
 test("consistent ledger reads bracket a simulated mutable payment transition", async () => {
   await createPayment(guest, input());
-  const [before, , after] = await Promise.all([getLedgerForGroup(1), reviewPayment(owner, "1", "confirm"), getLedgerForGroup(1)]);
+  const version = (await getLedgerForGroup(1)).payments[0].allocationVersion;
+  const [before, , after] = await Promise.all([getLedgerForGroup(1), reviewPaymentService(owner, "1", "confirm", version), getLedgerForGroup(1)]);
   assert.equal(before.payments[0].status, "SENT");
   assert.equal(net(before.balances, 2), "-20.01");
   assert.equal(after.payments[0].status, "CONFIRMED");
@@ -276,6 +281,7 @@ test("session expiring during simulated group lock wait is rejected", async () =
 
 test("complete payment history exceeds 50 and owner/guest balances agree without leaking keys", async () => {
   state.rows.Payment = Array.from({ length: 60 }, (_, i) => ({ id: i + 1, groupId: 1, payerMemberId: 2, receiverMemberId: 10, amount: "0.01", status: "CONFIRMED", createdAt: "2026-01-01", requestKey: randomUUID(), recordedByMemberId: 10 }));
+  state.rows.PaymentAllocation = state.rows.Payment.map(payment => ({ id: payment.id, paymentId: payment.id, expenseId: 1, amountPence: 1n }));
   const ownerGroup = await getGroupForOwner(7, 1);
   const guestGroup = await getGroupForGuest(token);
   assert.deepEqual(ownerGroup.balances, guestGroup.balances);
@@ -307,6 +313,7 @@ test("confirmed aggregate repayments retain exact pence beyond Number safe integ
   const expenses = Array.from({ length: 100001 }, (_, i) => ({ id: i + 1, paidByMemberId: 1, amount: "999999999.99" }));
   const shares = expenses.map(row => ({ expenseId: row.id, memberId: 2, amountOwed: row.amount }));
   const payments = expenses.map(row => ({ id: row.id, payerMemberId: 2, receiverMemberId: 1, amount: row.amount, status: "CONFIRMED" }));
+  for (const payment of payments) payment.allocations = [{ expenseId: payment.id, amountPence: "99999999999", excluded: false, valid: true }];
   const balances = calculateBalances(members, expenses, shares, payments);
   zeroSum(balances);
   assert.equal(balances.members[1].sent, "100000999998999.99");

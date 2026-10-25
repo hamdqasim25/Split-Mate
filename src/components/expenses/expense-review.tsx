@@ -4,8 +4,9 @@ import { useState } from "react";
 import { splitTotals } from "@/lib/expenses/money";
 import type { ExpenseInput, ExpenseReview as Review } from "@/lib/expenses/types";
 
-export default function ExpenseReview({ input, review, action, pending, error }: {
+export default function ExpenseReview({ input, review, action, pending, error, editing = false }: {
   input: ExpenseInput; review: Review; action: (data: FormData) => void; pending: boolean; error?: string;
+  editing?: boolean;
 }) {
   const [amounts, setAmounts] = useState(() => Object.fromEntries(review.participants.map(member => [
     member.id, input.shares?.find(share => share.memberId === String(member.id))?.amount ?? member.amount,
@@ -60,7 +61,7 @@ export default function ExpenseReview({ input, review, action, pending, error }:
         <button name="intent" value="edit" formNoValidate disabled={pending} className="rounded-xl border border-line px-5 py-3 font-semibold disabled:opacity-50">Back and edit</button>
         <button name="intent" value="save" disabled={pending || !totals.balanced} className="rounded-xl bg-emerald-800 px-5 py-3 font-semibold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50">{pending ? "Saving…" : "Confirm & Save"}</button>
       </div>
-      <p className="text-xs text-muted">Changing expense details starts a new equal split. Nothing is saved until you confirm.</p>
+      <p className="text-xs text-muted">{editing ? "Existing shares are kept for selected members. New participants start at zero. Adjust the remaining amount or choose Reset to equal split. Repayments remain recorded. Nothing is saved until you confirm." : "Changing expense details starts a new equal split. Nothing is saved until you confirm."}</p>
     </form>
   );
 }

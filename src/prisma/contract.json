@@ -32,6 +32,10 @@
       "model": "Payment",
       "namespace": "public"
     },
+    "paymentAllocation": {
+      "model": "PaymentAllocation",
+      "namespace": "public"
+    },
     "user": {
       "model": "User",
       "namespace": "public"
@@ -183,6 +187,13 @@
                   "kind": "scalar"
                 }
               },
+              "deletedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
               "description": {
                 "nullable": false,
                 "type": {
@@ -264,6 +275,21 @@
                   "model": "GroupMember",
                   "namespace": "public"
                 }
+              },
+              "paymentAllocations": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "expenseId"
+                  ]
+                },
+                "to": {
+                  "model": "PaymentAllocation",
+                  "namespace": "public"
+                }
               }
             },
             "storage": {
@@ -273,6 +299,9 @@
                 },
                 "createdAt": {
                   "column": "createdAt"
+                },
+                "deletedAt": {
+                  "column": "deletedAt"
                 },
                 "description": {
                   "column": "description"
@@ -994,6 +1023,21 @@
               }
             },
             "relations": {
+              "allocations": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "paymentId"
+                  ]
+                },
+                "to": {
+                  "model": "PaymentAllocation",
+                  "namespace": "public"
+                }
+              },
               "group": {
                 "cardinality": "N:1",
                 "on": {
@@ -1117,6 +1161,88 @@
               },
               "namespaceId": "public",
               "table": "payment"
+            }
+          },
+          "PaymentAllocation": {
+            "fields": {
+              "amountPence": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "expenseId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "paymentId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "expense": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "expenseId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Expense",
+                  "namespace": "public"
+                }
+              },
+              "payment": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "paymentId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Payment",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "amountPence": {
+                  "column": "amountPence"
+                },
+                "expenseId": {
+                  "column": "expenseId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "paymentId": {
+                  "column": "paymentId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "paymentAllocation"
             }
           },
           "User": {
@@ -1446,6 +1572,11 @@
                   },
                   "nativeType": "timestamptz",
                   "nullable": false
+                },
+                "deletedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
                 },
                 "description": {
                   "codecId": "pg/text@1",
@@ -2165,6 +2296,99 @@
                 }
               ]
             },
+            "paymentAllocation": {
+              "columns": {
+                "amountPence": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "expenseId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "paymentId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "paymentId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "paymentAllocation"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "payment"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "expenseId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "paymentAllocation"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "expense"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "expenseId"
+                  ],
+                  "name": "paymentAllocation_expenseId_idx_69d413fa",
+                  "prefix": "paymentAllocation_expenseId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "paymentId"
+                  ],
+                  "name": "paymentAllocation_paymentId_idx_b2fe9a10",
+                  "prefix": "paymentAllocation_paymentId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "paymentId",
+                    "expenseId"
+                  ]
+                }
+              ]
+            },
             "user": {
               "columns": {
                 "createdAt": {
@@ -2307,7 +2531,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "6164bc09235f61a5ae59c7e5d465734a240c6fc0c9f4d8da37a3c1d986e3dbde"
+    "storageHash": "fac998bb7eb1661f1c59582e8485caee9e1a9532fece05aaa8a55d3a075a44c4"
   },
   "capabilities": {
     "postgres": {

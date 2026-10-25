@@ -8,7 +8,7 @@ import type { SavedExpense } from "@/lib/expenses/types";
 
 /** Internal read: call only after authorizing access to this group. */
 export async function getExpensesForGroup(groupId: number, client: Pick<typeof db, "orm"> = db): Promise<SavedExpense[]> {
-  const expenses = await client.orm.public.Expense.where({ groupId })
+  const expenses = await client.orm.public.Expense.where({ groupId, deletedAt: null })
     .select("id", "description", "amount", "paidByMemberId", "createdAt", "splitMethod")
     .orderBy([(expense) => expense.createdAt.desc(), (expense) => expense.id.desc()]).limit(50).all();
   if (expenses.length === 0) return [];

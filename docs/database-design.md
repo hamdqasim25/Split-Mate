@@ -1,5 +1,13 @@
 # SPLITMate Database Design
 
+## Expense payment allocations - 24 October 2026
+
+Prepared, **not applied**: `20261022T2235_expense_payment_allocations`, from the payment-reporting contract to storage hash `fac998bb7eb1661f1c59582e8485caee9e1a9532fece05aaa8a55d3a075a44c4`. Offline migration validation passes; the configured database was not migrated or schema-verified in this task. This section supersedes older payment calculation statements below.
+
+The authored contract now has ten models. New PaymentAllocation references Payment and Expense, stores exact BigInt `amountPence`, has a unique payment/expense pair, and indexes both foreign keys. Expense gains nullable `deletedAt`; deletion retains rows and shares for audit. Seven additive migration operations create the table, column, unique constraint, indexes and foreign keys. There is no automatic data backfill, deletion or invented historical association.
+
+Positive allocation amounts, totals equal to the original payment, same-group membership and expense payer/participant relationships are validated in the application under the group lock; these are not database CHECK constraints. Confirmed balance effects use only allocations whose expense is not deleted. Unresolved historical confirmed payments make balances unavailable. Pending reservations also exclude deleted allocations. See [allocation semantics and deployment workflow](payment-allocations.md).
+
 ## Repayment migration - 18 October 2026
 
 Applied and verified on the configured database on 18 October 2026: `migrations/app/20261018T0957_payment_reporting/`. The new emitted contract has storage hash `6164bc09235f61a5ae59c7e5d465734a240c6fc0c9f4d8da37a3c1d986e3dbde`; the migration starts from the committed owner-session contract `68a78b5e428f40a6abc3edbcfc0c5467e9dcf2e16fe8552a103abeac5354b988`. The local `db` ref still points to the older initial schema, so planning used the explicit current-contract origin. Existing migrations and the ref were preserved.

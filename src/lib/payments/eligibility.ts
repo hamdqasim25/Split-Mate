@@ -1,7 +1,8 @@
 import "server-only";
 import type { GroupBalances } from "@/data/balances";
 import type { PaymentRecord } from "@/lib/payments/types";
-import { formatPence, MAX_PENCE, parsePence } from "@/lib/expenses/money";
+import { formatPence, MAX_PENCE } from "@/lib/expenses/money";
+import { effectivePaymentPence, pendingPaymentPence } from "@/lib/payments/allocations";
 
 /** Shared by authoritative validation and server-rendered options. Canonical
  * ledger decimals are exact, signed aggregates, not rounded display amounts. */
@@ -11,8 +12,8 @@ export function paymentCapacity(senderNet: string, receiverNet: string, payments
   let outgoing = BigInt(0), incoming = BigInt(0);
   for (const payment of payments) {
     if (payment.status !== "SENT" || payment.id === excludeId) continue;
-    if (payment.payerMemberId === senderId) outgoing += BigInt(parsePence(payment.amount));
-    if (payment.receiverMemberId === receiverId) incoming += BigInt(parsePence(payment.amount));
+    if (payment.payerMemberId === senderId) outgoing += pendingPaymentPence(payment);
+    if (payment.receiverMemberId === receiverId) incoming += pendingPaymentPence(payment);
   }
   return { debt, credit, availableDebt: debt - outgoing, availableCredit: credit - incoming };
 }
@@ -31,6 +32,8 @@ export function paymentOptions(balances: GroupBalances, payments: PaymentRecord[
 }
 
 export function canConfirmPayment(balances: GroupBalances, payments: PaymentRecord[], payment: PaymentRecord) {
+  const effective = effectivePaymentPence(payment);
+  if (effective === null || effective <= BigInt(0)) return false;
   const option = paymentOptions(balances, payments, payment.payerMemberId, payment.id).find(row => row.id === payment.receiverMemberId);
-  return !!option && BigInt(parsePence(payment.amount)) <= BigInt(option.maximum.replace(".", ""));
+  return !!option && effective <= BigInt(option.maximum.replace(".", ""));
 }

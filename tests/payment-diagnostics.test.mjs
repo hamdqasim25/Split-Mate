@@ -46,6 +46,7 @@ test("guest action logs missing-column failure while keeping browser error gener
   t.mock.method(db, "transaction", async () => { throw sqlError("42703"); });
   const form = new FormData();
   for (const [key, value] of Object.entries({ requestKey: "11111111-1111-4111-8111-111111111111", receiverMemberId: "10", amount: "1.00" })) form.set(key, value);
+  form.set("allocationExpenseId", "1"); form.set("allocationAmount", "1.00");
   const result = await guestPaymentAction(privateText, {}, form);
   assert.equal(result.error, "Unable to record the payment. Retry this same form to avoid a duplicate.");
   assert.deepEqual(log.mock.calls[0].arguments[1].codes, ["42703"]);
@@ -57,7 +58,7 @@ test("review action logs lock failure while keeping browser error generic", asyn
   reset();
   const log = t.mock.method(console, "error", () => {});
   t.mock.method(db, "transaction", async () => { throw sqlError("40P01"); });
-  const form = new FormData(); form.set("decision", "confirm");
+  const form = new FormData(); form.set("decision", "confirm"); form.set("allocationVersion", "test-version");
   assert.match((await reviewPaymentAction(1, 1, {}, form)).error, /Unable to review/);
   assert.deepEqual(log.mock.calls[0].arguments[1].codes, ["40P01"]);
   assert.equal(log.mock.calls[0].arguments[1].operation, "review");

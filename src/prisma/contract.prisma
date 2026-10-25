@@ -79,10 +79,12 @@ model Expense {
   paidByMemberId Int
   splitMethod    String
   createdAt      TimestamptzString @default(now())
+  deletedAt      TimestamptzString?
 
   group        Group                @relation(fields: [groupId], references: [id])
   payer        GroupMember          @relation("ExpensePayer", fields: [paidByMemberId], references: [id])
   participants ExpenseParticipant[]
+  paymentAllocations PaymentAllocation[]
 
   @@index([groupId])
   @@index([paidByMemberId])
@@ -124,10 +126,24 @@ model Payment {
   receiver GroupMember @relation("PaymentReceiver", fields: [receiverMemberId], references: [id])
   recorder GroupMember? @relation("PaymentRecorder", fields: [recordedByMemberId], references: [id])
   reviewer GroupMember? @relation("PaymentReviewer", fields: [reviewedByMemberId], references: [id])
+  allocations PaymentAllocation[]
 
   @@index([groupId])
   @@index([payerMemberId])
   @@index([receiverMemberId])
+}
+
+model PaymentAllocation {
+  id          Int @id @default(autoincrement())
+  paymentId   Int
+  expenseId   Int
+  amountPence BigInt
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+  expense Expense @relation(fields: [expenseId], references: [id])
+
+  @@unique([paymentId, expenseId])
+  @@index([expenseId])
 }
 
 model ActivityEvent {

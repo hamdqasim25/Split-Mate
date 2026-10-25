@@ -124,7 +124,7 @@ for (const kind of ["owner", "guest"]) test(`${kind} group page presents current
   state.rows.GroupMember[0].addedAt = "2026-09-02";
   const tree = await (kind === "owner" ? OwnerPage({ params: Promise.resolve({ groupId: "1" }) }) : GuestPage({ params: Promise.resolve({ shareToken: token }) }));
   assert.match(text(tree), kind === "owner" ? /You're here as Owner/ : /You're joined as Jaher/);
-  const cta = nodes(tree).find(node => text(node) === "Add expense");
+  const cta = nodes(tree).find(node => node.props?.href && text(node) === "Add expense");
   assert.ok(cta.props.className.includes("bg-emerald-800"));
   const memberNode = nodes(tree).find(node => node.type === MemberList);
   assert.deepEqual(memberNode.props.members.map(member => member.id), [10, 2]);

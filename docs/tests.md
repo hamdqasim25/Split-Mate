@@ -1,5 +1,37 @@
 # SPLITMate Testing
 
+## Payment allocation render/reset crash — 25 October 2026
+
+All **609 tests pass** (`node --test --test-reporter=dot tests/*.test.mjs`), alongside `npm.cmd run lint`, `npx.cmd --no-install tsc --noEmit --incremental false` and `npm.cmd run build`.
+
+Added 24 regression cases in `payment-ui.test.mjs`. The original code reproduced the exact RangeError for all of `5`, `5.0` and `5.00`: the payment was committed before the hidden allocation child rendered the reset total `""`. The fixed component safely renders draft blanks/intermediate/invalid values with inline feedback. Tests cover unused blank allocations, strict invalid-submission rejection, exact mismatches, reset and retry after a simulated post-commit refresh failure without duplicate records. Server money parsing and request-key behavior remain unchanged. See [cause and fix](payment-allocations.md#payment-form-reset-fix--25-october-2026).
+
+Verification uses isolated database and React doubles, including explicit child renders after the parent resets. Actual browser interactions and the user's live payment status were not verified. No live records, migrations or secrets were modified; no commit or push was made.
+
+## Owner-only group deletion - 24 October 2026
+
+Added 34 isolated tests in `group-deletion.test.mjs` for authorization, transaction cleanup/rollback, preservation of other groups/accounts, session/link revocation, dashboard totals, action refresh/redirect and accessible confirmation/pending/error behavior. The existing expense-page test now selects the actual Add expense link rather than its new containing action row. See [group deletion design and manual checks](group-deletion.md).
+
+All **585 tests pass** with `node --test --test-reporter=spec tests/*.test.mjs`. `npm.cmd run lint`, `npx.cmd --no-install tsc --noEmit --incremental false`, `npm.cmd run build` and `git diff --check` pass. Browser inventory reports no available surface; real focus, layout in both themes and PostgreSQL contention remain unverified. No live records were deleted, no migration was applied, and existing work was preserved.
+
+## Expense payment allocations - 24 October 2026
+
+All **551 tests pass** with `node --test --test-reporter=dot tests/*.test.mjs`. Full `npm.cmd run lint`, `npx.cmd --no-install tsc --noEmit --incremental false` and `npm.cmd run build` pass after the final application change. The sandboxed build initially failed fetching existing Google Fonts; the network-enabled build passed. Offline `npx.cmd --no-install prisma migration check` passed. No migration was applied or live financial data changed; live schema verification remains outstanding.
+
+New `payment-allocations.test.mjs` coverage includes full/partial settlement deletion, multi-expense and unrelated allocations, pending/confirmed/rejected states, exact sums and invalid/cross-group inputs, complete histories beyond display limits, owner-only historical reconciliation, stale/ABA versions, frozen exclusions, expense edit compatibility, rollback, repeated deletion, request-key replay, serialized confirmation/deletion races, refresh paths and UI fields/history. An excluded pending report cannot block an unrelated new payment through its original amount. Existing payment, dashboard and expense-management tests now use explicit associations.
+
+Tests use database and React doubles. Browser tooling reported no available surface; actual forms, focus, mobile layout and real PostgreSQL contention remain manual checks. The migration is prepared, not deployed. See [deployment and manual checklist](payment-allocations.md).
+
+The checkpoints below are historical. In particular, the earlier saved-expense checkpoint's retained repayment balance effects and lack of schema changes are superseded by this allocation implementation.
+
+## Saved expense management — 22 October 2026
+
+New `expense-management.test.mjs` coverage exercises owner-only reads/mutations, guest and cross-group rejection, exact custom/equal shares, changed totals and participants, historical inactive references, retained repayment statuses, deletion/cancellation, stale and duplicate edits, serialized edit/delete races, atomic rollback, activity, route draft versions and owner/guest/dashboard refresh paths. Dashboard assertions include mutation of an expense outside the newest 50 displayed entries. Existing creation and repayment tests remain in the full suite.
+
+Final verification: all **512 tests pass** (`node --test --test-reporter=dot tests/*.test.mjs`), full `npm run lint` passes without warnings, `npx --no-install tsc --noEmit --incremental false` passes, and the production build passes. The initial sandboxed build could not fetch the existing Google Fonts; the network-enabled build passed, including a final build after the last source change. Staged/unstaged whitespace checks and a separate scan of new files pass.
+
+The browser inventory has no available surface: real edit/review/save, delete/cancel, keyboard/touch and mobile/desktop rendering in both themes remain unverified. Tests use database doubles, not live PostgreSQL contention. No live financial records, schema, migrations or generated contract files were changed. See the [manual checklist and design](expense-management.md).
+
 ## Mobile toggle and compact rows — 21 October 2026
 
 All 472 tests pass. New coverage reproduces the legacy media-query API failure and checks native activation without hydration, navigation-replaced controls, single toggles per click, missing subscription APIs, collapsed pending reviews, aligned compact row markup and form-intent preservation across disclosure-related renders. Lint, TypeScript and production build pass; staged/unstaged whitespace checks pass. No financial services or live records were changed in this follow-up.

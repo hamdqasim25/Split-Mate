@@ -9,6 +9,7 @@ Completed:
 - Owner registration, login and sign-out with hashed, database-backed UserSession authentication.
 - Persisted dashboard/groups and transactional group creation with owner/guest GroupMembers.
 - Owner-only group detail page, member list, recent activity and reusable share-link UI.
+- Owner-only permanent group deletion with an accessible header confirmation, atomic dependent-data cleanup, revoked guest access and refreshed dashboard totals. See [group deletion](docs/group-deletion.md).
 - Public guest invites and concurrency-safe member claiming with MEMBER_CLAIMED logging.
 - Hashed GuestSession authentication and cross-group access isolation.
 - Protected guest group page showing the current identity, active members and recent activity.
@@ -19,17 +20,21 @@ Completed:
 - Editable custom shares with exact assigned/remaining totals, reset to equal and server validation.
 - Improved owner/guest headers, identity, member states and activity panels.
 - Saved expense lists on owner and guest group pages, including payer, total, date, participant count and expandable split amounts.
+- Owner-only saved expense editing and confirmed deletion, with preserved custom shares, stale-edit protection, atomic activity logging and refreshed balances/dashboard totals. See [expense management](docs/expense-management.md).
 - Owner dashboard shows separate owed/owing totals and each group's owner balance using complete ledgers and confirmed repayments. Unverifiable balances make totals unavailable rather than partial.
 - Complete-ledger GBP balances: expenses paid minus shares, plus confirmed repayments sent minus received.
 - Guest payment reporting, owner confirmation/rejection and direct recording of completed external payments, with idempotency and pending reservations.
+- Payment allocation drafts safely handle blank/intermediate input and successful form reset, with inline errors and unchanged strict validation/idempotent retries. See [allocation behavior and regression](docs/payment-allocations.md).
 - Member-card repayment actions, expandable balance breakdowns and separate payment history on owner/guest pages.
 - Shared light/dark toggle with persisted selection and system-preference fallback across application screens.
 - Compact member rows with collapsed breakdowns/pending reviews and a 44px native theme toggle that works before hydration.
-- Automated testing: **472 tests passing**; see [verification results](docs/tests.md).
+- Automated verification commands and dated results are recorded in [verification results](docs/tests.md).
 
 **Next development area: Deployment verification and expense retry safety**
 
-Equal/custom splitting and expense persistence are implemented for GBP groups. The server calculates shares for review, revalidates on confirmation and saves all records together. Balances include confirmed repayments and inactive historical members. Pending/rejected payments do not change balances. Expense editing, percentage splits and transfer suggestions remain pending.
+Equal/custom splitting, expense persistence and owner editing/deletion are implemented for GBP groups. Explicit payment allocations now associate exact pence with one or more expenses. Deletion retains audit history while excluding only the deleted expense and its allocated repayments; other expenses/payments remain effective. Owners reconcile historical unassociated payments before ambiguous deletion or financial edits. Pending/rejected payments do not change balances. Percentage splits and transfer suggestions remain pending. Browser verification of these management flows remains outstanding.
+
+**New allocation migration prepared, not applied:** `20261022T2235_expense_payment_allocations` adds PaymentAllocation and Expense.deletedAt. The generated contract requires this schema before running the updated application. Existing payments are not automatically backfilled; unresolved confirmed payments show unavailable balances until owner reconciliation. See [deployment, reconciliation and manual checks](docs/payment-allocations.md). No live schema verification was performed for this change.
 
 **Payment migration applied:** `migrations/app/20261018T0957_payment_reporting/` adds payment idempotency/audit fields. It was applied to the configured database on 18 October 2026; migration status, schema and contract-marker verification passed. Other environments must verify their own migration status. See [database requirements](docs/database-design.md).
 

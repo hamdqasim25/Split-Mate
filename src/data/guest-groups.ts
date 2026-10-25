@@ -22,7 +22,7 @@ export async function getGroupForGuest(shareToken: unknown) {
       .select("id", "name", "claimedAt")
       .orderBy([(member) => member.addedAt.asc(), (member) => member.id.asc()]).all();
     const activity = await tx.orm.public.ActivityEvent.where({ groupId: group.id })
-      .where((event) => event.eventType.in(["GROUP_CREATED", "MEMBER_CLAIMED", "MEMBER_ADDED", "MEMBER_REMOVED", "EXPENSE_CREATED", "PAYMENT_SENT", "PAYMENT_CONFIRMED", "PAYMENT_REJECTED", "PAYMENT_RECORDED"]))
+      .where((event) => event.eventType.in(["GROUP_CREATED", "MEMBER_CLAIMED", "MEMBER_ADDED", "MEMBER_REMOVED", "EXPENSE_CREATED", "EXPENSE_UPDATED", "EXPENSE_DELETED", "PAYMENT_SENT", "PAYMENT_CONFIRMED", "PAYMENT_REJECTED", "PAYMENT_RECORDED", "PAYMENT_RECONCILED", "PAYMENT_ALLOCATION_EXCLUDED"]))
       .select("id", "description", "createdAt")
       .orderBy([(event) => event.createdAt.desc(), (event) => event.id.desc()])
       .limit(10).all();

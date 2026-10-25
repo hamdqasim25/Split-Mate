@@ -54,7 +54,7 @@ function collection(model, options = {}) {
       });
       if (options.limit !== undefined) rows = rows.slice(0, options.limit);
       return rows.map(row => ({
-        ...Object.fromEntries(options.selection.map(key => [key, row[key]])),
+        ...Object.fromEntries((options.selection ?? Object.keys(row)).map(key => [key, row[key]])),
         ...(options.memberCount && { members: state.rows.GroupMember.filter(member =>
           member.groupId === row.id && options.memberCount.filters.every(predicate => predicate(member))).length }),
       }));
@@ -63,7 +63,7 @@ function collection(model, options = {}) {
 }
 function assertLock() { if (!state.inTransaction) throw new Error('Ledger read outside transaction'); }
 export const db = {
-  orm: { public: Object.fromEntries(['Group', 'GroupMember', 'ActivityEvent', 'Expense', 'ExpenseParticipant', 'Payment'].map(model => [model, collection(model)])) },
+  orm: { public: Object.fromEntries(['Group', 'GroupMember', 'ActivityEvent', 'Expense', 'ExpenseParticipant', 'Payment', 'PaymentAllocation'].map(model => [model, collection(model)])) },
   async transaction(fn) {
     if (state.inTransaction) throw new Error('Parallel or nested transaction');
     state.inTransaction = true;
@@ -103,7 +103,7 @@ beforeEach(() => {
   state.user = { id: 7, name: "Test Owner" };
   state.failure = null;
   state.rows = {
-    Expense: [], ExpenseParticipant: [], Payment: [],
+    Expense: [], ExpenseParticipant: [], Payment: [], PaymentAllocation: [],
     Group: [
       { id: 1, createdBy: 7, name: "Older group", description: null, currency: "GBP", createdAt: "2026-09-01T12:00:00Z", shareToken: "secret-token" },
       { id: 2, createdBy: 7, name: "Newest group", description: "A real description", currency: "GBP", createdAt: "2026-09-02T12:00:00Z", shareToken: "secret-token" },
@@ -209,6 +209,7 @@ function expense(groupId, amount, negative = false) {
 function payment(groupId, amount, status, outgoing = false) {
   state.rows.Payment.push({ id: state.rows.Payment.length + 1, groupId, amount, status,
     payerMemberId: groupId * 10 + Number(!outgoing), receiverMemberId: groupId * 10 + Number(outgoing) });
+  state.rows.PaymentAllocation.push({ paymentId: state.rows.Payment.at(-1).id, expenseId: state.rows.Expense.filter(row => row.groupId === groupId).at(-1).id, amountPence: BigInt(amount.replace(".", "")) });
 }
 
 test("valid empty ledgers show zero totals and Even cards", async () => {

@@ -187,6 +187,13 @@
                   "kind": "scalar"
                 }
               },
+              "creationDetails": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "deletedAt": {
                 "nullable": true,
                 "type": {
@@ -219,6 +226,13 @@
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "requestKey": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
@@ -300,6 +314,9 @@
                 "createdAt": {
                   "column": "createdAt"
                 },
+                "creationDetails": {
+                  "column": "creationDetails"
+                },
                 "deletedAt": {
                   "column": "deletedAt"
                 },
@@ -314,6 +331,9 @@
                 },
                 "paidByMemberId": {
                   "column": "paidByMemberId"
+                },
+                "requestKey": {
+                  "column": "requestKey"
                 },
                 "splitMethod": {
                   "column": "splitMethod"
@@ -1573,6 +1593,11 @@
                   "nativeType": "timestamptz",
                   "nullable": false
                 },
+                "creationDetails": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "deletedAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "nativeType": "timestamptz",
@@ -1601,6 +1626,11 @@
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
                   "nullable": false
+                },
+                "requestKey": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "splitMethod": {
                   "codecId": "pg/text@1",
@@ -1665,7 +1695,13 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "requestKey"
+                  ]
+                }
+              ]
             },
             "expenseParticipant": {
               "columns": {
@@ -2531,7 +2567,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "fac998bb7eb1661f1c59582e8485caee9e1a9532fece05aaa8a55d3a075a44c4"
+    "storageHash": "dfd283667c844905489cdf3e034958389cc0af92b12d02e338a546205b9dda0d"
   },
   "capabilities": {
     "postgres": {

@@ -101,17 +101,11 @@ export function validateExpenseInput(input: unknown) {
 /** Save revalidates identities and exact amounts; custom shares are never replaced. */
 async function prepareExpense(access: ExpenseAccess, input: unknown, tx: Client, lock: boolean, owner: Awaited<ReturnType<typeof ownerForAccess>>) {
   const details = validateExpenseInput(input);
-  let resolved = await resolveExpenseAccess(access, tx, owner);
+  const resolved = await resolveExpenseAccess(access, tx, owner);
   if (!resolved) throw new ExpenseError("Your access to this group is unavailable. Reopen the group and try again.");
   if (resolved.group.currency !== "GBP") throw new ExpenseError("Expense creation currently supports GBP groups only.");
   if (lock) {
-    // Serialize group expense writes and hold currency stable until commit.
-    // updateAll retains its WHERE guards in this Prisma RC.
-    const [group] = await tx.orm.public.Group.where({ id: resolved.group.id, currency: "GBP" })
-      .select("id").updateAll({ currency: "GBP" });
-    if (!group) throw new ExpenseError("The group has changed. Please review the expense again.");
-    resolved = await resolveExpenseAccess(access, tx, owner);
-    if (!resolved) throw new ExpenseError("Your access to this group is unavailable. Reopen the group and try again.");
+    // createExpense already holds the group lock and has revalidated access.
     const requiredIds = [...new Set([resolved.member.id, details.payerId, ...details.ids])].sort((a, b) => a - b);
     // Keep selected members active and in-group until commit. Consistent lock
     // order avoids competing expense writes acquiring locks in opposite orders.
@@ -150,14 +144,36 @@ export async function previewExpense(access: ExpenseAccess, input: unknown) {
   });
 }
 
-export async function createExpense(access: ExpenseAccess, input: unknown) {
-  const owner = await ownerForAccess(access);
+export async function createExpense(access: ExpenseAccess, input: unknown, requestKey: unknown) {
+  validateExpenseRequestKey(requestKey);
+  const details = validateExpenseInput(input);
   return db.transaction(async (tx) => {
+    // Resolve the session on this connection, then revalidate after the group lock.
+    let owner = access?.kind === "owner" ? await getCurrentUser(tx) : null;
+    const initial = await resolveExpenseAccess(access, tx, owner);
+    if (!initial) throw new ExpenseError("Your access to this group is unavailable. Reopen the group and try again.");
+    const [locked] = await tx.orm.public.Group.where({ id: initial.group.id, currency: "GBP" }).select("id").updateAll({ currency: "GBP" });
+    if (!locked) throw new ExpenseError("Expense creation currently supports GBP groups only.");
+    owner = access.kind === "owner" ? await getCurrentUser(tx) : null;
+    const resolved = await resolveExpenseAccess(access, tx, owner);
+    if (!resolved || resolved.group.id !== initial.group.id) throw new ExpenseError("Your access to this group is unavailable. Reopen the group and try again.");
+    const amounts = details.shares ?? new Map(equalSplit(details.totalPence, details.ids).map(share => [share.memberId, share.pence]));
+    // Creation-only immutable snapshot: never compare against mutable saved fields.
+    const creationDetails = JSON.stringify({ version: 1, groupId: resolved.group.id, actorId: resolved.member.id,
+      description: details.input.description, amountPence: details.totalPence, payerId: details.payerId,
+      shares: [...amounts].sort(([a], [b]) => a - b) });
+    const previous = await tx.orm.public.Expense.select("id", "groupId", "creationDetails").first({ requestKey });
+    if (previous) {
+      if (previous.groupId !== resolved.group.id || previous.creationDetails !== creationDetails) {
+        throw new ExpenseError("This request was already used for different expense details. Return to the group to start another expense.");
+      }
+      return { id: previous.id, groupId: previous.groupId };
+    }
     const { group, member, review, splitMethod } = await prepareExpense(access, input, tx, true, owner);
     const createdAt = new Date().toISOString();
     const expense = await tx.orm.public.Expense.select("id").create({
       groupId: group.id, description: review.description, amount: review.amount,
-      paidByMemberId: review.payer.id, splitMethod, createdAt,
+      paidByMemberId: review.payer.id, splitMethod, createdAt, requestKey, creationDetails,
     });
     for (const participant of review.participants) {
       await tx.orm.public.ExpenseParticipant.create({
@@ -171,4 +187,10 @@ export async function createExpense(access: ExpenseAccess, input: unknown) {
     });
     return { id: expense.id, groupId: group.id };
   });
+}
+
+export function validateExpenseRequestKey(value: unknown): asserts value is string {
+  if (typeof value !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) {
+    throw new ExpenseError("The expense request is missing or invalid. Return to the group and open a new expense form.");
+  }
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isValidToken } from "@/lib/auth/tokens";
@@ -28,7 +29,7 @@ export default async function GuestExpensePage({ params }: { params: Promise<{ s
         <Link href={`/g/${shareToken}/group`} className="text-sm font-semibold text-accent">Back to group</Link>
         <h1 className="mt-8 text-3xl font-semibold">Add expense</h1>
         <p className="mt-3 break-words text-muted">{context.group.name}</p>
-        <ExpenseForm context={context} action={guestExpenseAction.bind(null, shareToken)} />
+        <ExpenseForm context={context} action={guestExpenseAction.bind(null, shareToken)} requestKey={randomUUID()} />
       </div>
     </main>
   );

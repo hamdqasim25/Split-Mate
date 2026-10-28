@@ -29,7 +29,7 @@ beforeEach(async () => {
   await setGuestSessionCookie(await claimMember(token, 2));
   await expense("20.00");
 });
-const expense = (amount, description = "Court") => createExpense(owner, { description, amount, paidByMemberId: "10", participantIds: ["2"] });
+const expense = (amount, description = "Court") => createExpense(owner, { description, amount, paidByMemberId: "10", participantIds: ["2"] }, randomUUID());
 const proposal = (amount = "20.00", allocations = [{ expenseId: "1", amount }]) => ({ payerMemberId: "2", receiverMemberId: "10", amount, allocations, requestKey: randomUUID() });
 async function report(amount = "20.00", allocations) { const input = proposal(amount, allocations); delete input.payerMemberId; return createPayment(guest, input); }
 const payment = async (id = 1) => (await getLedgerForGroup(1)).payments.find(row => row.id === id);

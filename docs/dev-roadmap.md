@@ -16,12 +16,14 @@ The product principle remains: only the owner needs an account. Guests should be
 | Balances | See complete-ledger balances, effective confirmed repayment effects, historical inactive members and explicit unavailable states when records cannot be reconciled |
 | Repayments | Guests report their own external transfers; owners confirm/reject or directly record completed payments, including between other members |
 | Retry-safe payments | Reuse a payment request key after an uncertain result; reserve pending debt/credit and avoid duplicate review effects |
+| Retry-safe expenses | Retain one request key through review and retries; matching requests return the original expense even after edits/deletion, while conflicting reuse is rejected; application migration applied on 27 October and independently verified on 28 October 2026 |
 | Expense associations and reconciliation | Allocate repayments to expenses, review historical associations from evidence and retain exclusion history |
 | Saved expense management | Owners edit any expense with stale-form protection or soft-delete it while retaining history and excluding only its linked payment allocations |
 | Permanent group deletion | Owners explicitly confirm removal of the group and dependent history/access while preserving other groups and accounts |
 | Appearance | Shared light/dark preference, compact member cards, expandable breakdowns and a native 44px theme control |
+| PostgreSQL integration verification | Reproduce competing claims, expense retries, payment reservations, deletion races and failed-write rollback on an isolated local database; 26 real-database cases passed on 25 October 2026 |
 
-The configured database has previously reported successful allocation-migration deployment and schema verification. Environment-specific evidence belongs in [database design](database-design.md#reported-migration-state); it is not a claim that all environments are ready.
+The configured Prisma-hosted application database now includes the expense-request migration, with fresh status, schema and full marker verification. The website itself is local-only, as confirmed by the user; hosted verification is not applicable. Environment-specific evidence belongs in [database design](database-design.md#reported-migration-state); it is not a claim that all environments are ready.
 
 ## Agreed immediate priorities and deployment gates
 
@@ -29,8 +31,7 @@ These priorities carry forward the existing roadmap; no delivery dates are commi
 
 | Work | User benefit | What completion means |
 | --- | --- | --- |
-| Verify real PostgreSQL concurrency and rollback | Simultaneous claims, payments and edits cannot leave contradictory records | Run controlled competing requests and injected failures against a designated test database; verify locks, unique keys and all-or-nothing writes, including deletion races; record reproducible evidence |
-| Durable expense-submission idempotency | Retrying after a lost response does not charge the group twice | A persisted submission identity returns the original expense for matching retries and rejects conflicting reuse; verify lost responses and concurrent retries, including activity counts |
+| Verify expense retry protection in the browser | Confirm recovery from an uncertain save in the actual owner/guest interface | Database deployment and separate-connection concurrency checks are complete; the user will verify local browser review/back/edit, validation, committed-response loss/retry, conflicting reuse and fresh keys |
 | Rate limiting before public deployment | Reduce abusive login, registration and claim attempts | Define and implement server-side attempt limits and useful retry feedback, then verify that protection cannot be bypassed through ordinary endpoint access |
 | Complete deployment/browser verification | People can rely on the intended flows on phones and desktops | Verify each target environment's schema and execute the outstanding owner/guest, deletion, reconciliation, cookie and accessibility checks in tests.md; do not treat one working form as proof of every flow |
 
@@ -38,7 +39,7 @@ These priorities carry forward the existing roadmap; no delivery dates are commi
 
 | Limitation | Current consequence |
 | --- | --- |
-| Group and expense creation lack durable retry identities | Separate successful requests can create duplicates; disabled submit buttons are not a guarantee after a lost response |
+| Group creation lacks durable retry identities | Separate successful requests can create duplicate groups after a lost response |
 | One guest identity per browser; no recovery or identity-switching interface | Signing out, losing or expiring a guest cookie leaves the member claimed without a recovery flow |
 | Historical payments may not fit expense-association rules | Unresolved confirmed payments make balances unavailable; pending/confirmed unassociated payments block deletion and financial edits; old netted transfers or permanently removed expenses need a separately reviewed recovery approach |
 | GBP only, equal/custom splitting | Percentage splits, other currencies and exchange-rate conversion are unavailable |
@@ -46,7 +47,7 @@ These priorities carry forward the existing roadmap; no delivery dates are commi
 | No restoration for deleted expenses; permanent group deletion removes history | These are deliberate current deletion semantics, not an archive or refund mechanism |
 | No live push updates | Another open browser must refresh after changes |
 | Complete-ledger reads grow with history | Financial reads use a group lock and memory proportional to history; dashboard groups are not one simultaneous snapshot |
-| Targeted automated coverage is not live proof | PostgreSQL contention/rollback, full HTTP/browser journeys, production cookies and broad accessibility checks remain incomplete |
+| Automated evidence has a defined scope | 663 isolated tests and 26 local PostgreSQL cases passed at the recorded checkpoint; application schema/marker verification also passes, but full HTTP/browser journeys, production cookies and broad accessibility checks remain unverified. Hosted checks are not applicable to the current local-only website |
 
 ## Future work without assigned priority
 

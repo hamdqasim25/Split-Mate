@@ -20,6 +20,8 @@ export type ExpenseReview = {
 };
 
 export type ExpenseFormState = {
+  requestKey?: string;
+  savedDestination?: string;
   input?: ExpenseInput;
   review?: ExpenseReview;
   error?: string;

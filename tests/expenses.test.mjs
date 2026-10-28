@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { beforeEach, test } from "node:test";
@@ -137,7 +138,7 @@ for (const [label, patch] of [
 ]) test(`preview and saving reject ${label} without writes`, async () => {
   expenseMembers();
   const before = structuredClone(state.rows);
-  for (const method of [previewExpense, createExpense]) await assert.rejects(method(ownerAccess, { ...validInput(), ...patch }), ExpenseError);
+  for (const method of [previewExpense, createExpense]) await assert.rejects(method(ownerAccess, { ...validInput(), ...patch }, randomUUID()), ExpenseError);
   assert.deepEqual(state.rows, before);
 });
 for (const role of ["payer", "participant"]) for (const eligibility of ["foreign", "inactive", "missing"]) {
@@ -146,7 +147,7 @@ for (const role of ["payer", "participant"]) for (const eligibility of ["foreign
     if (eligibility !== "missing") state.rows.GroupMember.push({ ...state.rows.GroupMember[0], id: 90, groupId: eligibility === "foreign" ? 99 : 1, isActive: eligibility !== "inactive" });
     const input = { ...validInput(), ...(role === "payer" ? { paidByMemberId: "90" } : { participantIds: ["2", "90"] }) };
     const before = structuredClone(state.rows);
-    for (const method of [previewExpense, createExpense]) await assert.rejects(method(ownerAccess, input), ExpenseError);
+    for (const method of [previewExpense, createExpense]) await assert.rejects(method(ownerAccess, input, randomUUID()), ExpenseError);
     assert.deepEqual(state.rows, before);
   });
 }
@@ -154,7 +155,7 @@ for (const kind of ["owner", "guest"]) test(`${kind} creates expense, exact part
   expenseMembers(); if (kind === "guest") await guest();
   const access = kind === "owner" ? ownerAccess : guestAccess;
   const beforeCommits = state.commits;
-  const result = await createExpense(access, validInput());
+  const result = await createExpense(access, validInput(), randomUUID());
   assert.equal(state.commits, beforeCommits + 1);
   assert.deepEqual(result, { id: 1, groupId: 1 });
   const expense = state.rows.Expense[0];
@@ -175,31 +176,31 @@ for (const kind of ["owner", "guest"]) test(`${kind} creates expense, exact part
 });
 test("payer need not participate; tiny totals may produce zero-pence participant shares", async () => {
   expenseMembers();
-  await createExpense(ownerAccess, { ...validInput(), amount: "0.01", participantIds: ["20", "2"] });
+  await createExpense(ownerAccess, { ...validInput(), amount: "0.01", participantIds: ["20", "2"] }, randomUUID());
   assert.deepEqual(state.rows.ExpenseParticipant.map(row => row.amountOwed), ["0.01", "0.00"]);
 });
 test("save revalidates membership changed after preview", async () => {
   expenseMembers(); const preview = await previewExpense(ownerAccess, validInput());
   state.rows.GroupMember.find(row => row.id === 20).isActive = false;
-  await assert.rejects(createExpense(ownerAccess, preview.input), ExpenseError);
+  await assert.rejects(createExpense(ownerAccess, preview.input, randomUUID()), ExpenseError);
   assert.equal(state.rows.Expense.length, 0);
 });
 test("save revalidates guest expiry and does not fall back to owner cookie", async () => {
   expenseMembers(); await guest();
   const preview = await previewExpense(guestAccess, validInput());
   state.rows.GuestSession[0].expiresAt = "2000-01-01";
-  await assert.rejects(createExpense(guestAccess, preview.input), ExpenseError);
+  await assert.rejects(createExpense(guestAccess, preview.input, randomUUID()), ExpenseError);
   assert.equal(state.rows.Expense.length, 0);
 });
 test("GBP-only writes reject other group currencies", async () => {
   expenseMembers(); state.rows.Group[0].currency = "USD";
   await assert.rejects(previewExpense(ownerAccess, validInput()), /GBP/);
-  await assert.rejects(createExpense(ownerAccess, validInput()), /GBP/);
+  await assert.rejects(createExpense(ownerAccess, validInput(), randomUUID()), /GBP/);
 });
 for (const failCreateAt of [1, 2, 3, 4, 5]) test(`failure at expense write ${failCreateAt} rolls back all rows`, async () => {
   expenseMembers(); state.createCalls = 0; state.failCreateAt = failCreateAt;
   const before = structuredClone(state.rows);
-  await assert.rejects(createExpense(ownerAccess, validInput()), /PRIVATE_DATABASE_DETAILS/);
+  await assert.rejects(createExpense(ownerAccess, validInput(), randomUUID()), /PRIVATE_DATABASE_DETAILS/);
   assert.deepEqual(state.rows, before);
   assert.equal(state.rollbacks, 1);
 });
@@ -209,7 +210,7 @@ const customInput = () => ({ ...validInput(), shares: [
 ] });
 for (const kind of ["owner", "guest"]) test(`${kind} saves exact custom shares and CUSTOM method`, async () => {
   expenseMembers(); if (kind === "guest") await guest();
-  await createExpense(kind === "owner" ? ownerAccess : guestAccess, customInput());
+  await createExpense(kind === "owner" ? ownerAccess : guestAccess, customInput(), randomUUID());
   assert.equal(state.rows.Expense[0].splitMethod, "CUSTOM");
   assert.deepEqual(Object.fromEntries(state.rows.ExpenseParticipant.map(row => [row.memberId, row.amountOwed])), { 2: "3.00", 10: "5.00", 20: "2.00" });
   assert.equal(state.rows.ActivityEvent.filter(event => event.eventType === "EXPENSE_CREATED").length, 1);
@@ -226,16 +227,16 @@ for (const [label, shares] of [
   ["malformed list", "10.00"], ["null list", null],
 ]) test(`custom validation rejects ${label} without partial writes`, async () => {
   expenseMembers(); const before = structuredClone(state.rows);
-  await assert.rejects(createExpense(ownerAccess, { ...validInput(), shares }), ExpenseError);
+  await assert.rejects(createExpense(ownerAccess, { ...validInput(), shares }, randomUUID()), ExpenseError);
   assert.deepEqual(state.rows, before);
 });
 test("zero custom shares persist and equal confirmed shares retain EQUAL method", async () => {
   expenseMembers(); const input = customInput();
   input.shares = [{ memberId: "2", amount: "0" }, { memberId: "10", amount: "0" }, { memberId: "20", amount: "10" }];
-  await createExpense(ownerAccess, input);
+  await createExpense(ownerAccess, input, randomUUID());
   assert.deepEqual(state.rows.ExpenseParticipant.map(row => row.amountOwed), ["0.00", "0.00", "10.00"]);
   const baseline = await previewExpense(ownerAccess, validInput());
-  await createExpense(ownerAccess, { ...validInput(), shares: baseline.review.participants.map(member => ({ memberId: String(member.id), amount: member.amount })) });
+  await createExpense(ownerAccess, { ...validInput(), shares: baseline.review.participants.map(member => ({ memberId: String(member.id), amount: member.amount })) }, randomUUID());
   assert.equal(state.rows.Expense[1].splitMethod, "EQUAL");
 });
 test("natural order is shared by context and review while the lowest ID gets the remainder", async () => {
@@ -250,11 +251,108 @@ for (const change of ["inactive", "foreign"]) test(`custom saving rechecks ${cha
   expenseMembers(); await previewExpense(ownerAccess, validInput());
   const member = state.rows.GroupMember.find(row => row.id === 20);
   if (change === "inactive") member.isActive = false; else member.groupId = 99;
-  await assert.rejects(createExpense(ownerAccess, customInput()), ExpenseError);
+  await assert.rejects(createExpense(ownerAccess, customInput(), randomUUID()), ExpenseError);
   assert.equal(state.rows.Expense.length, 0);
 });
 test("custom participant write failure rolls back expense, shares and activity", async () => {
   expenseMembers(); state.failCreateAt = 3; const before = structuredClone(state.rows);
-  await assert.rejects(createExpense(ownerAccess, customInput()), /PRIVATE_DATABASE_DETAILS/);
+  await assert.rejects(createExpense(ownerAccess, customInput(), randomUUID()), /PRIVATE_DATABASE_DETAILS/);
   assert.deepEqual(state.rows, before);
+});
+
+for (const kind of ["owner", "guest"]) test(`${kind} lost-response and simulated concurrent retries create one expense/share/event set`, async () => {
+  expenseMembers(); if (kind === "guest") await guest();
+  const access = kind === "owner" ? ownerAccess : guestAccess;
+  const key = randomUUID();
+  const results = await Promise.all(Array.from({ length: 8 }, () => createExpense(access, customInput(), key)));
+  assert.ok(results.every(result => result.id === results[0].id));
+  const before = structuredClone(state.rows);
+  assert.deepEqual(await createExpense(access, customInput(), key), results[0]);
+  assert.deepEqual(state.rows, before);
+  assert.equal(state.rows.Expense.length, 1);
+  assert.equal(state.rows.ExpenseParticipant.length, 3);
+  assert.equal(state.rows.ActivityEvent.filter(row => row.eventType === "EXPENSE_CREATED").length, 1);
+  assert.equal(state.rows.Expense[0].requestKey, key);
+  assert.equal(JSON.parse(state.rows.Expense[0].creationDetails).actorId, kind === "owner" ? 10 : 2);
+});
+for (const [label, patch] of [
+  ["description", { description: "Changed" }],
+  ["total", { amount: "11", shares: [{ memberId: "10", amount: "6" }, { memberId: "2", amount: "3" }, { memberId: "20", amount: "2" }] }],
+  ["payer", { paidByMemberId: "2" }],
+  ["shares", { shares: [{ memberId: "10", amount: "4" }, { memberId: "2", amount: "4" }, { memberId: "20", amount: "2" }] }],
+]) test(`saved key rejects changed ${label} without financial changes`, async () => {
+  expenseMembers(); const key = randomUUID(); await createExpense(ownerAccess, customInput(), key);
+  const before = structuredClone(state.rows);
+  await assert.rejects(createExpense(ownerAccess, { ...customInput(), ...patch }, key), /already used for different expense/);
+  assert.deepEqual(state.rows, before);
+});
+test("canonical formatting and reordered participants/shares replay successfully", async () => {
+  expenseMembers(); const key = randomUUID(); const first = await createExpense(ownerAccess, customInput(), key);
+  const before = structuredClone(state.rows);
+  const input = { ...customInput(), description: "Court booking", amount: " 10.0 ", participantIds: ["2", "20", "10"],
+    shares: [{ memberId: "20", amount: " 2 " }, { memberId: "2", amount: "3.0" }, { memberId: "10", amount: "5" }] };
+  assert.deepEqual(await createExpense(ownerAccess, input, key), first);
+  assert.deepEqual(state.rows, before);
+});
+test("implicit equal and explicit equal shares have the same creation identity", async () => {
+  expenseMembers(); const key = randomUUID(); const first = await createExpense(ownerAccess, validInput(), key);
+  const preview = await previewExpense(ownerAccess, validInput());
+  assert.deepEqual(await createExpense(ownerAccess, { ...validInput(), participantIds: ["10", "2", "20"],
+    shares: preview.review.participants.map(row => ({ memberId: String(row.id), amount: row.amount })) }, key), first);
+});
+test("different keys allow deliberately identical expenses", async () => {
+  expenseMembers();
+  const first = await createExpense(ownerAccess, customInput(), randomUUID());
+  const second = await createExpense(ownerAccess, customInput(), randomUUID());
+  assert.notEqual(first.id, second.id);
+  assert.equal(state.rows.ExpenseParticipant.length, 6);
+  assert.equal(state.rows.ActivityEvent.filter(row => row.eventType === "EXPENSE_CREATED").length, 2);
+});
+for (const key of [undefined, null, "", "bad", 123, "11111111-1111-1111-8111-111111111111", "11111111-1111-4111-0111-111111111111"]) test(`rejects invalid creation key ${JSON.stringify(key)}`, async () => {
+  expenseMembers(); const before = structuredClone(state.rows);
+  await assert.rejects(createExpense(ownerAccess, validInput(), key), /request is missing or invalid/);
+  assert.deepEqual(state.rows, before);
+});
+test("request key is not proof of actor identity or group access", async () => {
+  expenseMembers(); await guest(); const key = randomUUID(); await createExpense(ownerAccess, customInput(), key);
+  const before = structuredClone(state.rows);
+  await assert.rejects(createExpense(guestAccess, customInput(), key), /different expense details/);
+  state.cookies.clear();
+  await assert.rejects(createExpense(ownerAccess, customInput(), key), /access/);
+  await assert.rejects(createExpense(guestAccess, customInput(), key), /access/);
+  assert.deepEqual(state.rows, before);
+});
+test("authorised cross-group replay is rejected without returning the other expense", async () => {
+  expenseMembers(); const key = randomUUID(); await createExpense(ownerAccess, customInput(), key);
+  state.rows.Group.push({ id: 99, createdBy: 7, name: "Other", currency: "GBP" });
+  state.rows.GroupMember.push({ id: 100, groupId: 99, userId: 7, role: "OWNER", isActive: true, name: "Owner" });
+  const before = structuredClone(state.rows);
+  await assert.rejects(createExpense({ kind: "owner", groupId: 99 }, customInput(), key), /different expense details/);
+  assert.deepEqual(state.rows, before);
+});
+for (const kind of ["owner", "guest"]) test(`${kind} session revoked while waiting for lock cannot replay`, async () => {
+  expenseMembers(); if (kind === "guest") await guest();
+  const access = kind === "owner" ? ownerAccess : guestAccess;
+  const key = randomUUID(); await createExpense(access, customInput(), key);
+  const before = structuredClone(state.rows);
+  state.afterGroupLock = rows => { rows[kind === "owner" ? "UserSession" : "GuestSession"] = []; };
+  await assert.rejects(createExpense(access, customInput(), key), /access/);
+  assert.deepEqual(state.rows, before);
+});
+test("replay does not require formerly selected participants to remain active", async () => {
+  expenseMembers(); const key = randomUUID(); const first = await createExpense(ownerAccess, customInput(), key);
+  state.rows.GroupMember.find(row => row.id === 20).isActive = false;
+  const before = structuredClone(state.rows);
+  assert.deepEqual(await createExpense(ownerAccess, customInput(), key), first);
+  assert.deepEqual(state.rows, before);
+});
+for (const failAt of ["ExpenseParticipant.create", "ActivityEvent.create"]) test(`${failAt} rollback leaves key reusable`, async () => {
+  expenseMembers(); const key = randomUUID(); const before = structuredClone(state.rows); state.failAt = failAt;
+  await assert.rejects(createExpense(ownerAccess, customInput(), key), /PRIVATE_DATABASE_DETAILS/);
+  assert.deepEqual(state.rows, before);
+  state.failAt = null;
+  await createExpense(ownerAccess, customInput(), key);
+  assert.equal(state.rows.Expense.length, 1);
+  assert.equal(state.rows.ExpenseParticipant.length, 3);
+  assert.equal(state.rows.ActivityEvent.filter(row => row.eventType === "EXPENSE_CREATED").length, 1);
 });

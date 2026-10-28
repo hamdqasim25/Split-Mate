@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { beforeEach, test } from "node:test";
@@ -23,7 +24,7 @@ async function setup() {
   state.cookies.set("splitmate_owner_session", token);
   state.rows.GroupMember.push({ id: 10, groupId: 1, userId: 7, name: "Owner", role: "OWNER", isActive: true, addedAt: "2026-09-01", claimedAt: "2026-09-01" });
   await setGuestSessionCookie(await claimMember(token, 2));
-  await createExpense({ kind: "guest", shareToken: token }, { description: "Lunch", amount: "15.01", paidByMemberId: "10", participantIds: ["2", "10"] });
+  await createExpense({ kind: "guest", shareToken: token }, { description: "Lunch", amount: "15.01", paidByMemberId: "10", participantIds: ["2", "10"] }, randomUUID());
 }
 function nodes(tree) {
   if (Array.isArray(tree)) return tree.flatMap(nodes);
@@ -109,7 +110,7 @@ test("same guest cookie cannot expose a different group's balances", async () =>
 test("a subsequent saved expense refreshes both balance reads in natural member order", async () => {
   await setup();
   state.rows.GroupMember[0].addedAt = "2026-09-02";
-  await createExpense({ kind: "owner", groupId: 1 }, { description: "Return lunch", amount: "7.51", paidByMemberId: "2", participantIds: ["10"] });
+  await createExpense({ kind: "owner", groupId: 1 }, { description: "Return lunch", amount: "7.51", paidByMemberId: "2", participantIds: ["10"] }, randomUUID());
   const owner = await getGroupForOwner(7, 1);
   const guest = await getGroupForGuest(token);
   assert.deepEqual(owner.balances, guest.balances);
@@ -140,7 +141,7 @@ test("expense cards show custom label and persisted split amounts in member orde
   await createExpense({ kind: "owner", groupId: 1 }, {
     description: "Custom dinner", amount: "10", paidByMemberId: "10", participantIds: ["2", "10"],
     shares: [{ memberId: "2", amount: "3" }, { memberId: "10", amount: "7" }],
-  });
+  }, randomUUID());
   const { expenses } = await getGroupForOwner(7, 1);
   const custom = expenses.find(expense => expense.description === "Custom dinner");
   assert.deepEqual(custom.participants.map(member => [member.id, member.amount]), [[10, "7.00"], [2, "3.00"]]);

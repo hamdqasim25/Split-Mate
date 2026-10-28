@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { beforeEach, test } from "node:test";
@@ -24,7 +25,7 @@ async function setup() {
   state.cookies.set("splitmate_owner_session", token);
   state.rows.GroupMember.push({ id: 10, groupId: 1, userId: 7, name: "Owner", role: "OWNER", isActive: true, addedAt: "2026-01-01" });
   await setGuestSessionCookie(await claimMember(token, 2));
-  await createExpense({ kind: "guest", shareToken: token }, input());
+  await createExpense({ kind: "guest", shareToken: token }, input(), randomUUID());
   return load(1, 1);
 }
 function nodes(tree) { return Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : []; }
@@ -63,9 +64,10 @@ for (const patch of [{ amount: "0" }, { amount: "1.001" }, { description: " " },
 });
 test("edit changes description, amount, payer and participants while retaining identity/date", async () => {
   const saved = await setup(); const createdAt = state.rows.Expense[0].createdAt;
+  const { requestKey, creationDetails } = state.rows.Expense[0];
   const payments = structuredClone(state.rows.Payment);
   await update(1, 1, saved.version, { description: "Revised dinner", amount: "2.01", paidByMemberId: "2", participantIds: ["10"], shares: [{ memberId: "10", amount: "2.01" }] });
-  assert.deepEqual(state.rows.Expense[0], { id: 1, groupId: 1, description: "Revised dinner", amount: "2.01", paidByMemberId: 2, splitMethod: "EQUAL", createdAt });
+  assert.deepEqual(state.rows.Expense[0], { id: 1, groupId: 1, description: "Revised dinner", amount: "2.01", paidByMemberId: 2, splitMethod: "EQUAL", createdAt, requestKey, creationDetails });
   assert.deepEqual(state.rows.ExpenseParticipant.map(row => [row.memberId, row.amountOwed]), [[10, "2.01"]]);
   assert.deepEqual(state.rows.Payment, payments);
   const event = state.rows.ActivityEvent.at(-1);
@@ -235,4 +237,29 @@ test("route refresh remounts an edit draft when its saved version changes", asyn
   await update(1, 1, saved.version, { ...input(), description: "Updated elsewhere" });
   const after = nodes(await Page({ params })).find(row => row.type === Form).key;
   assert.notEqual(before, after, "a stale draft must not be paired with a newly bound version");
+});
+
+test("original creation retry after a real edit returns original ID without overwriting the edit", async () => {
+  const saved = await setup(); const key = state.rows.Expense[0].requestKey;
+  const originalSnapshot = state.rows.Expense[0].creationDetails;
+  const changed = { description: "Revised", amount: "2.01", paidByMemberId: "2", participantIds: ["10"], shares: [{ memberId: "10", amount: "2.01" }] };
+  await update(1, 1, saved.version, changed);
+  const before = structuredClone(state.rows);
+  assert.deepEqual(await createExpense({ kind: "guest", shareToken: token }, input(), key), { id: 1, groupId: 1 });
+  assert.deepEqual(state.rows, before);
+  assert.equal(state.rows.Expense[0].creationDetails, originalSnapshot);
+  await assert.rejects(createExpense({ kind: "guest", shareToken: token }, changed, key), /different expense details/);
+  assert.deepEqual(state.rows, before);
+});
+test("original retry after deletion retains tombstone and excluded payment allocations", async () => {
+  const saved = await setup(); const key = state.rows.Expense[0].requestKey;
+  state.rows.Payment.push({ id: 1, groupId: 1, payerMemberId: 2, receiverMemberId: 10, amount: "1.00", status: "CONFIRMED", createdAt: "2026-01-01" });
+  state.rows.PaymentAllocation.push({ id: 1, paymentId: 1, expenseId: 1, amountPence: 100n });
+  await remove(1, 1, saved.version);
+  const before = structuredClone(state.rows);
+  assert.ok(state.rows.Expense[0].deletedAt);
+  assert.deepEqual(await createExpense({ kind: "guest", shareToken: token }, input(), key), { id: 1, groupId: 1 });
+  assert.deepEqual(state.rows, before);
+  assert.equal((await getGroupForOwner(7, 1)).expenses.length, 0);
+  assert.ok(state.rows.ActivityEvent.some(row => row.eventType === "PAYMENT_ALLOCATION_EXCLUDED"));
 });

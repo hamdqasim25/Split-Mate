@@ -1,0 +1,128 @@
+[
+  {
+    "id": "column.public.expense.creationDetails",
+    "label": "Add column \"creationDetails\" to \"expense\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "creationDetails",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"creationDetails\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "creationDetails"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"creationDetails\"",
+        "sql": "ALTER TABLE \"public\".\"expense\" ADD COLUMN \"creationDetails\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"creationDetails\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "creationDetails"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.expense.requestKey",
+    "label": "Add column \"requestKey\" to \"expense\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "requestKey",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"requestKey\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "requestKey"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"requestKey\"",
+        "sql": "ALTER TABLE \"public\".\"expense\" ADD COLUMN \"requestKey\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"requestKey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "expense",
+          "requestKey"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.expense.expense_requestKey_key",
+    "label": "Add unique constraint on \"expense\" (requestKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "expense_requestKey_key",
+        "table": "expense"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"expense_requestKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expense_requestKey_key",
+          "public",
+          "\"public\".\"expense\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"expense_requestKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"expense\" ADD CONSTRAINT \"expense_requestKey_key\" UNIQUE (\"requestKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"expense_requestKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "expense_requestKey_key",
+          "public",
+          "\"public\".\"expense\""
+        ]
+      }
+    ]
+  }
+]

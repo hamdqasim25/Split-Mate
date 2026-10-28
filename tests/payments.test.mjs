@@ -196,7 +196,7 @@ test("incoming reservations apply across different senders", async () => {
 
 test("stale confirmation after a new expense never silently changes the reported amount", async () => {
   const report = await createPayment(guest, input({ amount: "20.01" }));
-  await createExpense(owner, { description: "Reverse debt", amount: "5.00", paidByMemberId: "2", participantIds: ["10"] });
+  await createExpense(owner, { description: "Reverse debt", amount: "5.00", paidByMemberId: "2", participantIds: ["10"] }, randomUUID());
   await assert.rejects(reviewPayment(owner, String(report.id), "confirm"), /amount has not been changed/);
   assert.equal(state.rows.Payment[0].status, "SENT");
   assert.equal(state.rows.Payment[0].amount, "20.01");

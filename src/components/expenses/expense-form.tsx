@@ -1,26 +1,50 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
 import ExpenseReview from "@/components/expenses/expense-review";
 import type { ExpenseFormContext, ExpenseFormState } from "@/lib/expenses/types";
 
 const inputClass = "mt-2 w-full rounded-xl border border-line bg-surface px-4 py-3 text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20";
 
-export default function ExpenseForm({ context, action, initialInput, editing = false }: {
+export default function ExpenseForm({ context, action, initialInput, editing = false, requestKey }: {
   context: ExpenseFormContext;
   initialInput?: import("@/lib/expenses/types").ExpenseInput;
   editing?: boolean;
+  requestKey?: string;
   action: (previous: ExpenseFormState, form: FormData) => Promise<ExpenseFormState>;
 }) {
-  const [state, formAction, pending] = useActionState(action, { input: initialInput });
+  const [creationKey] = useState(editing ? undefined : requestKey);
+  const [state, formAction, pending] = useActionState(async (previous: ExpenseFormState, form: FormData) => {
+    if (editing) return action(previous, form);
+    try { return await action(previous, form); }
+    catch (error) {
+      unstable_rethrow(error);
+      // An uncertain response must leave this same creation attempt retryable.
+      const field = (name: string) => String(form.get(name) ?? "");
+      const shareIds = form.getAll("shareMemberId");
+      const amounts = form.getAll("shareAmount");
+      return { ...previous, requestKey: creationKey,
+        input: { description: field("description"), amount: field("amount"), paidByMemberId: field("paidByMemberId"),
+          participantIds: form.getAll("participantIds").map(String),
+          ...(shareIds.length ? { shares: shareIds.map((id, index) => ({ memberId: String(id), amount: String(amounts[index] ?? "") })) } : {}) },
+        error: "Unable to confirm the response. Retry here with the same details, or check the group for your saved expense." };
+    }
+  }, { input: initialInput, requestKey: creationKey });
   const { input, review } = state;
+  if (state.savedDestination) return <div role="status" className="mt-8 space-y-4">
+    <p>Your expense was saved. The group could not refresh automatically.</p>
+    <Link href={state.savedDestination} className="font-semibold underline">Return to group</Link>
+  </div>;
   if (review && input) return <ExpenseReview
     key={JSON.stringify([input, review, state.error])}
-    input={input} review={review} action={formAction} pending={pending} error={state.error} editing={editing}
+    input={input} review={review} action={formAction} pending={pending} error={state.error} editing={editing} requestKey={creationKey}
   />;
   return (
     <form className="mt-8 space-y-6 rounded-2xl border border-line bg-surface p-6 sm:p-8"
       aria-label="Expense details" action={formAction}>
+      {!editing && <input type="hidden" name="requestKey" value={creationKey ?? ""} />}
       <p className="text-sm leading-6 text-muted">Choose who paid and who took part. You can adjust each share on the next step before saving.</p>
       {state.error && <p role="alert" className="text-sm text-danger">{state.error}</p>}
       <fieldset disabled={pending} className="space-y-6">

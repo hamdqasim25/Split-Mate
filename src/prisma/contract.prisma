@@ -80,6 +80,8 @@ model Expense {
   splitMethod    String
   createdAt      TimestamptzString @default(now())
   deletedAt      TimestamptzString?
+  requestKey     String? @unique
+  creationDetails String?
 
   group        Group                @relation(fields: [groupId], references: [id])
   payer        GroupMember          @relation("ExpensePayer", fields: [paidByMemberId], references: [id])

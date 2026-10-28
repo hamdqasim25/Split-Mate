@@ -4,9 +4,10 @@ import { useState } from "react";
 import { splitTotals } from "@/lib/expenses/money";
 import type { ExpenseInput, ExpenseReview as Review } from "@/lib/expenses/types";
 
-export default function ExpenseReview({ input, review, action, pending, error, editing = false }: {
+export default function ExpenseReview({ input, review, action, pending, error, editing = false, requestKey }: {
   input: ExpenseInput; review: Review; action: (data: FormData) => void; pending: boolean; error?: string;
   editing?: boolean;
+  requestKey?: string;
 }) {
   const [amounts, setAmounts] = useState(() => Object.fromEntries(review.participants.map(member => [
     member.id, input.shares?.find(share => share.memberId === String(member.id))?.amount ?? member.amount,
@@ -53,6 +54,7 @@ export default function ExpenseReview({ input, review, action, pending, error, e
       <button type="button" disabled={pending} onClick={() => setAmounts(Object.fromEntries(review.participants.map(member => [member.id, member.amount])))}
         className="text-sm font-semibold text-accent underline underline-offset-4 disabled:opacity-50">Reset to equal split</button>
       <input type="hidden" name="description" value={input.description} />
+      {!editing && <input type="hidden" name="requestKey" value={requestKey ?? ""} />}
       <input type="hidden" name="amount" value={input.amount} />
       <input type="hidden" name="paidByMemberId" value={input.paidByMemberId} />
       {input.participantIds.map(id => <input key={id} type="hidden" name="participantIds" value={id} />)}

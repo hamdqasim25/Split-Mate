@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'fac998bb7eb1661f1c59582e8485caee9e1a9532fece05aaa8a55d3a075a44c4'>;
+  StorageHashBase<'dfd283667c844905489cdf3e034958389cc0af92b12d02e338a546205b9dda0d'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
@@ -259,6 +259,8 @@ export type FieldOutputTypes = {
       readonly splitMethod: CodecTypes['pg/text@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly deletedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly requestKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly creationDetails: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly ExpenseParticipant: {
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -355,6 +357,8 @@ export type FieldInputTypes = {
       readonly splitMethod: CodecTypes['pg/text@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly deletedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly requestKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly creationDetails: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly ExpenseParticipant: {
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -445,11 +449,13 @@ export type StorageColumnTypes = {
     readonly expense: {
       readonly amount: CodecTypes['pg/numeric@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly creationDetails: CodecTypes['pg/text@1']['output'] | null;
       readonly deletedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
       readonly description: CodecTypes['pg/text@1']['output'];
       readonly groupId: CodecTypes['pg/int4@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly paidByMemberId: CodecTypes['pg/int4@1']['output'];
+      readonly requestKey: CodecTypes['pg/text@1']['output'] | null;
       readonly splitMethod: CodecTypes['pg/text@1']['output'];
     };
     readonly expenseParticipant: {
@@ -541,11 +547,13 @@ export type StorageColumnInputTypes = {
     readonly expense: {
       readonly amount: CodecTypes['pg/numeric@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly creationDetails: CodecTypes['pg/text@1']['input'] | null;
       readonly deletedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
       readonly description: CodecTypes['pg/text@1']['input'];
       readonly groupId: CodecTypes['pg/int4@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly paidByMemberId: CodecTypes['pg/int4@1']['input'];
+      readonly requestKey: CodecTypes['pg/text@1']['input'] | null;
       readonly splitMethod: CodecTypes['pg/text@1']['input'];
     };
     readonly expenseParticipant: {
@@ -784,9 +792,19 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                   readonly nullable: true;
                 };
+                readonly requestKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly creationDetails: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
               };
               primaryKey: { readonly columns: readonly ['id'] };
-              uniques: readonly [];
+              uniques: readonly [{ readonly columns: readonly ['requestKey'] }];
               indexes: readonly [
                 {
                   readonly name: 'expense_groupId_idx_e2fb5578';
@@ -1659,6 +1677,14 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
+              readonly requestKey: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly creationDetails: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
             };
             readonly relations: {
               readonly group: {
@@ -1718,6 +1744,8 @@ type ContractBase = Omit<
                 readonly splitMethod: { readonly column: 'splitMethod' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly deletedAt: { readonly column: 'deletedAt' };
+                readonly requestKey: { readonly column: 'requestKey' };
+                readonly creationDetails: { readonly column: 'creationDetails' };
               };
             };
           };

@@ -6,6 +6,7 @@ const hooks = installHooks();
 const { ownerExpenseAction, guestExpenseAction } = await import("../src/app/actions/expenses.ts");
 const { claimMember } = await import("../src/data/invites.ts");
 const { setGuestSessionCookie } = await import("../src/lib/auth/guest-session.ts");
+const { default: ExpenseForm } = await import("../src/components/expenses/expense-form.tsx");
 hooks.deregister();
 beforeEach(reset);
 function owner() {
@@ -16,6 +17,7 @@ function owner() {
 }
 function form(intent = "review") {
   const data = new FormData();
+  data.set("requestKey", "11111111-1111-4111-8111-111111111111");
   for (const [name, value] of Object.entries({ description: "Dinner", amount: "10.01", paidByMemberId: "2", intent })) data.set(name, value);
   data.append("participantIds", "10"); data.append("participantIds", "2");
   if (intent === "save") {
@@ -106,4 +108,63 @@ test("back to details deliberately starts a new equal split", async () => {
   assert.equal(result.input.shares, undefined);
   assert.deepEqual(result.input.participantIds, ["10", "2"]);
   assert.equal(state.rows.Expense.length, 0);
+});
+
+for (const kind of ["owner", "guest"]) test(`${kind} preserves key through review, back, invalid shares, failed write and lost-response retry`, async () => {
+  owner(); if (kind === "guest") await setGuestSessionCookie(await claimMember(token, 2));
+  const action = kind === "owner" ? ownerExpenseAction.bind(null, 1) : guestExpenseAction.bind(null, token);
+  const key = form().get("requestKey");
+  const review = await action({}, form()); assert.equal(review.requestKey, key);
+  const back = await action(review, form("edit")); assert.equal(back.requestKey, key);
+  const invalid = form("save"); invalid.set("shareAmount", "2");
+  assert.equal((await action(back, invalid)).requestKey, key);
+  state.failAt = "ActivityEvent.create";
+  const failure = await action(review, form("save")); assert.equal(failure.requestKey, key); assert.ok(failure.error);
+  state.failAt = null;
+  const destination = kind === "owner" ? "/groups/1" : `/g/${token}/group`;
+  await assert.rejects(action(failure, form("save")), { destination });
+  const before = structuredClone(state.rows);
+  await assert.rejects(action(failure, form("save")), { destination });
+  assert.deepEqual(state.rows, before);
+});
+test("post-commit refresh failure reports saved state with the same key", async () => {
+  owner(); state.failRevalidation = true;
+  const saved = await ownerExpenseAction(1, {}, form("save"));
+  assert.equal(saved.savedDestination, "/groups/1"); assert.equal(saved.error, undefined);
+  assert.equal(saved.requestKey, form().get("requestKey"));
+  const before = structuredClone(state.rows);
+  state.failRevalidation = false;
+  await assert.rejects(ownerExpenseAction(1, saved, form("save")), { destination: "/groups/1" });
+  assert.deepEqual(state.rows, before);
+});
+for (const mode of ["missing", "malformed", "duplicate", "file"]) test(`action rejects ${mode} request key`, async () => {
+  owner(); const data = form("save");
+  if (mode === "missing") data.delete("requestKey");
+  if (mode === "malformed") data.set("requestKey", "bad");
+  if (mode === "duplicate") data.append("requestKey", data.get("requestKey"));
+  if (mode === "file") data.set("requestKey", new Blob(["bad"]));
+  assert.match((await ownerExpenseAction(1, {}, data)).error, /request is missing or invalid/);
+  assert.equal(state.rows.Expense.length, 0);
+});
+
+test("client recovery retries a committed save whose success response was lost", async () => {
+  owner(); const data = form("save"); let loseResponse = true;
+  const action = async (previous, submitted) => {
+    try { return await ownerExpenseAction(1, previous, submitted); }
+    catch (error) {
+      if (loseResponse && error.destination) { loseResponse = false; throw new Error("Lost response"); }
+      throw error;
+    }
+  };
+  ExpenseForm({ context: { group: { name: "Football", currency: "GBP" }, currentMember: { id: 10, name: "Owner" }, members: [] },
+    action, requestKey: data.get("requestKey") });
+  const submit = state.actions.at(-1);
+  const failure = await submit({}, data);
+  assert.match(failure.error, /Retry here/); assert.equal(failure.requestKey, data.get("requestKey"));
+  assert.equal(state.rows.Expense.length, 1);
+  const before = structuredClone(state.rows);
+  await assert.rejects(submit(failure, data), { destination: "/groups/1" });
+  assert.deepEqual(state.rows, before);
+  assert.equal(state.rows.ExpenseParticipant.length, 2);
+  assert.equal(state.rows.ActivityEvent.filter(row => row.eventType === "EXPENSE_CREATED").length, 1);
 });

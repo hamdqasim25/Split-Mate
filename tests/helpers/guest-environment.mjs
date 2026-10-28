@@ -15,7 +15,7 @@ export function reset() {
     },
     cookies: new Map(), cookieWrites: [], failAt: null, reads: 0, readOperations: [], writes: [], commits: 0, rollbacks: 0,
     actionState: { error: "" }, pending: false, revalidated: [], createCalls: 0, failCreateAt: null,
-    hooks: [], hookIndex: 0, rendering: false, actions: [], refreshes: 0, operations: [],
+    hooks: [], hookIndex: 0, rendering: false, actions: [], refreshes: 0, operations: [], afterGroupLock: null, failRevalidation: false,
   });
 }
 const fieldProxy = new Proxy({}, { get: (_, key) => ({
@@ -67,6 +67,7 @@ function collection(model, getRows, fields, filters = [], order = [], limit = In
       fail("updateAll");
       state.writes.push(`${model}.updateAll`);
       const rows = getRows()[model].filter(matches).map(row => { Object.assign(row, values); return project(row); });
+      if (model === "Group" && state.afterGroupLock) await state.afterGroupLock(getRows());
       return rows;
     },
     async delete() {
@@ -84,6 +85,7 @@ function collection(model, getRows, fields, filters = [], order = [], limit = In
     async create(values) {
       fail("create");
       if (model === "Payment" && values.requestKey && getRows()[model].some(row => row.requestKey === values.requestKey)) throw new Error("Duplicate payment request key");
+      if (model === "Expense" && values.requestKey && getRows()[model].some(row => row.requestKey === values.requestKey)) throw new Error("Duplicate expense request key");
       state.createCalls++;
       if (state.createCalls === state.failCreateAt) throw new Error("PRIVATE_DATABASE_DETAILS");
       const row = { id: Math.max(0, ...getRows()[model].map(row => row.id ?? 0)) + 1, ...values };
@@ -116,9 +118,10 @@ export async function cookies() {
   };
 }
 export function redirect(destination) { throw Object.assign(new Error("redirect"), { destination }); }
+export function unstable_rethrow(error) { if (error.destination || error.status === 404) throw error; }
 export function notFound() { throw Object.assign(new Error("not found"), { status: 404 }); }
 export function useRouter() { return { refresh() { state.refreshes = (state.refreshes ?? 0) + 1; } }; }
-export function revalidatePath(path) { state.revalidated.push(path); }
+export function revalidatePath(path) { if (state.failRevalidation) throw new Error("Refresh failed"); state.revalidated.push(path); }
 export default function Link() {}
 export function useActionState(action) { state.actions.push(action); return [state.actionState, () => {}, state.pending]; }
 export function useState(initial) {

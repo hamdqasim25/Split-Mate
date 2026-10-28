@@ -133,3 +133,52 @@ test("pending review disables inputs and gives progress feedback", () => {
   assert.equal(nodes(tree).find(node => node.type === "button").props.disabled, true);
   assert.match(text(nodes(tree).find(node => node.props.role === "status")), /Calculating/);
 });
+
+for (const kind of ["owner", "guest"]) test(`${kind} new expense page supplies a fresh UUID`, async () => {
+  if (kind === "owner") owner(); else await guest();
+  const page = () => kind === "owner" ? OwnerPage(ownerProps()) : GuestPage(guestProps());
+  const first = nodes(await page()).find(node => node.type === ExpenseForm).props.requestKey;
+  const second = nodes(await page()).find(node => node.type === ExpenseForm).props.requestKey;
+  assert.match(first, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.notEqual(first, second);
+});
+test("creation key survives rerender, review, back/edit, validation and replacement server props", async () => {
+  const { renderWithState } = await import("./helpers/guest-environment.mjs");
+  const key = "11111111-1111-4111-8111-111111111111";
+  const props = { context, action, requestKey: key };
+  const keyIn = tree => nodes(tree).find(node => node.props.name === "requestKey").props.value;
+  assert.equal(keyIn(renderWithState(ExpenseForm, props)), key);
+  state.actionState = { input: draft, review: { description: draft.description, amount: draft.amount, payer: context.members[0], participants: [{ ...context.members[0], amount: "10.00" }] } };
+  const review = renderWithState(ExpenseForm, { ...props, requestKey: "22222222-2222-4222-8222-222222222222" });
+  assert.equal(keyIn(ExpenseReview(review.props)), key);
+  state.actionState = { input: draft, error: "Try again" };
+  assert.equal(keyIn(renderWithState(ExpenseForm, props)), key);
+});
+test("saved expense forms and reviews contain no creation key", () => {
+  assert.ok(!nodes(ExpenseForm({ context, action, editing: true, requestKey: "ignored" })).some(node => node.props.name === "requestKey"));
+  const tree = ExpenseReview({ input: draft, review: { description: draft.description, amount: draft.amount, payer: context.members[0], participants: [{ ...context.members[0], amount: "10.00" }] }, action, editing: true, requestKey: "ignored" });
+  assert.ok(!nodes(tree).some(node => node.props.name === "requestKey"));
+});
+test("lost action response retains raw fields, custom shares, review and creation key", async () => {
+  const key = "11111111-1111-4111-8111-111111111111";
+  ExpenseForm({ context, requestKey: key, action: async () => { throw new Error("Network failure"); } });
+  const data = new FormData();
+  for (const [name, value] of Object.entries({ description: "Dinner", amount: "10", paidByMemberId: "2", requestKey: key })) data.set(name, value);
+  data.append("participantIds", "2"); data.append("shareMemberId", "2"); data.append("shareAmount", "10");
+  const review = { description: "Dinner", amount: "10.00", payer: context.members[0], participants: [{ ...context.members[0], amount: "10.00" }] };
+  const result = await state.actions.at(-1)({ review }, data);
+  assert.equal(result.requestKey, key); assert.equal(result.review, review);
+  assert.equal(result.input.description, "Dinner"); assert.deepEqual(result.input.shares, [{ memberId: "2", amount: "10" }]);
+  assert.match(result.error, /Retry here with the same details/);
+});
+test("framework redirects pass through the response recovery handler", async () => {
+  ExpenseForm({ context, action: async () => { throw Object.assign(new Error("redirect"), { destination: "/groups/1" }); } });
+  await assert.rejects(state.actions.at(-1)({}, new FormData()), { destination: "/groups/1" });
+});
+test("committed refresh failure offers navigation without another save button", () => {
+  state.actionState = { savedDestination: "/groups/1", requestKey: "same-key" };
+  const tree = ExpenseForm({ context, action });
+  assert.match(text(tree), /expense was saved/);
+  assert.ok(nodes(tree).some(node => node.props.href === "/groups/1"));
+  assert.ok(!nodes(tree).some(node => node.type === "form" || node.type === "button"));
+});

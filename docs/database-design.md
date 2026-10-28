@@ -106,11 +106,11 @@ The canonical database is Prisma-hosted PostgreSQL. Use the existing pooled `DAT
 
 Primary keys are auto-incrementing Int values. Timestamps use `TimestamptzString`. Roles, payment statuses and event types are strings rather than database enums.
 
-Unique constraints include User.email, Group.shareToken, both session tokenHash fields, ExpenseParticipant `(expenseId, memberId)`, Payment.requestKey when non-null, and PaymentAllocation `(paymentId, expenseId)`. PaymentAllocation has indexes supporting payment/expense references. Group member display-name uniqueness is an application creation rule, not a database unique constraint.
+Unique constraints include User.email, Group.shareToken, both session tokenHash fields, ExpenseParticipant `(expenseId, memberId)`, Payment.requestKey and Expense.requestKey when non-null, and PaymentAllocation `(paymentId, expenseId)`. PaymentAllocation has indexes supporting payment/expense references. Group member display-name uniqueness is an application creation rule, not a database unique constraint.
 
 The application, under the group lock, enforces positive payment/allocation amounts, exact allocation totals, same-group relationships, expense payer/participant compatibility, permissions, status transitions and reservation capacity. These are not database CHECK constraints. Foreign keys must not be mistaken for those checks.
 
-Expense editing/deletion versions use SHA-256 and include ordered shares and the latest expense audit-event ID. Reconciliation versions include its audit revision. Preserve the append-only activity and locking protocol when adding mutation paths. Financial reads also acquire the group lock; direct SQL writers bypassing this protocol fall outside its consistency guarantee. Real PostgreSQL contention and rollback require further verification, as recorded in [tests.md](tests.md).
+Expense editing/deletion versions use SHA-256 and include ordered shares and the latest expense audit-event ID. Reconciliation versions include its audit revision. Preserve the append-only activity and locking protocol when adding mutation paths. Financial reads also acquire the group lock; direct SQL writers bypassing this protocol fall outside its consistency guarantee. Controlled contention and rollback passed on isolated local PostgreSQL 18 on 25 October 2026; scope and reproduction steps are recorded in [tests.md](tests.md#real-postgresql-integration-suite).
 
 Permanent group deletion removes GuestSession, PaymentAllocation, ExpenseParticipant, Payment, Expense, ActivityEvent and GroupMember records before Group, within one transaction. It scopes every operation to the group and preserves User/UserSession and other groups. See [group-deletion.ts](../src/data/group-deletion.ts).
 
@@ -125,6 +125,7 @@ This table records previously reported evidence, not a fresh database check and 
 | `20260917T1942_owner_user_sessions` | Owner sessions | Previously reported applied and verified |
 | `20261018T0957_payment_reporting` | Payment retry/audit fields | Applied on the configured database on 18 October 2026; status, schema and full contract-marker verification reported successful |
 | `20261022T2235_expense_payment_allocations` | PaymentAllocation and Expense.deletedAt | Supplied deployment report confirms successful application and schema verification on the configured database; deployment date is not specified in the supplied correction |
+| `20261025T1709_expense_request_keys` | Nullable expense request key and immutable creation details, with unique request-key constraint | Applied to the configured Prisma-hosted application database on 27 October 2026; interrupted command output recovered with exit code 0, then independently verified on 28 October 2026: status up to date, schema and full contract marker match |
 
 The allocation deployment report supersedes earlier "prepared but unapplied" notes. It does not establish browser behaviour, historical-payment reconciliation or real concurrency/rollback safety. Independently verify another environment before deploying application code that expects these fields.
 
@@ -186,3 +187,39 @@ npx.cmd --no-install prisma db verify --db "$env:DIRECT_URL"
 ```
 
 For future migrations, select the newly reviewed target rather than reusing this allocation target. Preserve the distinction between an offline migration check, live schema verification and tests of real transactions under load.
+
+### Expense-request migration deployment
+
+Prepared on 25 October 2026 and **applied to the configured application database on 27 October 2026**: `20261025T1709_expense_request_keys`. The locked CLI emitted the contract and generated this migration from the allocation migration's contract hash `fac998bb7eb1661f1c59582e8485caee9e1a9532fece05aaa8a55d3a075a44c4` to `dfd283667c844905489cdf3e034958389cc0af92b12d02e338a546205b9dda0d`. Offline `migration check` passed.
+
+The application DIRECT_URL was loaded privately from existing configuration. Before application, status showed exactly this one pending migration and the preview selected only its three additive operations. Schema verification against the new contract found only the two expected missing columns and unique constraint. The authorised command applied one migration/three operations and completed with exit code 0. Its result was collected after the turn was interrupted; no second migration was launched. A before/after comparison confirmed existing expense fields, participant shares, payments and activity rows were unchanged, without displaying their contents.
+
+Independent read-only checks on 28 October 2026 all exited successfully: `migration status` reported **Up to date**, `db verify --schema-only` reported **Database schema satisfies contract**, and `db verify` reported **Database marker and schema match contract**, with no schema issues or warnings. The storage hash is the target above and the profile hash is `3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2`. The CLI reports codec coverage skipped in full verification; this result establishes schema/marker agreement, not browser behaviour. No recovery, data reset, manual migration marking or historical migration edits were needed.
+
+Reviewed operations: add nullable text `Expense.requestKey`, add nullable text `Expense.creationDetails`, and add the unique constraint `expense_requestKey_key`. Existing rows retain null values; there is no backfill, data transformation, deletion or rewrite of historical migrations. Multiple historical null keys remain allowed. Adding the unique constraint builds an index and takes table locks, so schedule deployment based on the actual table size and traffic.
+
+The application writes both fields atomically with the expense, shares and creation event. The versioned creationDetails text stores canonical actor/group IDs, trimmed description, integer pence, payer ID and sorted member/share-pence pairs. Application edits leave both fields unchanged; soft deletion preserves them. The unique constraint is the database duplicate guard, while matching snapshots and authorization are enforced by the service under the existing group lock. No session credentials are stored in the snapshot.
+
+**Migration must precede running the updated application**, including local development against a shared database. This prerequisite is now satisfied for the configured application database. The following commands remain a reference for other environments, not instructions to reapply this migration. Pause normal traffic during a migration/code transition so old application instances cannot create new expenses without request keys. Securely load and check the intended nonempty DIRECT_URL without displaying it. Review the actual pending path first:
+
+```powershell
+npx.cmd --no-install prisma migration status --db "$env:DIRECT_URL"
+npx.cmd --no-install prisma db migrate --show --to 20261025T1709_expense_request_keys --db "$env:DIRECT_URL"
+```
+
+Only in a separately approved deployment, after reviewing that preview and any earlier prerequisites:
+
+```powershell
+npx.cmd --no-install prisma db migrate --to 20261025T1709_expense_request_keys --db "$env:DIRECT_URL"
+npx.cmd --no-install prisma migration status --db "$env:DIRECT_URL"
+npx.cmd --no-install prisma db verify --schema-only --db "$env:DIRECT_URL"
+npx.cmd --no-install prisma db verify --db "$env:DIRECT_URL"
+```
+
+Restart the local application with the regenerated contract after verification, then exercise owner and guest creation/replay. The user confirmed Split-Mate is local-only; there is no hosted deployment to verify. Browser checks are reserved for the user and were not run in the resumed task. The local db ref is unchanged and is not proof of deployment; the live checks above are the evidence.
+
+### Isolated integration database
+
+On 25 October 2026, all six migrations through `20261025T1709_expense_request_keys` were reviewed and applied (110 operations) to a newly created, empty local PostgreSQL 18 test cluster. Migration status was up to date; schema and full contract-marker verification passed for hash `dfd283667c844905489cdf3e034958389cc0af92b12d02e338a546205b9dda0d`. This establishes test-environment readiness only. The application database was not connected to or migrated.
+
+The separate `prisma.integration.config.ts` accepts only guarded test configuration. The test runtime additionally checks the database name, role and opt-in marker before writes. Test-only coordination/failure triggers and fixture registration live in `splitmate_test_control`; they are installed solely in the disposable database and are not application migrations. No application contract changes were required. See [integration commands and safety checks](tests.md#real-postgresql-integration-suite) for setup, verification, fixture cleanup and shutdown.

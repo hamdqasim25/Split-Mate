@@ -179,10 +179,10 @@ Next.js App Router hosts UI, route handlers and Server Actions; there is no sepa
 | `src/app/` | Pages, HTTP routes and actions; explicit owner/guest entry points |
 | `src/components/` | Shared forms, review, history, members and theme controls |
 | `src/data/` | Authorized group, guest, expense, balance, payment and deletion services |
-| `src/lib/auth/` | Credentials, session lifecycle, HTTP validation and safe errors |
+| `src/lib/auth/` | Owner/guest session lifecycle, token handling, HTTP validation and safe errors; credential verification lives in `src/data/auth.ts` |
 | `src/lib/expenses/`, `src/lib/payments/` | Exact money, validation, allocation and eligibility helpers |
 | `src/prisma/` | Authored contract, generated artifacts and database runtime |
-| `tests/` | Node tests and isolated runtime/database doubles |
+| `tests/` | Isolated Node regression tests and doubles; `tests/integration/` uses a separate guarded PostgreSQL database |
 
 ### Routes and requests
 

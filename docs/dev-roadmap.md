@@ -47,7 +47,7 @@ These priorities carry forward the existing roadmap; no delivery dates are commi
 | No restoration for deleted expenses; permanent group deletion removes history | These are deliberate current deletion semantics, not an archive or refund mechanism |
 | No live push updates | Another open browser must refresh after changes |
 | Complete-ledger reads grow with history | Financial reads use a group lock and memory proportional to history; dashboard groups are not one simultaneous snapshot |
-| Automated evidence has a defined scope | 663 isolated tests and 26 local PostgreSQL cases passed at the recorded checkpoint; application schema/marker verification also passes, but full HTTP/browser journeys, production cookies and broad accessibility checks remain unverified. Hosted checks are not applicable to the current local-only website |
+| Automated evidence has a defined scope | 670 isolated tests passed on 13 November; the 26 local PostgreSQL cases and application schema/marker verification remain earlier recorded evidence. Full HTTP/browser journeys, production cookies and broad accessibility checks remain unverified. Hosted checks are not applicable to the current local-only website |
 
 ## Future work without assigned priority
 

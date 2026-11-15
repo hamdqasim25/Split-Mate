@@ -62,6 +62,11 @@ function registrationConflict(): never {
   throw new AuthError("REGISTRATION_CONFLICT", "Unable to register with those details.");
 }
 
+/**
+ * Validate owner registration and store a bcrypt hash, returning only ID/name.
+ * A unique-email conflict is mapped to a safe error, including competing inserts.
+ * Registration does not create a session; the login route does that separately.
+ */
 export async function registerUser(input: unknown) {
   const values = objectInput(input, ["name", "email", "password"]);
   const name = typeof values.name === "string" ? values.name.trim().replace(/\s+/gu, " ") : "";
@@ -85,6 +90,8 @@ export async function registerUser(input: unknown) {
   }
 }
 
+/** Verify credentials and return a safe account identity, without issuing cookies.
+ * Invalid input, unknown email and a wrong password share one public error. */
 export async function authenticateUser(input: unknown) {
   let email: string;
   let password: string;

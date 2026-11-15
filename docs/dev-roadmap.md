@@ -20,7 +20,7 @@ The product principle remains: only the owner needs an account. Guests should be
 | Expense associations and reconciliation | Allocate repayments to expenses, review historical associations from evidence and retain exclusion history |
 | Saved expense management | Owners edit any expense with stale-form protection or soft-delete it while retaining history and excluding only its linked payment allocations |
 | Permanent group deletion | Owners explicitly confirm removal of the group and dependent history/access while preserving other groups and accounts |
-| Appearance | Shared light/dark preference, compact member cards, expandable breakdowns and a native 44px theme control |
+| Appearance | Shared light/dark preference, compact member cards, expandable breakdowns, independently expandable payment/activity history with London timestamps, and a native 44px theme control; history mobile/keyboard browser checks remain outstanding |
 | PostgreSQL integration verification | Reproduce competing claims, expense retries, payment reservations, deletion races and failed-write rollback on an isolated local database; 26 real-database cases passed on 25 October 2026 |
 
 The configured Prisma-hosted application database now includes the expense-request migration, with fresh status, schema and full marker verification. The website itself is local-only, as confirmed by the user; hosted verification is not applicable. Environment-specific evidence belongs in [database design](database-design.md#reported-migration-state); it is not a claim that all environments are ready.
@@ -47,7 +47,7 @@ These priorities carry forward the existing roadmap; no delivery dates are commi
 | No restoration for deleted expenses; permanent group deletion removes history | These are deliberate current deletion semantics, not an archive or refund mechanism |
 | No live push updates | Another open browser must refresh after changes |
 | Complete-ledger reads grow with history | Financial reads use a group lock and memory proportional to history; dashboard groups are not one simultaneous snapshot |
-| Automated evidence has a defined scope | 663 isolated tests and 26 local PostgreSQL cases passed at the recorded checkpoint; application schema/marker verification also passes, but full HTTP/browser journeys, production cookies and broad accessibility checks remain unverified. Hosted checks are not applicable to the current local-only website |
+| Automated evidence has a defined scope | 670 isolated tests passed on 13 November; the 26 local PostgreSQL cases and application schema/marker verification remain earlier recorded evidence. Full HTTP/browser journeys, production cookies and broad accessibility checks remain unverified. Hosted checks are not applicable to the current local-only website |
 
 ## Future work without assigned priority
 

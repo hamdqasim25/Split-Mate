@@ -39,6 +39,8 @@ async function resolveAccess(access: PaymentAccess, tx: Client) {
   throw new PaymentError("Your group access has expired or is unavailable. Reopen the group and try again.");
 }
 
+/** Read a coherent ledger and recheck access after waiting for its group lock.
+ * The caller supplies the transaction that holds this lock through commit. */
 async function lockedAccess(access: PaymentAccess, tx: Client) {
   const initial = await resolveAccess(access, tx);
   if (initial.group.currency !== "GBP") throw new PaymentError("Repayments currently support GBP groups only.");
@@ -78,6 +80,9 @@ function parseAllocations(value: unknown) {
   }).sort((a, b) => a.expenseId - b.expenseId);
 }
 
+/** Check expense ownership/participation and per-expense repayment capacity.
+ * Historical reconciliation may preserve known overpayment; it still requires
+ * valid expense relationships and never guesses which expense a transfer covered. */
 function validateAllocations(ledger: Ledger, allocations: ReturnType<typeof parseAllocations>, sender: number, receiver: number, excludeId?: number, historical = false) {
   for (const allocation of allocations) {
     const expense = ledger.paymentExpenses.find(expense => expense.id === allocation.expenseId);
@@ -97,6 +102,7 @@ function sameAllocations(existing: { expenseId: number; amountPence: string }[],
   return existing.length === proposed.length && existing.every(row => proposed.some(other => other.expenseId === row.expenseId && other.amountPence === BigInt(row.amountPence)));
 }
 
+/** Lock distinct active members in ID order so cooperating writes use one lock order. */
 async function lockMembers(tx: Client, groupId: number, ids: number[]) {
   for (const memberId of [...new Set(ids)].sort((a, b) => a - b)) {
     const [member] = await tx.orm.public.GroupMember.where({ id: memberId, groupId, isActive: true }).select("id").updateAll({ isActive: true });
@@ -120,6 +126,12 @@ function validateCapacity(ledger: Ledger, senderId: number, receiverId: number, 
   }
 }
 
+/**
+ * Record a guest's own SENT report or an owner's verified CONFIRMED payment.
+ * Validate group balances and expense capacity while holding the group lock.
+ * Payment, allocations and activity commit together. An authorized matching retry
+ * returns the existing ID; changing details with the same key is rejected.
+ */
 export async function createPayment(access: PaymentAccess, input: unknown) {
   const details = validateCreation(input, access?.kind === "guest");
   return db.transaction(async tx => {
@@ -160,6 +172,12 @@ export async function createPayment(access: PaymentAccess, input: unknown) {
   });
 }
 
+/**
+ * Let the owner move SENT to CONFIRMED or REJECTED, with an atomic audit event.
+ * Repeating the same terminal decision is harmless; switching it is forbidden.
+ * Confirmation needs a current allocation version and rechecks available capacity
+ * excluding this report's own reservation. Rejection releases it without settling debt.
+ */
 export async function reviewPayment(access: PaymentAccess, paymentId: unknown, decision: unknown, expectedVersion?: string) {
   if (access?.kind !== "owner") throw new PaymentError("Only the group owner can confirm or reject payments.");
   const targetId = id(paymentId);
@@ -192,7 +210,13 @@ export async function reviewPayment(access: PaymentAccess, paymentId: unknown, d
   });
 }
 
-/** Owner-only explicit reconciliation. Frozen excluded allocations never move. */
+/**
+ * Replace historical active associations after explicit owner review.
+ * Preserve excluded rows, original amount, participants and status; historical
+ * overpayment may be recorded without pretending it is a new transfer.
+ * Matching associations replay harmlessly. Other changes require the current
+ * revision and atomically append both old and new associations to the audit log.
+ */
 export async function reconcilePayment(access: PaymentAccess, paymentId: unknown, expectedVersion: string, input: unknown) {
   if (access?.kind !== "owner") throw new PaymentError("Only the owner can reconcile payment allocations.");
   const target = id(paymentId);
@@ -220,6 +244,7 @@ export async function reconcilePayment(access: PaymentAccess, paymentId: unknown
   });
 }
 
+/** Load the owner's reconciliation form from a locked ledger and compatible expenses. */
 export async function getPaymentReconciliation(groupId: number, paymentId: number) {
   return db.transaction(async tx => {
     const { ledger } = await lockedAccess({ kind: "owner", groupId }, tx);

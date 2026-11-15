@@ -7,6 +7,10 @@ import type { ExpenseAccess, ExpenseFormState, ExpenseInput } from "@/lib/expens
 
 import { readInput } from "@/lib/expenses/form-input";
 
+/** Translate form intents into preview/save calls while retaining the creation key.
+ * Framework redirects stay outside save error handling; an acknowledged commit
+ * whose refresh fails returns a saved destination rather than another save prompt.
+ */
 async function handleExpense(access: ExpenseAccess, form: FormData): Promise<ExpenseFormState> {
   let input: ExpenseInput | undefined;
   let saved: Awaited<ReturnType<typeof createExpense>>;

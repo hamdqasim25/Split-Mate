@@ -22,7 +22,14 @@ export type GroupBalances =
 
 class InvalidLedger extends Error {}
 
-/** Pure calculation. Preserve supplied member order; never repair financial data. */
+/**
+ * Calculate complete-ledger balances using bigint pennies, preserving member order.
+ * Net = expenses paid - shares owed + confirmed sent - confirmed received.
+ * Positive means owed money; negative means owing money. SENT and REJECTED
+ * do not settle balances; deleted-expense allocations contribute nothing.
+ * Callers supply active expenses/shares and payment history with exclusion flags.
+ * Invalid or unresolved confirmed data returns unavailable rather than partial totals.
+ */
 export function calculateBalances(members: Member[], expenses: Expense[], shares: Share[], payments: PaymentRecord[] = []): GroupBalances {
   try {
     const totals = new Map(members.map(member => [member.id, { paid: BigInt(0), share: BigInt(0), sent: BigInt(0), received: BigInt(0), used: false }]));

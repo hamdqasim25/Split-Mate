@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { deleteGroupForOwner, GroupDeletionError } from "@/data/group-deletion";
 
+/** Check confirmation, delegate ownership/deletion to the service, then refresh affected routes.
+ * Redirect occurs after persistence and outside the mutation error handler.
+ */
 export async function deleteGroupAction(groupId: number, _previous: { error?: string }, form: FormData) {
   let group;
   try {

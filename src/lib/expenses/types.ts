@@ -1,3 +1,4 @@
+/** Serializable expense form and display shapes; they carry proposals, not authority. */
 export type ExpenseMember = { id: number; name: string; isActive?: boolean; payerEligible?: boolean; participantEligible?: boolean };
 
 export type ExpenseAccess =
@@ -38,7 +39,7 @@ export type SavedExpense = {
   participants: (ExpenseMember & { amount: string })[];
 };
 
-/** The only expense data passed across the server/client boundary. */
+/** Safe group/member context for the shared form; excludes session and account credentials. */
 export type ExpenseFormContext = {
   group: { name: string; currency: string };
   currentMember: ExpenseMember;

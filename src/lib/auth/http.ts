@@ -22,6 +22,8 @@ export function assertSameOrigin(request: Request): void {
   }
 }
 
+/** Read same-origin JSON with a limit on actual streamed bytes, not Content-Length.
+ * Returns untrusted parsed data; the account service validates its fields. */
 export async function readAuthJson(request: Request): Promise<unknown> {
   assertSameOrigin(request);
   if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
@@ -56,6 +58,7 @@ export function authResponse(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+/** Map expected errors to safe HTTP responses; unexpected exceptions never leave the server. */
 export function authErrorResponse(error: unknown): Response {
   if (error instanceof AuthError) {
     return authResponse({ error: { code: error.code, message: error.message, ...(error.field && { field: error.field }) } }, STATUS[error.code]);

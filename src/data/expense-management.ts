@@ -51,6 +51,8 @@ async function contextFor(saved: Awaited<ReturnType<typeof load>>, tx: Client): 
   };
 }
 
+/** Load an owner-authorized edit draft and its current revision under the group lock.
+ * Existing inactive members remain selectable only in their historical roles. */
 export async function getSavedExpenseForOwner(groupId: number, expenseId: number) {
   return db.transaction(async tx => {
     const saved = await load(groupId, expenseId, tx);
@@ -92,6 +94,8 @@ async function prepare(groupId: number, expenseId: number, version: string, inpu
   return { saved, details, review: { description: details.input.description, amount: details.input.amount, payer: { id: payer.id, name: payer.name }, participants } };
 }
 
+/** Preserve proposed custom shares for review; new participants start at zero.
+ * Unlike saving, review permits an unbalanced draft so the UI can show the remainder. */
 export async function previewSavedExpense(groupId: number, expenseId: number, version: string, input: ExpenseInput) {
   return db.transaction(async tx => {
     const { details, review } = await prepare(groupId, expenseId, version, input, tx, false);
@@ -100,6 +104,11 @@ export async function previewSavedExpense(groupId: number, expenseId: number, ve
   });
 }
 
+/**
+ * Replace editable expense fields and shares, then append an audit event in one transaction.
+ * Reject stale revisions and changes incompatible with pending/confirmed allocations.
+ * Original creation time and retry snapshot survive so creation replays stay stable.
+ */
 export async function updateSavedExpense(groupId: number, expenseId: number, version: string, input: ExpenseInput) {
   return db.transaction(async tx => {
     const { saved, details, review } = await prepare(groupId, expenseId, version, input, tx, true);
@@ -138,6 +147,12 @@ export async function updateSavedExpense(groupId: number, expenseId: number, ver
   });
 }
 
+/**
+ * Soft-delete an owner-authorized expense and audit each linked payment exclusion.
+ * Shares and payments remain stored; the expense's deletedAt controls their effect.
+ * Unresolved pending/confirmed history blocks deletion. A completed deletion can be retried
+ * without another event, but an old version cannot delete a changed active expense.
+ */
 export async function deleteSavedExpense(groupId: number, expenseId: number, version: string) {
   return db.transaction(async tx => {
     const saved = await load(groupId, expenseId, tx);

@@ -19,6 +19,8 @@ const { default: List } = await import("../src/components/expenses/expense-list.
 hooks.deregister();
 beforeEach(reset);
 const input = () => ({ description: "Dinner", amount: "10.01", paidByMemberId: "10", participantIds: ["2", "10"], shares: [{ memberId: "2", amount: "7.01" }, { memberId: "10", amount: "3.00" }] });
+// The guest enters a custom expense paid by the owner. Both cookies are present
+// so the tests can check that each explicit entry point uses the intended identity.
 async function setup() {
   state.rows.User.push({ id: 7, name: "Owner" });
   state.rows.UserSession.push({ userId: 7, tokenHash: createHash("sha256").update(token).digest("hex"), expiresAt: new Date(Date.now() + 60000).toISOString() });
@@ -110,7 +112,7 @@ test("inactive saved shares survive description-only edit; inactive nonmember se
   saved = await load(1, 1);
   await assert.rejects(update(1, 1, saved.version, { ...saved.input, paidByMemberId: "2" }), /active/);
 });
-test("delete removes allocations, retains confirmed repayments/audit and repeated delete does not duplicate event", async () => {
+test("soft deletion excludes payment effects, retains shares/history and emits one deletion event", async () => {
   const saved = await setup();
   state.rows.Payment.push({ id: 1, groupId: 1, payerMemberId: 2, receiverMemberId: 10, amount: "7.01", status: "CONFIRMED" });
   state.rows.PaymentAllocation.push({ id: 1, paymentId: 1, expenseId: 1, amountPence: 701n });
@@ -123,6 +125,7 @@ test("delete removes allocations, retains confirmed repayments/audit and repeate
   await assert.rejects(update(1, 1, saved.version, input()), /deleted/);
 });
 test("stale and duplicate edits and stale delete cannot overwrite, even after values are restored", async () => {
+  // Restoring the old values must not restore the old revision (the ABA case).
   const original = await setup();
   await update(1, 1, original.version, { ...input(), description: "Changed" });
   await assert.rejects(update(1, 1, original.version, input()), /changed/);

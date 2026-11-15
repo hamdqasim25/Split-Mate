@@ -4,6 +4,10 @@ import { useState } from "react";
 import { splitTotals } from "@/lib/expenses/money";
 import type { ExpenseInput, ExpenseReview as Review } from "@/lib/expenses/types";
 
+/** Edit raw share strings against the server's equal-split baseline.
+ * Existing custom values take precedence; reset explicitly restores the baseline.
+ * Local totals guide the user, while the save service enforces the exact sum.
+ */
 export default function ExpenseReview({ input, review, action, pending, error, editing = false, requestKey }: {
   input: ExpenseInput; review: Review; action: (data: FormData) => void; pending: boolean; error?: string;
   editing?: boolean;

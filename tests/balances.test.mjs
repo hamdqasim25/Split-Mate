@@ -18,6 +18,7 @@ function text(tree) {
   if (tree == null || typeof tree === "boolean") return "";
   return typeof tree === "object" ? text(tree.props?.children) : String(tree);
 }
+// Every expense penny has an assigned share, so the group's signed balances sum to zero.
 function assertBalanced(result) {
   assert.equal(result.status, "ready");
   assert.equal(result.totalPaid, result.totalShare);
@@ -48,6 +49,7 @@ test("inactive historical payers and zero-share participants remain; unused inac
   assert.match(text(BalanceList({ balances: result })), /Inactive member/);
 });
 test("aggregate pence safely exceed Number.MAX_SAFE_INTEGER and single expense maximum", () => {
+  // Each record is valid on its own; the aggregate exceeds safe Number precision.
   const expenses = Array.from({ length: 100001 }, (_, i) => expense(i, "999999999.99"));
   const result = calculateBalances(members, expenses, expenses.map(row => share(row.id, 2, row.amount)));
   assertBalanced(result);

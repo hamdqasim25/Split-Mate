@@ -23,7 +23,10 @@ function cookieOptions(name: string) {
   };
 }
 
-/** Internal: call only after credentials have been verified server-side. */
+/** Rotate this browser's owner session after credentials are verified server-side.
+ * Revoke previous tokens and store the new hash atomically before issuing a cookie.
+ * The raw credential never appears in the returned response body.
+ */
 export async function createUserSession(userId: number, requestUrl: string): Promise<void> {
   if (!Number.isInteger(userId) || userId <= 0 || userId > 2_147_483_647) {
     throw new AuthError("UNAUTHENTICATED", "Authentication is required.");
@@ -72,12 +75,15 @@ export async function getCurrentUser(client: Pick<typeof db, "orm"> = db): Promi
   return client.orm.public.User.select("id", "name").first({ id: session.userId });
 }
 
+/** Require a valid owner account session; membership/ownership checks belong to callers. */
 export async function requireUser(): Promise<{ id: number; name: string }> {
   const user = await getCurrentUser();
   if (!user) throw new AuthError("UNAUTHENTICATED", "Authentication is required.");
   return user;
 }
 
+/** Revoke this browser's owner credentials before clearing cookies.
+ * A database failure leaves the cookie available for retry and does not affect guests. */
 export async function revokeUserSession(): Promise<void> {
   const cookieStore = await cookies();
   const names = cookieNames();

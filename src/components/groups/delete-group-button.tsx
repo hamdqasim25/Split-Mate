@@ -3,6 +3,10 @@
 import { useActionState, useRef } from "react";
 import { deleteGroupAction } from "@/app/actions/group-deletion";
 
+/** Use a native modal dialog for explicit permanent deletion confirmation.
+ * Focus starts on Cancel and returns to the trigger; pending submission blocks dismissal.
+ * The ref closes the gap before React renders pending, preventing rapid duplicate submits.
+ */
 export default function DeleteGroupButton({ groupId, groupName }: { groupId: number; groupName: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);

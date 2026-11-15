@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatHistoryTime } from "@/lib/date-time";
 import PaymentAllocationFields from "@/components/groups/payment-allocation-fields";
 import { effectivePaymentPence } from "@/lib/payments/allocations";
 import { formatPence } from "@/lib/expenses/money";
@@ -21,6 +22,10 @@ function focusCard(element: HTMLElement | null) {
   element?.closest("li")?.querySelector<HTMLElement>("h3")?.focus();
 }
 
+/** Keep one payment intent mounted through disclosure changes and uncertain responses.
+ * Preserve the key and draft on failure; acknowledged success starts a fresh intent.
+ * Recipients are server-computed hints and are revalidated when the action saves.
+ */
 export function PaymentForm({ access, recipients, senderId, requestKey, expenses = [] }: {
   access: PaymentAccess; recipients: Recipient[]; senderId: number; requestKey: string; expenses?: PaymentExpense[];
 }) {
@@ -86,6 +91,8 @@ export function PaymentForm({ access, recipients, senderId, requestKey, expenses
   </div>;
 }
 
+/** Submit an owner decision with the displayed allocation revision.
+ * Eligibility controls the UI only; owner authority and capacity are enforced server-side. */
 export function PaymentReview({ groupId, payment, currentMemberId, canConfirm = true }: { groupId: number; payment: PaymentHistory; currentMemberId: number; canConfirm?: boolean }) {
   const router = useRouter();
   const element = useRef<HTMLFormElement>(null);
@@ -125,22 +132,44 @@ function PaymentAllocations({ payment }: { payment: PaymentHistory }) {
   </div>;
 }
 
+/** Show original transfer history alongside the amount still effective after exclusions.
+ * Owner-only links expose reconciliation; they do not themselves authorize mutations. */
 export default function PaymentHistoryList({ payments, ownerGroupId, currentMemberId }: { payments: PaymentHistory[]; ownerGroupId?: number; currentMemberId?: number }) {
   return <section aria-labelledby="payments-heading" className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
     <h2 id="payments-heading" className="text-xl font-semibold">Payment history</h2>
     <p className="mt-2 text-sm text-muted">External payments recorded by your group. SPLITMate does not transfer money.</p>
-    {payments.length === 0 ? <p className="mt-3 text-sm text-muted">No repayments recorded yet.</p> : <ul className="mt-3 space-y-4">
-      {payments.map(payment => <li key={payment.id} className="rounded-xl border border-line p-4">
-        <p className="break-words font-semibold">{payment.payerName} to {payment.receiverName} &mdash; &pound;{payment.amount}</p>
-        <p className="mt-1 text-sm font-semibold">{paymentEffect(payment) === BigInt(0) ? "Excluded — expense deleted" : paymentStatusLabel(payment.status)}</p>
-        <PaymentAllocations payment={payment} />
-        {ownerGroupId && paymentEffect(payment) !== BigInt(0) && <Link href={`/groups/${ownerGroupId}/payments/${payment.id}/reconcile`} className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-accent">{payment.allocations?.length ? "Review expense associations" : "Reconcile expense associations"}</Link>}
-        {ownerGroupId && currentMemberId && payment.status === "SENT" && (paymentEffect(payment) === null || paymentEffect(payment) === BigInt(0)) && <PaymentReview groupId={ownerGroupId} currentMemberId={currentMemberId} payment={payment} canConfirm={false} />}
-        <p className="mt-1 break-words text-xs text-muted">Recorded <time dateTime={payment.createdAt}>{payment.createdAt.replace("T", " ").replace(".000Z", " UTC").replace("Z", " UTC")}</time></p>
-        {payment.sentAt && <p className="mt-1 break-words text-xs text-muted">Sent <time dateTime={payment.sentAt}>{payment.sentAt.replace("T", " ").replace("Z", " UTC")}</time></p>}
-        {payment.confirmedAt && <p className="mt-1 break-words text-xs text-muted">Confirmed <time dateTime={payment.confirmedAt}>{payment.confirmedAt.replace("T", " ").replace("Z", " UTC")}</time></p>}
-        {payment.status === "SENT" && paymentEffect(payment) !== BigInt(0) && <p className="mt-2 text-sm text-muted">Non-excluded amounts are not yet applied to balances.</p>}
-      </li>)}
+    {payments.length === 0 ? <p className="mt-3 text-sm text-muted">No repayments recorded yet.</p> : <ul className="mt-3 divide-y divide-line">
+      {payments.map(payment => {
+        const effective = paymentEffect(payment);
+        const needsReview = ownerGroupId && currentMemberId && payment.status === "SENT" && (effective === null || effective === BigInt(0));
+        const reconcile = ownerGroupId && effective !== BigInt(0) ? <Link href={`/groups/${ownerGroupId}/payments/${payment.id}/reconcile`} className="inline-flex min-h-11 items-center text-sm font-semibold text-accent">{payment.allocations?.length ? "Review expense associations" : "Reconcile expense associations"}</Link> : null;
+        return <li key={payment.id}>
+          <details className="history-disclosure">
+            <summary className="history-summary">
+              <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1">
+                <span className="break-words text-sm font-semibold">{payment.payerName} → {payment.receiverName}</span>
+                <span className="text-right text-sm font-semibold tabular-nums">&pound;{payment.amount}</span>
+                <time dateTime={payment.createdAt} className="text-xs text-muted">{formatHistoryTime(payment.createdAt)}</time>
+                <span className={`justify-self-end rounded-full px-2 py-0.5 text-xs ${payment.status === "CONFIRMED" ? "bg-accent-soft text-accent" : payment.status === "REJECTED" ? "bg-danger-soft text-danger" : "bg-warning-soft text-warning"}`}>{payment.status === "SENT" ? "Sent" : paymentStatusLabel(payment.status)}</span>
+              </span>
+              <span aria-hidden="true" className="history-chevron">⌄</span>
+              <span className="sr-only">Payment details</span>
+            </summary>
+            <div className="history-details space-y-2 text-sm">
+              <p className="font-medium">{effective === BigInt(0) ? "Excluded — expense deleted" : paymentStatusLabel(payment.status)}</p>
+              <PaymentAllocations payment={payment} />
+              <p className="text-xs text-muted">Recorded <time dateTime={payment.createdAt}>{formatHistoryTime(payment.createdAt, true)}</time> (London)</p>
+              {payment.sentAt && <p className="text-xs text-muted">Sent <time dateTime={payment.sentAt}>{formatHistoryTime(payment.sentAt, true)}</time> (London)</p>}
+              {payment.confirmedAt && <p className="text-xs text-muted">Confirmed <time dateTime={payment.confirmedAt}>{formatHistoryTime(payment.confirmedAt, true)}</time> (London)</p>}
+              {payment.status === "SENT" && effective !== BigInt(0) && <p className="text-muted">Non-excluded amounts are not yet applied to balances.</p>}
+              {effective !== null && reconcile}
+            </div>
+          </details>
+          {/* Unresolved associations and pending rejection stay visible without opening details. */}
+          {effective === null && <div className="px-2 pb-2">{reconcile}</div>}
+          {needsReview && <div className="px-2 pb-3"><PaymentReview groupId={ownerGroupId!} currentMemberId={currentMemberId!} payment={payment} canConfirm={false} /></div>}
+        </li>;
+      })}
     </ul>}
   </section>;
 }

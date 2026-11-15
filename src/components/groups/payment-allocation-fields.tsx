@@ -36,6 +36,10 @@ function draftTotals(amount: string, values: Record<number, string>) {
   };
 }
 
+/** Keep raw allocations editable, omitting blank expenses from form submission.
+ * Retain previously selected expenses that disappear from refreshed choices so an
+ * uncertain request can be retried or explicitly corrected, rather than silently changed.
+ */
 export default function PaymentAllocationFields({ expenses, amount, initial = {}, prefix }: {
   expenses: PaymentExpense[]; amount: string; initial?: Record<number, string>; prefix: string;
 }) {

@@ -27,7 +27,7 @@ async function join() {
   const form = new FormData(); form.set("memberId", "2");
   await assert.rejects(claimGuest(token, { error: "" }, form), { destination: `/g/${token}/group` });
 }
-test("valid guest sees identity, joined/waiting members, activity and future expenses", async () => {
+test("valid guest sees identity, member status, activity, empty expenses and the add-expense link", async () => {
   await join();
   state.rows.GroupMember.push({ ...state.rows.GroupMember[0], id: 3, name: "Waiting guest", claimedAt: null });
   const tree = await GroupPage(props());

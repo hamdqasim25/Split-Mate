@@ -1,6 +1,9 @@
 import { ExpenseError } from "@/data/expenses";
 import type { ExpenseInput } from "@/lib/expenses/types";
 
+/** Decode bounded form fields while preserving raw editable amounts.
+ * This module imports the server expense error; it is for Server Actions, not UI bundles.
+ * The service still checks identities, money and the exact participant/share relationship. */
 export function readInput(form: FormData): ExpenseInput {
   const field = (name: string, max: number) => {
     const values = form.getAll(name);

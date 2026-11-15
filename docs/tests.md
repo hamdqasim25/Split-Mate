@@ -4,6 +4,33 @@ This document owns verification commands, coverage, reported evidence and remain
 
 ## Automated checkpoints
 
+**15 November 2026 — CI preparation:** 670 isolated tests passed with zero failures, cancellations or skips. Lint, Next.js route-type generation and TypeScript (`npx.cmd --no-install tsc --noEmit --incremental false`) passed. The production build passed with process-local, unusable loopback database URLs after a network-enabled retry for Google Fonts; application database credentials were not used. GitHub-hosted execution remains unverified until the workflow is pushed. The CI changes are confined to the workflow, README and this document; existing application, test and dependency files are unchanged by this task.
+
+The 26 real PostgreSQL tests also passed with zero failures, cancellations or skips on the existing owned local PostgreSQL 18 cluster (approximately 119 seconds). Startup and shutdown required retries outside the Windows sandbox. The migration preview reported already up to date; schema and full contract-marker verification passed before testing. No migration was applied during this local run. Cleanup found zero registered fixtures remaining and the cluster was stopped. This establishes current test compatibility, not a fresh Ubuntu installation or migration rehearsal. Workflow YAML parsing, structural assertions, package/lockfile root consistency and `git -c core.safecrlf=false diff --check` passed; actionlint, a fresh `npm ci` installation and GitHub-hosted execution were not run.
+
+**13 November 2026 — compact payment history and activity:** 670 isolated tests passed with zero failures, cancellations or skips. Lint and TypeScript validation (`npx.cmd --no-install tsc --noEmit --incremental false`) passed. The seven new cases in `tests/group-history.test.mjs` cover concise summaries, GBP conversion, London winter/summer and DST boundaries, original details/timestamps, native disclosure structure, empty states and owner-only controls. The payment UI test now expects independent closed history disclosures while continuing to exclude guest review controls. These element-tree tests do not execute browser toggling or establish visual layout quality. Existing theme contrast tests passed.
+
+Manual history checks remain: at 360px, 390px and desktop widths in both themes, verify long member names and large amounts wrap without horizontal scrolling; independently open/close several rows by clicking the row/chevron and by Tab then Enter/Space; verify visible focus, announced expanded state and reduced-motion preference; inspect full original activity and payment details; check empty states, owner reconciliation/rejection visibility, member-card confirmation and guest absence of management controls. Browser checks and PostgreSQL integration tests were not rerun, and no database operations or migrations were performed.
+
+`npm.cmd run build` passed after a network-enabled retry (the sandboxed attempt could not fetch the existing Google Fonts). `git -c core.safecrlf=false diff --check` passed. No dependencies, API contracts, database code or financial rules were changed by this presentation task. The previously approved documentation/comment changes remain uncommitted alongside it.
+
+**7 November 2026 — documentation and readability review:** 663 isolated tests passed, with zero failures, cancellations or skips, matching the 28 October count. The changes document existing behaviour and rename two misleading test descriptions; assertions, fixtures and executable application logic are unchanged.
+
+| Executed command | Result |
+| --- | --- |
+| `node --test --test-reporter=dot tests/*.test.mjs` | Passed |
+| `node --test --test-reporter=spec tests/*.test.mjs` | 663 passed; repeated after final comment refinements to capture the explicit summary |
+| `npm.cmd run lint` | Passed |
+| `npx.cmd --no-install tsc --noEmit --incremental false` | Passed |
+| `npm.cmd run build` | Passed after a network-enabled retry; the sandboxed attempt could not fetch the existing Google Fonts |
+| `git -c core.safecrlf=false diff --check` | Passed; the command-local setting suppresses line-ending conversion warnings without changing repository configuration |
+
+Read-only Node/TypeScript checks compared all 41 modified script files against HEAD, normalizing line endings and removing comments; syntax trees matched after allowing exactly the two test-title replacements. CSS declarations were unchanged. All 340 literal local imports and 48 relative Markdown file links resolved. Tracked JSON and generated contract declarations parsed successfully. Migrations, contracts, dependency manifests and database configuration were unchanged. These checks do not verify external links or application behaviour in a browser.
+
+The disposable PostgreSQL configuration existed, but its owned cluster had no running-server PID file. The integration suite was **not rerun**, and the cluster was not started or migrated. The 26-test PostgreSQL result below remains dated historical evidence. No application database operations, browser checks, contract emission or migration commands were performed for this review.
+
+### Earlier integration checkpoint
+
 **25 October 2026: 663 passing isolated regression tests and 26 passing real PostgreSQL integration tests**, with zero failures or skips. The isolated suite includes 40 expense-retry cases and 14 integration-target safety checks. PostgreSQL 18 ran in a dedicated local cluster, separate from the application database.
 
 | Executed command | Result and scope |
@@ -40,6 +67,44 @@ Fresh repository checks on 28 October 2026 also passed: **663 isolated tests, ze
 Exact hashes, reviewed operations and deployment scope are in [database deployment evidence](database-design.md#expense-request-migration-deployment). Credentials were loaded privately; neither connection strings nor financial row contents are recorded here. This was migration verification, not a rerun of the 26 PostgreSQL integration cases or browser testing.
 
 The user confirmed the website is local-only. Hosted verification is therefore **not applicable**, and no hosted deployment was published. The prior browser attempt stopped because Computer Use could not reliably determine Chrome's current URL; no browser flow was verified. On resumption the user explicitly reserved all browser checks for themselves, so no browser automation/checks were run. Owner/guest creation, equal/custom shares, key retention through review/back/edit/errors, genuine committed-response loss and retry, conflicting-key feedback and fresh keys remain manual checks. A successful service replay or disabling networking before saving must not be reported as browser lost-response proof.
+
+## GitHub Actions CI
+
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs all checks on pushes to `main`, pull requests targeting `main` (opened, reopened or updated), and `workflow_dispatch`. There are no path filters. A newer run cancels an obsolete run for the same event/ref; failures in one quality matrix job do not cancel its siblings.
+
+Each job uses GitHub-hosted Ubuntu 24.04, Node 24 and `npm ci`. Official `actions/checkout` and `actions/setup-node` are pinned to release commit hashes (v7.0.1 and v7.1.0 respectively); update hashes deliberately when reviewing newer releases. Only npm's download cache is reused, keyed by `package-lock.json`; neither `node_modules`, build output nor test database files are cached or uploaded. Repository permissions are `contents: read`, checkout does not persist credentials, and the workflow does not reference GitHub secrets or use `pull_request_target`.
+
+| Check shown on GitHub | Command | Scope |
+| --- | --- | --- |
+| Automated tests | `node --test --test-reporter=spec tests/*.test.mjs` | Existing isolated regression suite |
+| Lint | `npm run lint` | Existing ESLint configuration |
+| TypeScript | `npx --no-install tsc --noEmit --incremental false` | Runs `npx --no-install next typegen` first because a clean checkout lacks generated Next.js route types |
+| Production build | `npm run build` | Production compilation and static generation |
+| PostgreSQL 18 integration tests | `npm run test:integration` | Existing 26 real-database concurrency, persistence and rollback cases |
+
+Quality jobs have a 20-minute total limit and their checks have 10-minute limits. The integration job has a 25-minute total limit, bounded setup/migration/cleanup steps and a 12-minute test step; the harness additionally enforces its own 10-minute suite limit. No failure is suppressed with `continue-on-error`. A failed command marks its step and check as failed; open the PR's Checks tab or **Actions → CI → run → failed job** for logs. Cancelled runs are not passing evidence. Branch protection/rulesets are separate repository settings: configure the five check names as required if merges must be blocked on failure.
+
+### Build environment and network
+
+The workflow supplies deliberately unusable `DATABASE_URL` and `DIRECT_URL` placeholders at `127.0.0.1:1`, solely for Prisma runtime imports during compilation. They are not application credentials and no database runs at that endpoint. CI does not load private environment files, run application database migrations, emit contracts or change dependency versions. If future prerendering needs database queries, investigate that requirement rather than adding application credentials to CI.
+
+The existing `next/font/google` imports download Geist and Geist Mono. GitHub runners need HTTPS access to `fonts.googleapis.com` and `fonts.gstatic.com`, in addition to npm/GitHub and the PostgreSQL package repository. Font download failures fail the build visibly; fonts are not mocked, TLS verification is not disabled and no application font changes are made. Local sandboxed builds may need an approved network-enabled retry.
+
+### Disposable PostgreSQL job
+
+The job installs PostgreSQL 18 from the [official PostgreSQL Ubuntu repository](https://www.postgresql.org/download/linux/ubuntu/) and verifies the server major version. It uses native binaries through `PG_BIN` and the existing `test:db:start` ownership protocol, rather than adopting the runner's default database service. The disposable VM's default Unix socket directory is made private to the runner so Debian's binaries can start as that unprivileged user; the harness never runs with sudo. It refuses a pre-existing `.integration-postgres` directory, then creates a fresh cluster on `127.0.0.1:55439` with a random password, test-only user/database, ownership manifest and database opt-in marker. `TEST_DATABASE_URL` comes only from the harness's generated ignored file, never a repository secret.
+
+The sequence is `test:db:start` → `test:db:preview` → `test:db:migrate` → `test:integration`. The migrate script previews and applies existing history to this new disposable database, then verifies status, schema and marker; the test script verifies them again before running. It uses `prisma.integration.config.ts`, the locked Prisma CLI and the harness's explicit target migration. Historical destructive operations therefore affect only the empty test schema. Changing the application contract requires separately reviewing the test harness's target and migration history; this CI setup does not alter either.
+
+Endpoint, credential-separation, live database identity and marker checks remain enabled. After a successful cluster start, `always()` cleanup steps run `test:db:cleanup` and `test:db:stop` even when migrations/tests fail. Cleanup errors remain visible. GitHub disposes of the runner after the job, including after interruption; no cluster is reused between runs. Logs and credential files from the test cluster are not uploaded.
+
+### First GitHub run and limits
+
+After reviewing and authorizing a commit/push, open a pull request targeting `main` and inspect all five checks. Verify that the integration log reports PostgreSQL 18, successful test-only migrations/verification, 26 passing tests and successful cleanup/stop. Check that the other jobs pass independently and that no credentials appear in logs. Once the workflow is on the default branch, **Actions → CI → Run workflow** provides manual execution. Pushes to `main` also run it automatically.
+
+Local results do not establish that GitHub's Ubuntu provisioning, dependency installation or workflow execution succeeded. Add the README badge only after a successful GitHub run, using `https://github.com/hamdqasim25/Split-Mate/actions/workflows/ci.yml/badge.svg?branch=main` linked to the workflow's Actions page.
+
+CI does not deploy, verify the Prisma-hosted application's schema/data, prove migrations safe for existing application data, execute full HTTP/browser journeys, or establish mobile layout, accessibility or production HTTPS-cookie behaviour. Those checks remain separate below.
 
 ## Real PostgreSQL integration suite
 
@@ -92,6 +157,14 @@ For a focused run, use a specific file, for example `node --test tests/guest-gro
 Builds use the existing private environment configuration; never print or commit it. Existing Google Font downloads may require network access. Inspect `git diff`, `git diff --check` and `git status` after checks and review intended changes. Database procedures and their approval requirements are in [database design](database-design.md#contract-and-migration-workflow); an ordinary test/build run is not approval to migrate or modify live data.
 
 ## What automated tests establish
+
+### Navigating the test infrastructure
+
+Top-level `*.test.mjs` files are grouped by behaviour rather than mirroring every route directory. Most feature suites use `helpers/guest-environment.mjs`, which adapts Next.js imports, simulates transactions with staged records and retains React hook state for explicit rerenders. `helpers/auth-environment.mjs` isolates owner account/session tests; `helpers/group-database.mjs` supplies the smaller group-creation transaction double. These helpers intentionally model only the operations their tests need.
+
+For the real database suite, start at `integration/config.mjs` (target guards), then `fixtures.mjs` (registered disposable records and cleanup), `harness.mjs` (observer and competing workers), and `worker.mjs`/`runtime.mjs` (real services and Prisma connections). `concurrency.test.mjs` observes actual database blocking; `rollback.test.mjs` injects database failures after intermediate writes. `cli.mjs` runs guarded commands, while `postgres.mjs` manages the separate local cluster. Script names and setup requirements are listed above.
+
+Test names describe the asserted behaviour. Fixture IDs are local to the test; they are not application identities. A simulated race or discarded service response must not be described as a real PostgreSQL race or interrupted browser connection.
 
 The isolated regression tests use Node's built-in `node:test` and `node:assert/strict`. Node 24 module hooks replace database, cookies, navigation and server-only imports. TypeScript services execute with Node support; TSX tests use the installed TypeScript transpiler and lightweight React-hook doubles. A double is a controlled replacement for a real system, used to simulate errors and inspect behaviour. The real PostgreSQL suite described above is separate.
 

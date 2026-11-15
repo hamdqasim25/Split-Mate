@@ -151,6 +151,10 @@ Activity identifies the responsible member and affected object. Group pages show
 
 Expense rows show payer, total, date and expandable shares. Member cards show balances, optional breakdowns and relevant payment controls; payment history is separate. Mutation responses refresh the owner group, guest group and dashboard data. Another open browser must refresh; there is no live push.
 
+Payment history and recent activity use independent, initially collapsed rows. Payments show sender, recipient, original GBP amount, status and a short date. Expanding reveals the existing allocations, exclusion information and recorded/sent/confirmed dates. Unresolved reconciliation links and pending rejection controls remain outside the disclosure; ordinary pending review remains in member cards. Reviewer identities and creation types are omitted because the current history projection does not supply them.
+
+Activity summaries recognise existing description patterns for display only, with a generic summary for unfamiliar records. Expanded rows retain the full original description. Neither summaries nor disclosure state affect stored events, permissions or calculations. Both sections format timestamps in Europe/London, including daylight saving: `7 Nov, 14:35` collapsed and `7 November 2026, 14:35` expanded. Original timestamps remain in HTML dateTime attributes. Native details/summary controls provide keyboard interaction and expanded-state semantics without additional client state; colours follow the existing light/dark theme.
+
 A shared light/dark control remembers a valid preference locally or follows the device setting until the user chooses. Storage failures fall back to an in-page preference. The 44px native toggle works before React becomes interactive, with compatibility for older media-query listeners. Disclosures keep forms mounted so closing a breakdown does not discard retry keys or drafts. Browser/accessibility verification limits belong in [tests.md](tests.md).
 
 ## Developer reference
@@ -175,10 +179,10 @@ Next.js App Router hosts UI, route handlers and Server Actions; there is no sepa
 | `src/app/` | Pages, HTTP routes and actions; explicit owner/guest entry points |
 | `src/components/` | Shared forms, review, history, members and theme controls |
 | `src/data/` | Authorized group, guest, expense, balance, payment and deletion services |
-| `src/lib/auth/` | Credentials, session lifecycle, HTTP validation and safe errors |
+| `src/lib/auth/` | Owner/guest session lifecycle, token handling, HTTP validation and safe errors; credential verification lives in `src/data/auth.ts` |
 | `src/lib/expenses/`, `src/lib/payments/` | Exact money, validation, allocation and eligibility helpers |
 | `src/prisma/` | Authored contract, generated artifacts and database runtime |
-| `tests/` | Node tests and isolated runtime/database doubles |
+| `tests/` | Isolated Node regression tests and doubles; `tests/integration/` uses a separate guarded PostgreSQL database |
 
 ### Routes and requests
 
@@ -218,4 +222,4 @@ Guest activity timestamps update at most once per five minutes with observed-val
 
 A transaction groups writes so they all succeed or all roll back. Financial operations take a guarded no-op group-row update before reading or changing the ledger; this obtains a database lock, making cooperating requests wait their turn. Required member rows are locked in ID order. Payment and management operations recheck authentication after waiting. Claiming uses guarded `updateAll()` writes; this Prisma RC's single-row `update()` first resolves an ID and is not used for those guards.
 
-Financial reads also take the group lock, with write overhead and possible contention. The RC exposes callback transactions without an isolation-level option. All future mutation paths must follow the lock and append-only audit convention; direct SQL bypassing it falls outside the guarantee. Lists/activity are separate reads, not a whole-page snapshot. Complete-ledger reads use memory proportional to history. Real PostgreSQL contention and rollback remain unverified; simulated tests are not proof of those behaviours. See [verification scope](tests.md).
+Financial reads also take the group lock, with write overhead and possible contention. The RC exposes callback transactions without an isolation-level option. All future mutation paths must follow the lock and append-only audit convention; direct SQL bypassing it falls outside the guarantee. Lists/activity are separate reads, not a whole-page snapshot. Complete-ledger reads use memory proportional to history. Controlled contention and rollback were verified by 26 tests on isolated local PostgreSQL 18 on 25 October 2026. That dated evidence does not establish every race, browser journey or behaviour on the Prisma-hosted application database. See [verification scope](tests.md#real-postgresql-integration-suite).

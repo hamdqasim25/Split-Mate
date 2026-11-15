@@ -122,6 +122,8 @@ test("allocations cannot exceed an expense share even when the group has more ou
   await createPayment(owner, proposal("15.00"));
   await assert.rejects(report("6.00"), /remaining expense share/);
 });
+// A legacy transfer has no expense associations; tests must reconcile explicitly
+// rather than infer them from matching amounts or participants.
 function legacy(status = "CONFIRMED") { state.rows.Payment.push({ id: 1, groupId: 1, payerMemberId: 2, receiverMemberId: 10, amount: "20.00", status, createdAt: "2026-01-01" }); }
 test("historical payments are not guessed; explicit owner reconciliation unblocks deletion", async () => {
   legacy(); const before = structuredClone(state.rows.Payment);

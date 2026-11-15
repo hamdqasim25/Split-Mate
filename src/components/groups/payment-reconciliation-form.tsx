@@ -5,6 +5,10 @@ import PaymentAllocationFields from "@/components/groups/payment-allocation-fiel
 import type { PaymentHistory, PaymentExpense, PaymentActionState } from "@/lib/payments/types";
 import { formatPence, parsePence } from "@/lib/expenses/money";
 
+/** Edit only active associations; excluded amounts remain frozen in payment history.
+ * The editable total is the original payment minus exclusions. The server checks
+ * the bound revision and complete allocation sum before saving any association.
+ */
 export default function PaymentReconciliationForm({ payment, expenses, action }: {
   payment: PaymentHistory; expenses: PaymentExpense[];
   action: (previous: PaymentActionState, form: FormData) => Promise<PaymentActionState>;

@@ -8,6 +8,11 @@ import type { ExpenseFormContext, ExpenseFormState } from "@/lib/expenses/types"
 
 const inputClass = "mt-2 w-full rounded-xl border border-line bg-surface px-4 py-3 text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20";
 
+/** Coordinate details, review and saved-result screens for creation and editing.
+ * New forms retain their initial retry key through errors and server refreshes.
+ * Editing uses the version bound into action; the route remounts a changed revision.
+ * Client recovery retains proposals only: the action/service validates them again.
+ */
 export default function ExpenseForm({ context, action, initialInput, editing = false, requestKey }: {
   context: ExpenseFormContext;
   initialInput?: import("@/lib/expenses/types").ExpenseInput;

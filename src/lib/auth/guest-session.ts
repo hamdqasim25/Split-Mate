@@ -11,7 +11,11 @@ function cookieNames() {
   return process.env.NODE_ENV === "production" ? [SECURE_COOKIE] : [SECURE_COOKIE, LOCAL_COOKIE];
 }
 
-/** Internal validated context. Never pass session details into a Client Component. */
+/** Validate the guest cookie, expiry and active claimed membership in this group.
+ * Returns null for unavailable access; the share link alone is never identity.
+ * A transaction client keeps this lookup on the connection holding mutation locks.
+ * Internal validated context: never pass session details into a Client Component.
+ */
 export async function getGuestSessionForGroup(groupId: number, client: Pick<typeof db, "orm"> = db) {
   if (!Number.isInteger(groupId) || groupId <= 0 || groupId > 2_147_483_647) return null;
   const store = await cookies();

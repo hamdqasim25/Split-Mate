@@ -7,7 +7,11 @@ import { isValidToken } from "@/lib/auth/tokens";
 import { getExpensesForGroup } from "@/data/groups";
 import { getLedgerForGroup } from "@/data/balances";
 
-/** Cookie authentication is authoritative; the URL only identifies the group. */
+/** Load a group for its authenticated guest and record throttled activity.
+ * The URL identifies the group; its cookie proves the claimed membership.
+ * Disabled invitations do not remove an existing guest's access.
+ * Financial totals are locked reads, but lists/activity are not a whole-page snapshot.
+ */
 export async function getGroupForGuest(shareToken: unknown) {
   if (!isValidToken(shareToken)) return null;
   return db.transaction(async (tx) => {

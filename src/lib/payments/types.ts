@@ -1,3 +1,6 @@
+/** Shared action/display shapes. Pound amounts and penny allocations travel as
+ * strings across the server/client boundary; access still requires a valid session.
+ */
 export type PaymentAccess = { kind: "owner"; groupId: number } | { kind: "guest"; shareToken: string };
 export type PaymentStatus = "SENT" | "CONFIRMED" | "REJECTED";
 export type PaymentRecord = {

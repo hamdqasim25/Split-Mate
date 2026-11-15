@@ -1,7 +1,12 @@
 import { parsePence } from "@/lib/expenses/money";
 import type { PaymentRecord } from "@/lib/payments/types";
 
-/** null means unreconciled historical money, never a zero or a guessed link. */
+/**
+ * Validate the full allocation sum, then return only non-excluded pennies.
+ * Excluded rows still belong to the original payment amount and audit history.
+ * Null means unreconciled history; zero means valid allocations are all excluded.
+ * @throws RangeError for invalid, duplicated or mismatched allocations.
+ */
 export function effectivePaymentPence(payment: Pick<PaymentRecord, "amount" | "allocations">): bigint | null {
   if (!payment.allocations?.length) return null;
   const ids = new Set<number>();

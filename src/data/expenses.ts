@@ -10,9 +10,9 @@ import type { ExpenseAccess, ExpenseFormContext, ExpenseInput, ExpenseReview } f
 type Client = Pick<typeof db, "orm">;
 export class ExpenseError extends Error {}
 
-// Owner session lookup uses the application's pool. Resolve it before opening
-// a transaction so concurrent lock waiters cannot exhaust the pool while the
-// lock holder waits for a second connection. Guest lookup uses tx directly.
+// Preview/context reads resolve the owner before opening their transaction,
+// avoiding a second pool connection while holding one. Creation instead resolves
+// and rechecks the session on its transaction connection around the group lock.
 async function ownerForAccess(access: ExpenseAccess) {
   if (access?.kind !== "owner" || !Number.isInteger(access.groupId) || access.groupId <= 0 || access.groupId > 2_147_483_647) return null;
   return getCurrentUser();
@@ -38,6 +38,8 @@ async function resolveExpenseAccess(access: ExpenseAccess, client: Client, owner
   return guest ? { group, member: { id: guest.member.id, name: guest.member.name } } : null;
 }
 
+/** Load eligible members for the route-selected owner or guest identity.
+ * Returns null when access is unavailable; this context is not permission to save later. */
 export async function getExpenseFormContext(access: ExpenseAccess): Promise<ExpenseFormContext | null> {
   const owner = await ownerForAccess(access);
   return db.transaction(async (tx) => {
@@ -58,6 +60,12 @@ function memberId(value: unknown): number {
   return Number(value);
 }
 
+/**
+ * Normalize an untrusted proposal into exact penny amounts and member IDs.
+ * Omitted shares request an equal split; supplied shares must cover each selected
+ * participant once and total the expense exactly. Membership is checked separately.
+ * @throws ExpenseError for malformed fields, money, IDs or custom allocations.
+ */
 export function validateExpenseInput(input: unknown) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new ExpenseError("Enter expense details.");
   const values = input as Record<string, unknown>;
@@ -136,6 +144,7 @@ async function prepareExpense(access: ExpenseAccess, input: unknown, tx: Client,
   return { ...resolved, input: details.input, review, splitMethod };
 }
 
+/** Build an authorized split preview without creating an expense or reserving a key. */
 export async function previewExpense(access: ExpenseAccess, input: unknown) {
   const owner = await ownerForAccess(access);
   return db.transaction(async (tx) => {
@@ -144,6 +153,14 @@ export async function previewExpense(access: ExpenseAccess, input: unknown) {
   });
 }
 
+/**
+ * Save an expense, its shares and the actor's activity event atomically.
+ * After taking the group lock, recheck identity before either writing or replaying.
+ * A matching request key returns the original ID, even after an edit or deletion;
+ * a key with different creation details fails rather than overwriting history.
+ * @param requestKey One UUID retained by the form for this creation attempt.
+ * @throws ExpenseError when access, details, membership or retry identity is invalid.
+ */
 export async function createExpense(access: ExpenseAccess, input: unknown, requestKey: unknown) {
   validateExpenseRequestKey(requestKey);
   const details = validateExpenseInput(input);
@@ -189,6 +206,7 @@ export async function createExpense(access: ExpenseAccess, input: unknown, reque
   });
 }
 
+/** Validate retry-key syntax only. Possessing a key never establishes group access. */
 export function validateExpenseRequestKey(value: unknown): asserts value is string {
   if (typeof value !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) {
     throw new ExpenseError("The expense request is missing or invalid. Return to the group and open a new expense form.");

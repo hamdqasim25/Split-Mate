@@ -2,6 +2,8 @@ import { registerHooks } from "node:module";
 import { readFileSync, existsSync } from "node:fs";
 import ts from "typescript";
 
+// Shared in-memory service/UI harness. Import hooks replace database and Next.js
+// boundaries; React hooks inspect element trees, not a browser DOM. No .env is loaded.
 export const token = Buffer.alloc(32, 1).toString("base64url");
 export const state = {};
 let queue = Promise.resolve();
@@ -131,6 +133,7 @@ export function useState(initial) {
   return [state.hooks[index], value => { state.hooks[index] = typeof value === "function" ? value(state.hooks[index]) : value; }];
 }
 export function useRef(initial) { return useState({ current: initial })[0]; }
+/** Retain hook slots across explicit renders to exercise drafts and retry identities. */
 export function renderWithState(component, props) {
   state.hookIndex = 0; state.rendering = true;
   try { return component(props); } finally { state.rendering = false; }

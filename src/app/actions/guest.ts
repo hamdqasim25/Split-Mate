@@ -5,6 +5,9 @@ import { claimMember, findInviteGroup, InviteError } from "@/data/invites";
 import { getGuestForGroup, revokeGuestSession, setGuestSessionCookie } from "@/lib/auth/guest-session";
 import { isValidToken } from "@/lib/auth/tokens";
 
+/** Reuse an existing same-group guest identity or claim an eligible listed name.
+ * Issue the cookie only after the claim/session/activity transaction commits.
+ */
 export async function claimGuest(shareToken: string, _previous: { error: string }, form: FormData) {
   try {
     const group = await findInviteGroup(shareToken);
@@ -26,6 +29,7 @@ export async function claimGuest(shareToken: string, _previous: { error: string 
   redirect(`/g/${shareToken}/group`);
 }
 
+/** Revoke guest access on this browser without releasing the claimed member name. */
 export async function signOutGuest(shareToken: string) {
   try {
     await revokeGuestSession();

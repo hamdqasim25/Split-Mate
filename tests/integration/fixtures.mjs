@@ -5,6 +5,8 @@ import { assertTestDatabase } from "./config.mjs";
 const token = () => randomBytes(32).toString("base64url");
 const hash = value => createHash("sha256").update(value).digest("hex");
 
+/** Install coordination and failure triggers only after checking the test database marker.
+ * These controls are test infrastructure, not application migration history. */
 export async function installControls(client) {
   await assertTestDatabase(client);
   await client.query(`
@@ -48,6 +50,8 @@ export async function installControls(client) {
   }
 }
 
+/** Remove only a registered run whose owner email matches its random run ID.
+ * Dependency-order cleanup is transactional and preserves unrelated records. */
 export async function cleanupRun(client, runId) {
   await assertTestDatabase(client);
   await client.query("BEGIN");
@@ -106,6 +110,8 @@ export async function fixture(t) {
   };
 }
 
+/** Read persisted group state through the observer, independently of service connections.
+ * Redact invitation/session credentials before any assertion can print a difference. */
 export async function snapshot(client, groupId) {
   const tables = {};
   for (const table of ["groupMember", "expense", "payment", "activityEvent"]) {

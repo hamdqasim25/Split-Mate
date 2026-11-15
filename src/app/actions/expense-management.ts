@@ -14,6 +14,7 @@ function refresh(result: { groupId: number; shareToken: string }, status: string
   redirect(`/groups/${result.groupId}?expense=${status}`);
 }
 
+/** Preserve editable values across review errors; the service checks the bound saved revision. */
 export async function editExpenseAction(groupId: number, expenseId: number, version: string, _previous: ExpenseFormState, form: FormData): Promise<ExpenseFormState> {
   let input: ExpenseInput | undefined;
   let result;
@@ -39,6 +40,7 @@ export async function editExpenseAction(groupId: number, expenseId: number, vers
   refresh(result, "updated");
 }
 
+/** Require explicit form confirmation before the owner-authorized soft deletion service. */
 export async function deleteExpenseAction(groupId: number, expenseId: number, version: string, _previous: { error?: string }, form: FormData) {
   let result;
   try {

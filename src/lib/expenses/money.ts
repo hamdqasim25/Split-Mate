@@ -2,6 +2,12 @@
 // receive exact pound strings, never floating-point pound values.
 export const MAX_PENCE = 99_999_999_999;
 
+/**
+ * Parse a plain GBP string into integer pennies within the single-record limit.
+ * Zero is allowed only when requested for a participant share. The bound fits
+ * safely in Number; larger ledger aggregates use bigint instead.
+ * @throws RangeError for unsupported notation, precision, sign or amount.
+ */
 export function parsePence(value: unknown, allowZero = false): number {
   if (typeof value !== "string" || value.length > 32) throw new RangeError("Enter a valid GBP amount.");
   const match = /^(0|[1-9]\d{0,8})(?:\.(\d{1,2}))?$/.exec(value.trim());
@@ -18,6 +24,9 @@ export function formatPence(value: bigint): string {
   return `${negative ? "-" : ""}${absolute / BigInt(100)}.${String(absolute % BigInt(100)).padStart(2, "0")}`;
 }
 
+/** Summarize a draft split without treating malformed shares as valid zeroes.
+ * Invalid entries are omitted from the displayed sum but make balanced false.
+ * The expense total itself must already be valid and may throw RangeError. */
 export function splitTotals(total: string, shares: string[]) {
   const expense = BigInt(parsePence(total));
   let assigned = BigInt(0);
@@ -32,12 +41,21 @@ export function splitTotals(total: string, shares: string[]) {
   };
 }
 
+/** Encode bounded non-negative pennies as an exact pound string for Decimal columns. */
 export function penceToDecimal(pence: number): string {
   if (!Number.isSafeInteger(pence) || pence < 0 || pence > MAX_PENCE) throw new RangeError("Invalid pence value.");
   const integer = BigInt(pence);
   return `${integer / BigInt(100)}.${String(integer % BigInt(100)).padStart(2, "0")}`;
 }
 
+/**
+ * Divide positive pennies across distinct members, ordered by ascending ID.
+ * Give one leftover penny to each earliest ID until the remainder is exhausted.
+ * This preserves the total and makes checkbox/input order irrelevant; zero shares
+ * are possible when there are fewer pennies than participants.
+ * @returns Shares in ascending member-ID order, without mutating the input list.
+ * @throws RangeError for invalid totals, IDs, duplicates or an empty membership list.
+ */
 export function equalSplit(totalPence: number, memberIds: number[]) {
   if (!Number.isSafeInteger(totalPence) || totalPence <= 0 || totalPence > MAX_PENCE || memberIds.length === 0 ||
     memberIds.some(id => !Number.isInteger(id) || id <= 0 || id > 2_147_483_647) || new Set(memberIds).size !== memberIds.length) {

@@ -6,6 +6,10 @@ import { PaymentForm, PaymentReview } from "@/components/groups/payment-panel";
 import { formatPence } from "@/lib/expenses/money";
 import { pendingPaymentPence } from "@/lib/payments/allocations";
 
+/** Server-render member balances and derive permitted payment controls from the ledger.
+ * Pending reports are shown separately because they reserve capacity without settling debt.
+ * Generated form keys identify attempts; they never grant permission to act as a member.
+ */
 export default function BalanceList({ balances, access, currentMemberId, payments = [], paymentExpenses = [] }: {
   balances: GroupBalances; access?: PaymentAccess; currentMemberId?: number; payments?: PaymentHistory[]; paymentExpenses?: PaymentExpense[];
 }) {

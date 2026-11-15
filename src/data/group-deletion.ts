@@ -7,7 +7,11 @@ export class GroupDeletionError extends Error {}
 
 const unavailable = "This group or your owner access is no longer available. Return to the dashboard.";
 
-/** Authenticate on the transaction connection, never from a supplied owner/member ID. */
+/** Permanently remove one owner-authorized group and its dependent records atomically.
+ * Authenticate on the transaction connection again after acquiring the group lock.
+ * Delete dependents before their foreign-key targets; preserve accounts and other groups.
+ * No deletion event survives because this operation intentionally removes the history.
+ */
 export async function deleteGroupForOwner(groupId: number) {
   if (!Number.isInteger(groupId) || groupId <= 0 || groupId > 2_147_483_647) {
     throw new GroupDeletionError(unavailable);

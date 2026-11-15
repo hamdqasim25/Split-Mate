@@ -5,7 +5,10 @@ import { formatPence, MAX_PENCE } from "@/lib/expenses/money";
 import { effectivePaymentPence, pendingPaymentPence } from "@/lib/payments/allocations";
 
 /** Shared by authoritative validation and server-rendered options. Canonical
- * ledger decimals are exact, signed aggregates, not rounded display amounts. */
+ * ledger decimals are exact, signed aggregates, not rounded display amounts.
+ * Subtract pending outgoing reports from debt and incoming reports from credit
+ * independently. Excluding the report under review avoids counting its reservation twice.
+ */
 export function paymentCapacity(senderNet: string, receiverNet: string, payments: PaymentRecord[], senderId: number, receiverId: number, excludeId?: number) {
   const debt = -BigInt(senderNet.replace(".", ""));
   const credit = BigInt(receiverNet.replace(".", ""));
@@ -18,6 +21,8 @@ export function paymentCapacity(senderNet: string, receiverNet: string, payments
   return { debt, credit, availableDebt: debt - outgoing, availableCredit: credit - incoming };
 }
 
+/** Build presentation options from the same capacity rules used during saving.
+ * These are a snapshot, not authorization; the service rechecks the current ledger. */
 export function paymentOptions(balances: GroupBalances, payments: PaymentRecord[], senderId: number, excludeId?: number) {
   if (balances.status !== "ready") return [];
   const sender = balances.members.find(member => member.id === senderId && member.isActive);
@@ -31,6 +36,8 @@ export function paymentOptions(balances: GroupBalances, payments: PaymentRecord[
   });
 }
 
+/** Determine whether the current snapshot permits confirmation of the non-excluded amount.
+ * The service also checks allocation validity/version when the owner submits. */
 export function canConfirmPayment(balances: GroupBalances, payments: PaymentRecord[], payment: PaymentRecord) {
   const effective = effectivePaymentPence(payment);
   if (effective === null || effective <= BigInt(0)) return false;

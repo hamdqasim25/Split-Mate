@@ -2,6 +2,8 @@ import pg from "pg";
 import postgres from "@prisma/orm-postgres/runtime";
 import contractJson from "../../src/prisma/contract.json" with { type: "json" };
 import { testConfig, assertTestDatabase } from "./config.mjs";
+// Only the cookie boundary is adapted; service queries use the real Prisma runtime.
+// One connection per worker makes transaction connection ownership observable.
 let jar = {};
 export function setCookies(value) { jar = value ?? {}; }
 export async function cookies() { return { get: name => jar[name] ? { value: jar[name] } : undefined }; }

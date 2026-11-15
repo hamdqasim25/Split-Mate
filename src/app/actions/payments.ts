@@ -17,6 +17,10 @@ function allocations(form: FormData) {
   return ids.flatMap((expenseId, index) => amounts[index] === "" ? [] : [{ expenseId, amount: amounts[index] }]);
 }
 
+/** Parse a payment proposal and distinguish input, transaction and refresh failures.
+ * An uncertain result stays retryable with the same key, including after commit.
+ * Guest sender identity comes from the session, never a submitted payer field.
+ */
 async function submit(access: PaymentAccess, form: FormData): Promise<PaymentActionState> {
   let phase: "input" | "transaction" | "refresh" = "input";
   try {
@@ -50,6 +54,7 @@ export async function ownerPaymentAction(groupId: number, _previous: PaymentActi
 export async function guestPaymentAction(shareToken: string, _previous: PaymentActionState, form: FormData) {
   return submit({ kind: "guest", shareToken }, form);
 }
+/** Pass the owner's decision and confirmation revision to the authoritative service. */
 export async function reviewPaymentAction(groupId: number, paymentId: number, _previous: PaymentActionState, form: FormData): Promise<PaymentActionState> {
   let phase: "input" | "transaction" | "refresh" = "input";
   try {
@@ -66,6 +71,7 @@ export async function reviewPaymentAction(groupId: number, paymentId: number, _p
   }
 }
 
+/** Require explicit acknowledgment of associations; preserve the payment amount and status. */
 export async function reconcilePaymentAction(groupId: number, paymentId: number, version: string, _previous: PaymentActionState, form: FormData): Promise<PaymentActionState> {
   try {
     if (form.get("confirmed") !== "yes") throw new PaymentError("Confirm the associations before saving.");

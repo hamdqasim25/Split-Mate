@@ -13,6 +13,7 @@ export async function findInviteGroup(shareToken: unknown, client: Pick<typeof d
   return client.orm.public.Group.select("id", "name", "shareLinkEnabled").first({ shareToken });
 }
 
+/** List existing eligible names for an enabled invitation; this does not authenticate a member. */
 export async function resolveInvite(shareToken: unknown) {
   const group = await findInviteGroup(shareToken);
   if (!group) return { status: "invalid" } as const;
@@ -23,7 +24,11 @@ export async function resolveInvite(shareToken: unknown) {
   return { status: "valid", group: { id: group.id, name: group.name }, members } as const;
 }
 
-/** Internal service. The raw token returned here must only be issued as an HttpOnly cookie. */
+/** Claim an eligible, existing MEMBER and create its session/activity atomically.
+ * Guarded updates serialize competing claims; no arbitrary member name is created.
+ * @returns A raw credential for HttpOnly cookie issuance after commit, never JSON or storage.
+ * @throws InviteError when the invitation or requested member is no longer eligible.
+ */
 export async function claimMember(shareToken: unknown, memberId: unknown) {
   if (!isValidToken(shareToken)) throw new InviteError("This invite link is no longer active.");
   if (typeof memberId !== "number" || !Number.isInteger(memberId) || memberId <= 0 || memberId > 2_147_483_647) {

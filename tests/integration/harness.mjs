@@ -11,6 +11,7 @@ export async function stopWorkers(t) {
   }));
 }
 
+/** Open a separate observer connection and validate its test identity before returning it. */
 export async function connection() {
   const client = new pg.Client({ connectionString: testConfig().url, application_name: "splitmate_test_observer",
     connectionTimeoutMillis: 5000, statement_timeout: 12000, lock_timeout: 10000 });
@@ -25,6 +26,7 @@ export async function waitFor(label, probe, timeout = 8000) {
   } while (Date.now() < deadline);
   throw new Error(`Timed out waiting for ${label} (${timeout}ms); contention was not established.`);
 }
+/** Start a bounded process with its own real database connection and supplied test cookies. */
 export async function worker(t, operation, args, cookies = {}) {
   const label = `smit_${randomUUID()}`;
   const child = fork(new URL("./worker.mjs", import.meta.url), [], { windowsHide: true,

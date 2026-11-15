@@ -1,3 +1,7 @@
+/** Group creation and owner-facing reads.
+ * Internal helpers accepting an owner ID rely on the caller to authenticate it;
+ * creation writes the group, memberships and activity in one transaction.
+ */
 import "server-only";
 
 import { randomBytes } from "node:crypto";
@@ -246,6 +250,7 @@ function requiredName(
   return name;
 }
 
+/** Compare normalized names without changing the display spelling stored for members. */
 function nameKey(name: string): string {
   return name.normalize("NFKC").toLowerCase();
 }

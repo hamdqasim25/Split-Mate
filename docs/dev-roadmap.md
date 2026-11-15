@@ -20,7 +20,7 @@ The product principle remains: only the owner needs an account. Guests should be
 | Expense associations and reconciliation | Allocate repayments to expenses, review historical associations from evidence and retain exclusion history |
 | Saved expense management | Owners edit any expense with stale-form protection or soft-delete it while retaining history and excluding only its linked payment allocations |
 | Permanent group deletion | Owners explicitly confirm removal of the group and dependent history/access while preserving other groups and accounts |
-| Appearance | Shared light/dark preference, compact member cards, expandable breakdowns and a native 44px theme control |
+| Appearance | Shared light/dark preference, compact member cards, expandable breakdowns, independently expandable payment/activity history with London timestamps, and a native 44px theme control; history mobile/keyboard browser checks remain outstanding |
 | PostgreSQL integration verification | Reproduce competing claims, expense retries, payment reservations, deletion races and failed-write rollback on an isolated local database; 26 real-database cases passed on 25 October 2026 |
 
 The configured Prisma-hosted application database now includes the expense-request migration, with fresh status, schema and full marker verification. The website itself is local-only, as confirmed by the user; hosted verification is not applicable. Environment-specific evidence belongs in [database design](database-design.md#reported-migration-state); it is not a claim that all environments are ready.

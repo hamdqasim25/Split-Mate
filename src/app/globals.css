@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* Semantic colors keep shared components consistent across both themes. */
 :root {
   --background: #f8faf7;
   --foreground: #17251f;
@@ -30,6 +31,7 @@
   --warning-soft: #3b3020;
   color-scheme: dark;
 }
+/* System preference also works without JavaScript; an explicit light choice wins. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
   --background: #101a17;
@@ -73,7 +75,8 @@ button:disabled, fieldset:disabled { cursor: not-allowed; }
 [data-theme="dark"] .theme-when-dark { display: inline; }
 [data-theme="dark"] .theme-when-light { display: none; }
 
-/* Shared columns align amounts across rows, with no fixed row heights. */
+/* Narrow screens put controls below the amount; desktop adds control columns.
+ * Open breakdowns span the row so their content can wrap without fixed heights. */
 .balance-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
 .balance-row-name { grid-column: 1; grid-row: 1; }
 .balance-row-amount { grid-column: 2; grid-row: 1; }
@@ -81,6 +84,16 @@ button:disabled, fieldset:disabled { cursor: not-allowed; }
 .balance-breakdown { grid-column: 2; grid-row: 2; }
 .balance-breakdown[open] { grid-column: 1 / -1; grid-row: auto; }
 .balance-breakdown[open] > summary { justify-content: flex-start; }
+/* Native disclosures expose their expanded state and keyboard behaviour without JS. */
+.history-summary { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 44px; padding: 0.75rem 0.5rem; border-radius: 0.5rem; cursor: pointer; list-style: none; }
+.history-summary::-webkit-details-marker { display: none; }
+.history-summary:hover { background: var(--subtle); }
+.history-chevron { flex-shrink: 0; color: var(--muted); transition: transform 150ms ease; }
+.history-disclosure[open] > summary .history-chevron { transform: rotate(180deg); }
+.history-details { padding: 0.25rem 0.5rem 0.75rem; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) {
+  .history-chevron { transition: none; }
+}
 @media (min-width: 768px) {
   .balance-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 8rem 7rem; }
   .balance-payment-trigger { grid-column: 3; grid-row: 1; }

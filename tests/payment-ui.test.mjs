@@ -431,7 +431,10 @@ test("compact rows align name and amount, with pending review and breakdown coll
   assert.match(text(pending), /5.00 awaiting confirmation/);
   assert.equal(nodes(pending).filter(node => node.type === PaymentReview).length, 1);
   const historyTree = PaymentPanel({ payments: ledger.payments });
-  assert.equal(nodes(historyTree).filter(node => node.type === "details" || node.type === PaymentReview).length, 0);
+  assert.equal(nodes(historyTree).filter(node => node.type === PaymentReview).length, 0);
+  const historyDetails = nodes(historyTree).filter(node => node.type === "details");
+  assert.equal(historyDetails.length, ledger.payments.length);
+  assert.ok(historyDetails.every(node => !node.props.open && !node.props.name));
 });
 
 test("disclosure-related rerenders preserve partial amount, selected recipient and retry key", () => {

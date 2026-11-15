@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+  # Deliberately unusable placeholders; never inject application credentials.
+  # Prisma is imported during compilation, but building must not need a database.
+  DATABASE_URL: postgresql://ci_build:ci_build_only@127.0.0.1:1/splitmate_build
+  DIRECT_URL: postgresql://ci_build:ci_build_only@127.0.0.1:1/splitmate_build
+
+jobs:
+  quality:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Automated tests
+            command: node --test --test-reporter=spec tests/*.test.mjs
+          - name: Lint
+            command: npm run lint
+          - name: TypeScript
+            command: npx --no-install tsc --noEmit --incremental false
+          - name: Production build
+            command: npm run build
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+        timeout-minutes: 10
+      - name: Generate Next.js route types for a fresh checkout
+        if: matrix.name == 'TypeScript'
+        run: npx --no-install next typegen
+        timeout-minutes: 2
+      # next/font downloads Geist from Google; network failures must fail the build.
+      - name: ${{ matrix.name }}
+        run: ${{ matrix.command }}
+        timeout-minutes: 10
+
+  integration:
+    name: PostgreSQL 18 integration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PG_BIN: /usr/lib/postgresql/18/bin
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+        timeout-minutes: 10
+      - name: Install PostgreSQL 18 from the official PostgreSQL repository
+        timeout-minutes: 5
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends postgresql-18
+          "$PG_BIN/postgres" --version | grep -E '^postgres \(PostgreSQL\) 18\.'
+          # Debian's binaries also create Unix sockets here. Give only the
+          # current runner access; the harness itself runs without sudo.
+          sudo install -d -o "$(id -un)" -g "$(id -gn)" -m 0700 /var/run/postgresql
+      - name: Start a fresh owned test cluster
+        id: database
+        timeout-minutes: 2
+        run: |
+          test ! -e .integration-postgres
+          npm run test:db:start
+      # The harness validates endpoint, credentials and the live ownership marker.
+      # Only this new disposable cluster receives the existing migration history.
+      - name: Preview test database migrations
+        run: npm run test:db:preview
+        timeout-minutes: 3
+      - name: Migrate and verify the disposable test database
+        run: npm run test:db:migrate
+        timeout-minutes: 5
+      - name: Run real PostgreSQL integration tests
+        run: npm run test:integration
+        timeout-minutes: 12
+      - name: Clean registered test fixtures
+        if: always() && steps.database.outcome == 'success'
+        run: npm run test:db:cleanup
+        timeout-minutes: 2
+      - name: Stop the owned test cluster
+        if: always() && steps.database.outcome == 'success'
+        run: npm run test:db:stop
+        timeout-minutes: 2

@@ -1,19 +1,42 @@
 # SPLITMate
 
-SPLITMate helps friends track shared expenses and repayments without requiring everyone to create an account. For example, Hamdi can pay for a football pitch, split the cost with the group and see which repayments still need confirmation.
+[![CI](https://github.com/hamdqasim25/Split-Mate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hamdqasim25/Split-Mate/actions/workflows/ci.yml)
+
+**Shared expenses made simple.**
+
+SPLITMate is a group expense and repayment tracker for friends and other small groups sharing costs. Record who paid, split the cost and see what each member owes.
 
 Only the group owner needs an account. Guests open a shared link and choose a name the owner has already added. SPLITMate records money paid outside the app; it does not transfer money.
 
-## What you can do
+## Features
 
+- Register an owner account, sign in and manage your groups from a dashboard.
 - Create a group, add guest names and share its invitation link.
+- Join as a guest by claiming an existing member identity, without a separate account.
 - Record GBP expenses with equal or custom shares and see member balances.
+- Retry an uncertain expense or payment submission in the same form without creating duplicate records.
 - Report repayments, have the owner confirm or reject them, and review payment history.
 - Associate repayments with expenses and reconcile older payments where evidence supports the association.
 - Edit or remove expenses as owner, or permanently delete an entire group with confirmation.
+- Review recent group activity alongside saved expenses and payment history.
 - Use owner and guest screens in light or dark mode.
 
 The [roadmap](docs/dev-roadmap.md) is the authoritative list of completed features, limitations and future work. Implementation does not mean every browser or live-database scenario has been verified; see [testing evidence](docs/tests.md).
+
+## Technology stack
+
+- **Application:** Next.js App Router, React, TypeScript and Tailwind CSS for the interface and server entry points.
+- **Data:** Prisma 8 RC and Prisma-hosted PostgreSQL, with separate account and group-member identities.
+- **Development and CI:** Node.js 24, npm, ESLint, TypeScript checks, Node's test runner and GitHub Actions. A guarded PostgreSQL 18 suite tests real database behaviour separately.
+
+## How SPLITMate works
+
+1. **Create a group.** The owner signs in, names the group and adds its members.
+2. **Share the invitation.** Guests open the secure link and choose an eligible name the owner already added.
+3. **Record expenses.** An owner or guest selects who paid and participated, reviews equal or custom shares, then saves.
+4. **Track repayments.** Guests report money sent outside the app. The owner verifies and confirms or rejects the report; only effective confirmed amounts change balances. Owners can also record verified completed payments directly.
+
+For example, Hamdi pays £30 for a football pitch shared with Ismaeel and Jaher. Each owes a £10 share. Ismaeel reports sending Hamdi £10; his balance changes only after the owner confirms it. SPLITMate records that transfer but does not process it or verify it with a bank.
 
 ## Architecture and source navigation
 
@@ -58,9 +81,7 @@ Start with these paths when reviewing the engineering decisions:
 
 Payment UI remains in `src/components/groups/` because it is composed into group balances and history. `src/lib/expenses/form-input.ts` is a server-action parser, despite living alongside browser-safe money helpers. Routes remain in App Router locations, including the `/joined` compatibility redirect. Generated contracts and migration snapshots are retained as tooling inputs, not handwritten application code.
 
-## Local setup
-
-The application uses Next.js App Router, React, TypeScript, Tailwind CSS, Prisma 8 RC and Prisma-hosted PostgreSQL. Next.js runs both the interface and server logic.
+## Local development setup
 
 1. Use Node 24 and npm. The test harness relies on Node module hooks.
 2. Install the locked dependencies from the repository root:
@@ -81,11 +102,11 @@ The application uses Next.js App Router, React, TypeScript, Tailwind CSS, Prisma
 
 On Windows, use `npm.cmd` or `npx.cmd` if PowerShell blocks the `.ps1` wrappers. Production build/start commands are `npm run build` and `npm run start`. Builds may need network access for the existing Google Fonts. Verification commands and their scope are in [tests.md](docs/tests.md#commands).
 
-## Automated checks
+## Testing and CI
 
 [GitHub Actions CI](.github/workflows/ci.yml) runs on pushes to `main`, pull requests targeting `main` (including updates), and manual dispatch. Five checks run on Ubuntu with Node 24: isolated automated tests, lint, TypeScript, a production build, and the 26 real PostgreSQL integration tests against a disposable PostgreSQL 18 cluster. Dependencies come from `npm ci` with lockfile-based npm caching.
 
-Failures appear as failed checks on the pull request and in the repository's Actions tab, with a named failing step and its log. CI does not use application database credentials, deploy the application, or verify browser journeys, production cookies or the live database. The first GitHub-hosted run still needs verification after pushing; a README status badge will be added only after a successful run. See [CI details and verification](docs/tests.md#github-actions-ci).
+Failures appear as failed checks on the pull request and in the repository's Actions tab, with a named failing step and its log. CI does not use application database credentials, deploy the application, or verify browser journeys, production cookies or the live database. A [successful GitHub-hosted run on main](https://github.com/hamdqasim25/Split-Mate/actions/runs/43767547165) completed on 15 November 2026 and was independently confirmed through the GitHub API on 18 November. The badge above shows the current status for `main`; it does not verify uncommitted local changes. See [CI details and verification](docs/tests.md#github-actions-ci).
 
 With dependencies installed, run from the repository root:
 
@@ -99,7 +120,7 @@ git diff --check
 
 Use `npm`/`npx` instead of the `.cmd` wrappers outside Windows. There is no `npm test` script. The first command uses isolated database/framework doubles; it does not establish real PostgreSQL or browser behaviour. The separate `npm run test:integration` suite requires the guarded disposable database described in [tests.md](docs/tests.md#real-postgresql-integration-suite). Never substitute the application database. See that document for dated results and remaining manual checks.
 
-## Reading guide
+## Documentation and roadmap
 
 | Document | Read or update it for |
 | --- | --- |

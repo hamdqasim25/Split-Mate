@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
-import { signOut } from "@/app/actions/auth";
 
 const steps = [
   {
@@ -47,9 +46,6 @@ const expenses = [
 const primaryLink =
   "inline-flex items-center justify-center gap-3 rounded-full bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-emerald-900 active:bg-emerald-950 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent";
 
-const secondaryButton =
-  "inline-flex cursor-pointer items-center justify-center rounded-full border border-accent/30 bg-surface px-6 py-3.5 text-sm font-semibold text-accent transition hover:border-accent hover:bg-accent-soft active:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent";
-
 export default async function Home() {
   const user = await getCurrentUser();
   const authenticated = Boolean(user);
@@ -57,66 +53,6 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-canvas font-sans text-foreground">
-      <header className="border-b border-line/10">
-        <nav
-          aria-label="Main navigation"
-          className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5"
-        >
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 text-xl font-bold tracking-tight"
-          >
-            <span
-              aria-hidden="true"
-              className="flex size-9 items-center justify-center rounded-xl bg-emerald-800 text-2xl text-white"
-            >
-              ÷
-            </span>
-
-            <span>
-              SPLIT<span className="text-accent">Mate</span>
-            </span>
-          </Link>
-
-          <div className="flex items-center gap-4 sm:gap-6">
-            <a
-              href="#how-it-works"
-              className="hidden text-sm font-medium text-muted hover:text-accent sm:block"
-            >
-              How it works
-            </a>
-
-            {authenticated ? (
-              <>
-                <Link href="/dashboard" className={primaryLink}>
-                  Dashboard
-                  <span aria-hidden="true">↗</span>
-                </Link>
-
-                <form action={signOut}>
-                  <button type="submit" className={secondaryButton}>
-                    Sign out
-                  </button>
-                </form>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="text-sm font-semibold text-accent hover:underline"
-                >
-                  Log in
-                </Link>
-
-                <Link href="/register" className={primaryLink}>
-                  Create account
-                  <span aria-hidden="true">↗</span>
-                </Link>
-              </>
-            )}
-          </div>
-        </nav>
-      </header>
 
       <section className="mx-auto grid max-w-6xl items-center gap-14 px-6 py-16 lg:grid-cols-2 lg:gap-16 lg:py-24">
         <div>

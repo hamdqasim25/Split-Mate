@@ -54,7 +54,7 @@ try {
   } else if (mode === "test") {
     await verify();
     await new Promise((done, reject) => {
-      const child = spawn(process.execPath, ["--test", "--test-concurrency=1", "--test-reporter=spec", "tests/integration/concurrency.test.mjs", "tests/integration/rollback.test.mjs"], {
+      const child = spawn(process.execPath, ["--test", "--test-concurrency=1", "--test-reporter=spec", "tests/integration/concurrency.test.mjs", "tests/integration/rollback.test.mjs", "tests/integration/account-security.test.mjs"], {
         cwd: root, windowsHide: true, env: { ...process.env, TEST_DATABASE_URL: url }, stdio: "inherit",
       });
       const timer = setTimeout(() => { child.kill(); reject(new Error("Integration suite exceeded 10 minutes.")); }, 600000);

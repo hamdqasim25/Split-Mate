@@ -18,17 +18,26 @@ function cookieNames() {
  */
 export async function getGuestSessionForGroup(groupId: number, client: Pick<typeof db, "orm"> = db) {
   if (!Number.isInteger(groupId) || groupId <= 0 || groupId > 2_147_483_647) return null;
+  return readGuestSession(groupId, client);
+}
+
+/** Validate the same guest identity without a route group, for public navigation only. */
+export async function hasCurrentGuestSession(): Promise<boolean> {
+  return Boolean(await readGuestSession(undefined, db));
+}
+
+async function readGuestSession(groupId: number | undefined, client: Pick<typeof db, "orm">) {
   const store = await cookies();
   const cookie = cookieNames().map((name) => store.get(name)).find(Boolean);
   const hash = tokenHash(cookie?.value);
   if (!hash) return null;
   const session = await client.orm.public.GuestSession.select("id", "groupMemberId", "expiresAt", "lastSeenAt").first({ tokenHash: hash });
   if (!session || !Number.isFinite(Date.parse(session.expiresAt)) || Date.parse(session.expiresAt) <= Date.now()) return null;
-  const member = await client.orm.public.GroupMember.select("id", "name", "claimedAt", "lastActiveAt")
-    .first({ id: session.groupMemberId, groupId, isActive: true, userId: null, role: "MEMBER" });
+  const member = await client.orm.public.GroupMember.select("id", "groupId", "name", "claimedAt", "lastActiveAt")
+    .first({ id: session.groupMemberId, ...(groupId === undefined ? {} : { groupId }), isActive: true, userId: null, role: "MEMBER" });
   if (!member?.claimedAt) return null;
-  if (!await client.orm.public.Group.select("id").first({ id: groupId })) return null;
-  return { session, member, groupId };
+  if (!await client.orm.public.Group.select("id").first({ id: member.groupId })) return null;
+  return { session, member, groupId: member.groupId };
 }
 
 /** Read-only and group-scoped; owner cookies never establish a guest identity. */

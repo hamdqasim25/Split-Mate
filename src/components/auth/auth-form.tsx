@@ -1,20 +1,22 @@
 "use client";
 
+import { authDestination, type AuthDestination } from "@/lib/auth/redirect";
 import Link from "next/link";
 import { useRef, useState, type FormEvent } from "react";
 
 type Props = {
   mode: "login" | "register";
-  destination: "/dashboard" | "/groups/new";
+  destination: AuthDestination;
   accountCreated?: boolean;
+  passwordChanged?: boolean;
 };
 
 const inputStyle = "mt-2 w-full rounded-xl border border-line bg-surface px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 const passwordGuidance = "Use at least 15 characters and no more than 72 UTF-8 bytes. Some characters use more than one byte.";
 
-export default function AuthForm({ mode, destination, accountCreated = false }: Props) {
+export default function AuthForm({ mode, destination, accountCreated = false, passwordChanged = false }: Props) {
   const registering = mode === "register";
-  const safeDestination = destination === "/groups/new" ? "/groups/new" : "/dashboard";
+  const safeDestination = authDestination(destination);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   // The ref also blocks a second submit before React has rendered the pending state.
@@ -77,6 +79,7 @@ export default function AuthForm({ mode, destination, accountCreated = false }: 
         <Link href="/" className="text-xl font-bold tracking-tight">SPLIT<span className="text-accent">Mate</span></Link>
         <h1 className="mt-8 text-3xl font-semibold tracking-tight">{registering ? "Create account" : "Log in"}</h1>
         <p className="mt-3 text-sm leading-6 text-muted">{registering ? "Create an owner account to organise your groups. Guest members do not need an account." : "Welcome back. Log in to manage your groups."}</p>
+        {passwordChanged && !registering && <p role="status" className="mt-5 rounded-xl bg-accent-soft p-4 text-sm text-accent">Password changed. Sign in with your new password.</p>}
         {accountCreated && !registering && <p role="status" className="mt-5 rounded-xl bg-accent-soft p-4 text-sm text-accent">Account created. Log in to continue.</p>}
         <form onSubmit={handleSubmit} method="post" action={`/api/auth/${mode}`} aria-busy={pending} className="mt-6 rounded-2xl border border-line bg-surface p-6 shadow-sm">
           <fieldset disabled={pending} className="space-y-5 disabled:opacity-70">

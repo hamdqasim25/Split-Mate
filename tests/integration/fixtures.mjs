@@ -29,22 +29,26 @@ export async function installControls(client) {
         SELECT count(*) INTO share_count FROM public."expenseParticipant" WHERE "expenseId"=NEW."expenseId";
       ELSIF TG_TABLE_NAME='paymentAllocation' THEN
         SELECT "groupId" INTO group_id FROM public.payment WHERE id=NEW."paymentId";
+      ELSIF TG_TABLE_NAME='userSession' THEN group_id=OLD."userId";
       ELSIF TG_TABLE_NAME='groupMember' THEN group_id=OLD."groupId";
       ELSE group_id=NEW."groupId"; event_type=NEW."eventType";
       END IF;
       SELECT * INTO fault FROM splitmate_test_control.faults WHERE worker=current_setting('application_name') AND "groupId"=group_id;
       IF FOUND AND ((fault.stage='share_second' AND TG_TABLE_NAME='expenseParticipant' AND share_count=2)
         OR (fault.stage='allocation' AND TG_TABLE_NAME='paymentAllocation')
+        OR (fault.stage='owner_session_delete' AND TG_TABLE_NAME='userSession')
         OR (fault.stage='member_delete' AND TG_TABLE_NAME='groupMember')
         OR (fault.stage='activity' AND TG_TABLE_NAME='activityEvent' AND fault.event=event_type)) THEN
         RAISE EXCEPTION 'splitmate integration injected failure' USING ERRCODE='P0001';
       END IF;
       IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
     END $$;
+    DROP TRIGGER IF EXISTS splitmate_test_account_gate ON public."user";
+    CREATE TRIGGER splitmate_test_account_gate AFTER UPDATE ON public."user" FOR EACH ROW EXECUTE FUNCTION splitmate_test_control.group_gate();
     DROP TRIGGER IF EXISTS splitmate_test_gate ON public."group";
     CREATE TRIGGER splitmate_test_gate AFTER UPDATE ON public."group" FOR EACH ROW EXECUTE FUNCTION splitmate_test_control.group_gate();
   `);
-  for (const [table, event] of [["expenseParticipant", "INSERT"], ["paymentAllocation", "INSERT"], ["activityEvent", "INSERT"], ["groupMember", "DELETE"]]) {
+  for (const [table, event] of [["userSession", "DELETE"], ["expenseParticipant", "INSERT"], ["paymentAllocation", "INSERT"], ["activityEvent", "INSERT"], ["groupMember", "DELETE"]]) {
     await client.query(`DROP TRIGGER IF EXISTS splitmate_test_failure ON public."${table}";
       CREATE TRIGGER splitmate_test_failure AFTER ${event} ON public."${table}" FOR EACH ROW EXECUTE FUNCTION splitmate_test_control.inject_failure();`);
   }

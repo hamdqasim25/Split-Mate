@@ -17,7 +17,7 @@ See [architecture](architecture.md) for behaviour, [database design](database-de
 | 5 | Expense Management and Data Integrity | Browser checks outstanding |
 | 6 | UI/UX and Accessibility | In progress |
 | 7 | Testing, CI and Presentation | Complete within recorded verification scope |
-| 8 | Profile and Account Settings | Planned — next development milestone |
+| 8 | Profile and Account Settings | In progress: read-only profile implemented |
 | 9 | Security and Release Readiness | Planned |
 
 Phases 1–4 describe completed implementation milestones within the recorded verification scope. Outstanding cross-cutting checks remain explicit in phases 5, 6 and 9. Phase 7's optional screenshot enhancement does not imply missing test or CI implementation.
@@ -140,19 +140,29 @@ Phases 1–4 describe completed implementation milestones within the recorded ve
 
 ## Phase 8 — Profile and Account Settings
 
-**Status:** Planned — next development milestone
+**Status:** Implementation complete through Phase 8.4; final manual browser/accessibility confirmation outstanding
 
 **Goal:** Give registered owners a clear, secure place to manage supported account settings.
 
-- [ ] Review existing authentication and account architecture before designing changes.
-- [ ] Create a responsive profile page.
-- [ ] Display supported account details.
-- [ ] Implement secure password changes.
-- [ ] Organize account, appearance and security settings.
-- [ ] Add authorization and regression tests.
+- [x] Review existing authentication and account architecture before designing changes.
+- [x] Implement a responsive, read-only owner profile page at `/profile`.
+- [x] Display the authenticated owner's name and email with server-side privacy checks.
+- [x] Add a global session-aware account disclosure: owner Profile/Appearance/Security/sign out, guest Register-first and signed-out Log-in-first navigation.
+- [x] Make shared logo/name branding one accessible home link and remove duplicate landing navigation.
+- [x] Provide a protected Appearance page and icon-only theme control using existing persistence.
+- [x] Retain an exact login/register return allowlist for profile, appearance and security.
+- [x] Implement secure password changes with current-password verification, shared validation and account-wide owner-session revocation.
+- [x] Organize profile and appearance navigation into dedicated pages.
+- [x] Add protected Security navigation and a password-change form.
+- [x] Standardize settings navigation, active-page indicators, responsive spacing and page/card typography.
+- [x] Improve password-form status announcements, associated feedback and explicit POST fallback.
+- [x] Add profile authorization, privacy and return-navigation regression tests.
+- [x] Add isolated password authorization, validation, session, rollback and UI regression tests.
+- [x] Verify both login/change orderings, competing changes, rollback and unrelated-session preservation on disposable PostgreSQL.
+- [x] Verify settings links/current-page indicators, protected access, long read-only details and form accessibility with isolated tests.
 - [ ] Complete browser and accessibility verification.
 
-**Outcome:** Intended to provide account settings without making guest registration mandatory. Profile editing and password management are not implemented.
+**Outcome:** Owners can view account details, manage appearance and sign out through compact header navigation. Phase 8.4 implementation and automated checks are complete. Profile editing remains outside the implemented scope. Phase 8 stays open until the user confirms final browser and accessibility checks.
 
 ## Phase 9 — Security Hardening and Release Verification
 
@@ -183,7 +193,7 @@ Phases 1–4 describe completed implementation milestones within the recorded ve
 | No restoration for deleted expenses; permanent group deletion removes history | These are deliberate current deletion semantics, not an archive or refund mechanism |
 | No live push updates | Another open browser must refresh after changes |
 | Complete-ledger reads grow with history | Financial reads use a group lock and memory proportional to history; dashboard groups are not one simultaneous snapshot |
-| Automated evidence has a defined scope | 670 isolated tests passed on 18 November 2026; 26 local PostgreSQL tests passed on 15 November 2026. Application schema/marker verification remains dated 28 October 2026 evidence. Full HTTP/browser journeys, production cookies and broad accessibility checks remain unverified. Hosted application checks are not applicable to the current local-only website; hosted CI is separately recorded |
+| Automated evidence has a defined scope | 731 isolated tests and 31 disposable PostgreSQL tests passed on 21 November 2026. Application schema/marker verification remains dated 28 October 2026 evidence. Full HTTP/browser journeys, production cookies and broad accessibility checks remain unverified. Hosted application checks are not applicable to the current local-only website; hosted CI is separately recorded |
 
 ## Future Proposals — Unprioritised
 

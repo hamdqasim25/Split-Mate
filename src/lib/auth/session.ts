@@ -3,6 +3,7 @@ import "server-only";
 import { createSessionToken, tokenHash } from "@/lib/auth/tokens";
 import { cookies } from "next/headers";
 import { db } from "@/prisma/db";
+import { lockAccount } from "@/lib/auth/account-lock";
 import { AuthError } from "@/lib/auth/errors";
 
 const SECURE_COOKIE = "__Host-splitmate_owner_session";
@@ -27,7 +28,7 @@ function cookieOptions(name: string) {
  * Revoke previous tokens and store the new hash atomically before issuing a cookie.
  * The raw credential never appears in the returned response body.
  */
-export async function createUserSession(userId: number, requestUrl: string): Promise<void> {
+export async function createUserSession(userId: number, requestUrl: string, verifiedPasswordHash: string): Promise<void> {
   if (!Number.isInteger(userId) || userId <= 0 || userId > 2_147_483_647) {
     throw new AuthError("UNAUTHENTICATED", "Authentication is required.");
   }
@@ -41,6 +42,10 @@ export async function createUserSession(userId: number, requestUrl: string): Pro
   const expiresAt = new Date(Date.now() + SESSION_SECONDS * 1000);
 
   await db.transaction(async (tx) => {
+    const account = await lockAccount(tx, userId);
+    if (!account || !verifiedPasswordHash || account.passwordHash !== verifiedPasswordHash) {
+      throw new AuthError("INVALID_CREDENTIALS", "Email or password is incorrect.");
+    }
     for (const previousHash of previousHashes) {
       await tx.orm.public.UserSession.where({ tokenHash: previousHash }).delete();
     }
@@ -101,5 +106,13 @@ export async function revokeUserSession(): Promise<void> {
   // Never clear the browser's session before successful database revocation.
   for (const name of names) {
     cookieStore.set(name, "", { ...cookieOptions(name), maxAge: 0, expires: new Date(0) });
+  }
+}
+
+/** Call only after committed account-wide revocation. Does not touch guest cookies. */
+export async function clearOwnerSessionCookies(): Promise<void> {
+  const store = await cookies();
+  for (const name of cookieNames()) {
+    store.set(name, "", { ...cookieOptions(name), maxAge: 0, expires: new Date(0) });
   }
 }

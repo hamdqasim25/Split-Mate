@@ -26,8 +26,10 @@ const { createPayment, reviewPayment } = await import("../../src/data/payments.t
 const { getSavedExpenseForOwner, updateSavedExpense, deleteSavedExpense } = await import("../../src/data/expense-management.ts");
 const { deleteGroupForOwner } = await import("../../src/data/group-deletion.ts");
 const { getLedgerForGroup } = await import("../../src/data/balances.ts");
+const { loginUser, authenticateUser } = await import("../../src/data/auth.ts");
+const { changePassword } = await import("../../src/data/password-change.ts");
 hooks.deregister();
-const operations = { claimMember, createExpense, createPayment, reviewPayment, getSavedExpenseForOwner, updateSavedExpense, deleteSavedExpense, deleteGroupForOwner, getLedgerForGroup };
+const operations = { loginUser, authenticateUser, changePassword, claimMember, createExpense, createPayment, reviewPayment, getSavedExpenseForOwner, updateSavedExpense, deleteSavedExpense, deleteGroupForOwner, getLedgerForGroup };
 const { rows: [{ pid }] } = await pool.query("SELECT pg_backend_pid() AS pid");
 process.send({ ready: true, pid });
 process.once("message", async ({ operation, args, cookies: supplied }) => {
@@ -41,7 +43,7 @@ process.once("message", async ({ operation, args, cookies: supplied }) => {
     for (let depth = 0; depth < 8 && current; depth++, current = current.cause) {
       if (typeof current.code === "string" && /^[A-Z0-9_.-]{1,80}$/.test(current.code)) code = current.code;
     }
-    const expected = ["InviteError", "ExpenseError", "PaymentError", "GroupDeletionError"];
+    const expected = ["AuthError", "InviteError", "ExpenseError", "PaymentError", "GroupDeletionError"];
     // Error subclasses currently inherit name=Error; use constructor identity.
     const name = error.constructor?.name;
     process.send({ ok: false, name, code, message: expected.includes(name) ? error.message : "Database operation failed." });

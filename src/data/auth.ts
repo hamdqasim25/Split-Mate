@@ -1,11 +1,13 @@
 import "server-only";
 
 import bcrypt from "bcryptjs";
+import { BCRYPT_COST, passwordInput } from "@/lib/auth/password";
+import { createUserSession } from "@/lib/auth/session";
 import { db } from "@/prisma/db";
 import { AuthError } from "@/lib/auth/errors";
 
 // Explicit work factor: 2^12 bcrypt rounds. Reassess with deployment benchmarks.
-export const BCRYPT_COST = 12;
+export { BCRYPT_COST } from "@/lib/auth/password";
 // A non-account hash at the same cost keeps unknown-email logins doing bcrypt work.
 const DUMMY_PASSWORD_HASH = "$2b$12$Iui2xemc8q8f4l4Z1SVE4OH6XqvZZuhV0zUU0b5mR.f7mvCZhyrzG";
 
@@ -28,23 +30,6 @@ function normalizedEmail(value: unknown): string {
     throw new AuthError("INVALID_INPUT", "Enter a valid email address.", "email");
   }
   return email;
-}
-
-function passwordInput(value: unknown, registering: boolean): string {
-  // Never trim or normalize passwords. bcrypt's upper bound is UTF-8 BYTES.
-  if (
-    typeof value !== "string" ||
-    Buffer.byteLength(value, "utf8") === 0 ||
-    Buffer.byteLength(value, "utf8") > 72 ||
-    (registering && [...value].length < 15)
-  ) {
-    throw new AuthError(
-      "INVALID_INPUT",
-      "Use a password of at least 15 characters and no more than 72 UTF-8 bytes.",
-      "password",
-    );
-  }
-  return value;
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -90,9 +75,9 @@ export async function registerUser(input: unknown) {
   }
 }
 
-/** Verify credentials and return a safe account identity, without issuing cookies.
- * Invalid input, unknown email and a wrong password share one public error. */
-export async function authenticateUser(input: unknown) {
+/** Internal credential check retains the observed hash for serialized issuance.
+ * Never return this result to a browser. Credential failures share one public error. */
+async function verifyCredentials(input: unknown) {
   let email: string;
   let password: string;
   try {
@@ -110,5 +95,18 @@ export async function authenticateUser(input: unknown) {
     throw new AuthError("INVALID_CREDENTIALS", "Email or password is incorrect.");
   }
 
+  return user;
+}
+
+/** Credential-only verification never establishes a session. */
+export async function authenticateUser(input: unknown) {
+  const user = await verifyCredentials(input);
+  return { id: user.id, name: user.name };
+}
+
+/** Keep the verified hash server-side and recheck it under the session-issuance lock. */
+export async function loginUser(input: unknown, requestUrl: string) {
+  const user = await verifyCredentials(input);
+  await createUserSession(user.id, requestUrl, user.passwordHash);
   return { id: user.id, name: user.name };
 }

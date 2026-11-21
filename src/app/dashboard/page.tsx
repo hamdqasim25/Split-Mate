@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getGroupsForOwner } from "@/data/groups";
-import { signOut } from "@/app/actions/auth";
 
 export const metadata: Metadata = {
   title: "Dashboard | SPLITMate",
@@ -62,15 +61,6 @@ export default async function Dashboard() {
             >
               + Create group
             </Link>
-
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="inline-flex cursor-pointer items-center justify-center rounded-full border border-accent/30 bg-surface px-6 py-3 text-sm font-semibold text-accent transition hover:border-accent hover:bg-accent-soft active:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-              >
-                Sign out
-              </button>
-            </form>
           </div>
         </div>
 

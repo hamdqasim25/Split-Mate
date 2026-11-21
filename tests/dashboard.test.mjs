@@ -73,6 +73,7 @@ export const db = {
 `)}`;
 const hooks = registerHooks({
   resolve(specifier, context, nextResolve) {
+    if (specifier === "@/components/account-menu") return { url: "data:text/javascript,export default function AccountMenu(){}", shortCircuit: true };
     if (["@/prisma/db", "@/lib/auth/session", "@/app/actions/auth", "next/navigation", "next/link"].includes(specifier)) {
       return { url: mockUrl, shortCircuit: true };
     }

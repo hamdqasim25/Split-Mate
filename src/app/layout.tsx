@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ThemeToggle from "@/components/theme-toggle";
+import AppHeader from "@/components/app-header";
 import { initializeTheme } from "@/lib/theme";
 
 const geistSans = Geist({
@@ -32,12 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head><script dangerouslySetInnerHTML={{ __html: `(${initializeTheme.toString()})();` }} /></head>
       <body className="min-h-full flex flex-col">
-        <header className="border-b border-line bg-surface px-4 py-3 sm:px-6">
-          <nav aria-label="Appearance" className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-            <span className="font-semibold text-accent">SPLITMate</span>
-            <ThemeToggle />
-          </nav>
-        </header>
+        <AppHeader />
         {children}
       </body>
     </html>

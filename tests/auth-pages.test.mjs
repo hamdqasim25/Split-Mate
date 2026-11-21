@@ -34,6 +34,7 @@ const hooks = registerHooks({
       || (specifier === "react" && context.parentURL?.endsWith("/auth-form.tsx"))) {
       return { url: runtimeUrl, shortCircuit: true };
     }
+    if (specifier === "@/lib/auth/redirect") return { url: new URL("../src/lib/auth/redirect.ts", import.meta.url).href, shortCircuit: true };
     if (specifier.startsWith("@/")) {
       return { url: new URL(`../src/${specifier.slice(2)}.tsx`, import.meta.url).href, shortCircuit: true };
     }
@@ -157,7 +158,8 @@ for (const [path, Page] of [["/dashboard", Dashboard], ["/groups/new", NewGroup]
 }
 
 const destinations = [
-  ["/dashboard", "/dashboard"], ["/groups/new", "/groups/new"],
+  ["/dashboard", "/dashboard"], ["/groups/new", "/groups/new"], ["/profile", "/profile"], ["/profile/appearance", "/profile/appearance"],
+  ["/profile?userId=8", "/dashboard"], ["/profile/../admin", "/dashboard"],
   ["https://evil.example", "/dashboard"], ["//evil.example", "/dashboard"],
   ["/admin", "/dashboard"], ["/groups/new?bad=1", "/dashboard"],
   ["%2Fgroups%2Fnew", "/dashboard"], [" /groups/new", "/dashboard"],
@@ -180,7 +182,7 @@ test("registration confirmation accepts only the harmless exact flag", async () 
   assert.match(text(render({ accountCreated: true })), /Account created/);
 });
 
-for (const destination of ["/dashboard", "/groups/new"]) {
+for (const destination of ["/dashboard", "/groups/new", "/profile"]) {
   test(`login makes a fresh navigation to ${destination}`, async () => {
     await submit(render({ destination }));
     assert.deepEqual(navigations, [destination]);
@@ -256,11 +258,20 @@ test("forms provide labels, autocomplete and a POST fallback", () => {
 });
 test("landing actions reflect server-side authentication without exposing identity", async () => {
   const anonymous = await Home();
-  assert.ok(nodes(anonymous).some(node => node.props.href === "/login" && text(node) === "Log in"));
+  assert.ok(!nodes(anonymous).some(node => node.type === "header"), "Global layout owns navigation");
   assert.ok(nodes(anonymous).some(node => node.props.href === "/register" && text(node).startsWith("Get started")));
-  assert.match(text(anonymous), /Create account/);
+  assert.ok(nodes(anonymous).some(node => node.props.href === "/register"));
   state.user = { id: 7, name: "Private owner" };
   const authenticated = await Home();
-  assert.equal(nodes(authenticated).filter(node => node.props.href === "/dashboard").length, 2);
+  assert.equal(nodes(authenticated).filter(node => node.props.href === "/dashboard").length, 1);
   assert.doesNotMatch(text(authenticated), /Private owner|Log in|Create account/);
+});
+
+test("registration retains the profile destination", async () => {
+  await submit(render({ mode: "register", destination: "/profile" }));
+  assert.deepEqual(navigations, ["/login?registered=1&next=%2Fprofile"]);
+});
+test("dashboard leaves account navigation to the global header", async () => {
+  state.user = { id: 7, name: "Owner" };
+  assert.ok(!nodes(await Dashboard()).some(node => node.type?.name === "AccountMenu"));
 });

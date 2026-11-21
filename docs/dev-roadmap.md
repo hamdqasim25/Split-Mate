@@ -17,7 +17,7 @@ See [architecture](architecture.md) for behaviour, [database design](database-de
 | 5 | Expense Management and Data Integrity | Browser checks outstanding |
 | 6 | UI/UX and Accessibility | In progress |
 | 7 | Testing, CI and Presentation | Complete within recorded verification scope |
-| 8 | Profile and Account Settings | Planned — next development milestone |
+| 8 | Profile and Account Settings | In progress: read-only profile implemented |
 | 9 | Security and Release Readiness | Planned |
 
 Phases 1–4 describe completed implementation milestones within the recorded verification scope. Outstanding cross-cutting checks remain explicit in phases 5, 6 and 9. Phase 7's optional screenshot enhancement does not imply missing test or CI implementation.
@@ -140,19 +140,25 @@ Phases 1–4 describe completed implementation milestones within the recorded ve
 
 ## Phase 8 — Profile and Account Settings
 
-**Status:** Planned — next development milestone
+**Status:** In progress: Phase 8.2 implemented; browser checks outstanding
 
 **Goal:** Give registered owners a clear, secure place to manage supported account settings.
 
-- [ ] Review existing authentication and account architecture before designing changes.
-- [ ] Create a responsive profile page.
-- [ ] Display supported account details.
+- [x] Review existing authentication and account architecture before designing changes.
+- [x] Implement a responsive, read-only owner profile page at `/profile`.
+- [x] Display the authenticated owner's name and email with server-side privacy checks.
+- [x] Add a global session-aware account disclosure: owner Profile/Appearance/sign out, guest Register-first and signed-out Log-in-first navigation.
+- [x] Make shared logo/name branding one accessible home link and remove duplicate landing navigation.
+- [x] Provide a protected Appearance page and icon-only theme control using existing persistence.
+- [x] Retain an exact login/register return allowlist for profile and appearance.
 - [ ] Implement secure password changes.
-- [ ] Organize account, appearance and security settings.
-- [ ] Add authorization and regression tests.
+- [x] Organize profile and appearance navigation into dedicated pages.
+- [ ] Complete security navigation and remaining Phase 8.4 settings work.
+- [x] Add profile authorization, privacy and return-navigation regression tests.
+- [ ] Add authorization and regression tests for password management and later settings.
 - [ ] Complete browser and accessibility verification.
 
-**Outcome:** Intended to provide account settings without making guest registration mandatory. Profile editing and password management are not implemented.
+**Outcome:** Owners can view account details, manage appearance and sign out through compact header navigation. Profile editing, Phase 8.3 password management and remaining Phase 8.4 work are not complete; browser verification remains outstanding.
 
 ## Phase 9 — Security Hardening and Release Verification
 

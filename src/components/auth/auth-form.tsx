@@ -1,11 +1,12 @@
 "use client";
 
+import { authDestination, type AuthDestination } from "@/lib/auth/redirect";
 import Link from "next/link";
 import { useRef, useState, type FormEvent } from "react";
 
 type Props = {
   mode: "login" | "register";
-  destination: "/dashboard" | "/groups/new";
+  destination: AuthDestination;
   accountCreated?: boolean;
 };
 
@@ -14,7 +15,7 @@ const passwordGuidance = "Use at least 15 characters and no more than 72 UTF-8 b
 
 export default function AuthForm({ mode, destination, accountCreated = false }: Props) {
   const registering = mode === "register";
-  const safeDestination = destination === "/groups/new" ? "/groups/new" : "/dashboard";
+  const safeDestination = authDestination(destination);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   // The ref also blocks a second submit before React has rendered the pending state.

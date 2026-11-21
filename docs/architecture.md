@@ -33,6 +33,24 @@ A session is the secure browser credential that remembers who someone is. Owner 
 
 Financial actions require an active member identity in the same group. A member ID supplied by a browser is never sufficient authorization. Owner-only group deletion checks the authenticated account and group ownership rather than trusting a membership role alone.
 
+### Owner profile
+
+Owners use the header account disclosure to open Profile (`/profile`), Appearance (`/profile/appearance`) or the existing secure sign-out action. Profile remains a read-only name/email page with dashboard navigation. Appearance reuses the existing theme control and browser-local persistence; it does not guess the current preference on the server. Security navigation is omitted until password management exists.
+
+The root layout renders one shared server-side `AppHeader` on public, guest and owner routes. Its branding combines the existing logo and name into one accessible home link. The landing page no longer duplicates that navigation bar.
+
+The header resolves owner identity first. Without a valid owner, it validates the guest cookie, expiry, active claimed unlinked membership and existing group using the same internal reader as protected guest access. Only `owner`, `guest` or `signed-out` is passed to `AccountMenu`; no credentials or account details are exposed. Owners receive Profile, Appearance and existing owner Sign out. Guests receive Register first, then Log in; signed-out visitors receive Log in first, then Register. Registration does not link or convert guest memberships.
+
+Visitor classification is read-only and for presentation, not authorization. Anonymous cookies cause no database reads, and valid owners skip guest queries. Protected routes and mutations retain their independent session and permission checks. No identity results are cached across requests or financial transactions. The header introduces server-side session reads on public routes when credentials are present; there is no client authentication endpoint or portal.
+
+Native details/summary provides disclosure semantics before hydration. Ordinary links retain normal Tab/Shift+Tab behaviour. After hydration, navigation selection, outside pointer interaction, focus leaving and Escape close the disclosure; Escape returns focus to its trigger. The existing theme bootstrap remains unchanged.
+
+The header theme button shows a moon to switch to dark and a sun to switch to light, with theme-specific accessible text and a fixed 44px target. It shares the unchanged bootstrap with the Appearance page control.
+
+The server-only `src/data/account.ts` resolves the owner session and selects only name/email using that authenticated identity. It accepts no browser-supplied account ID. Missing, expired, revoked, guest-only or deleted-account sessions cannot render the profile. Email is not added to the general `getCurrentUser()` identity or passed to a new Client Component. Account names remain distinct from existing group-member names.
+
+Login and registration share `src/lib/auth/redirect.ts`: only `/dashboard`, `/groups/new`, `/profile` and `/profile/appearance` are accepted return destinations; other values fall back to the dashboard. A signed-out profile visitor returns through login to `/profile`.
+
 ## Creating and joining a group
 
 The owner registers, signs in, opens `/groups/new`, names the group and adds guest names. The server creates the group, an already-claimed owner membership, unclaimed guest memberships and a `GROUP_CREATED` activity entry together. A failure rolls all of these back rather than leaving half a group. A random reusable share token is generated on the server.

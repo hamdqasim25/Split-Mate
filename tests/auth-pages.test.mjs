@@ -31,7 +31,7 @@ const runtimeUrl = `data:text/javascript,${encodeURIComponent(`
 const hooks = registerHooks({
   resolve(specifier, context, nextResolve) {
     if (["@/lib/auth/session", "@/data/groups", "@/app/actions/auth", "next/navigation", "next/link"].includes(specifier)
-      || (specifier === "react" && context.parentURL?.endsWith("/auth-form.tsx"))) {
+      || (specifier === "react" && ["/auth-form.tsx", "/change-password-form.tsx"].some(path => context.parentURL?.endsWith(path)))) {
       return { url: runtimeUrl, shortCircuit: true };
     }
     if (specifier === "@/lib/auth/redirect") return { url: new URL("../src/lib/auth/redirect.ts", import.meta.url).href, shortCircuit: true };
@@ -57,6 +57,8 @@ const { default: Login } = await import("../src/app/login/page.tsx");
 const { default: Register } = await import("../src/app/register/page.tsx");
 const { default: Home } = await import("../src/app/page.tsx");
 const { default: AuthForm } = await import("../src/components/auth/auth-form.tsx");
+const { default: Security } = await import("../src/app/profile/security/page.tsx");
+const { default: ChangePasswordForm } = await import("../src/components/auth/change-password-form.tsx");
 hooks.deregister();
 
 const originalFetch = globalThis.fetch;
@@ -158,7 +160,7 @@ for (const [path, Page] of [["/dashboard", Dashboard], ["/groups/new", NewGroup]
 }
 
 const destinations = [
-  ["/dashboard", "/dashboard"], ["/groups/new", "/groups/new"], ["/profile", "/profile"], ["/profile/appearance", "/profile/appearance"],
+  ["/dashboard", "/dashboard"], ["/groups/new", "/groups/new"], ["/profile", "/profile"], ["/profile/appearance", "/profile/appearance"], ["/profile/security", "/profile/security"],
   ["/profile?userId=8", "/dashboard"], ["/profile/../admin", "/dashboard"],
   ["https://evil.example", "/dashboard"], ["//evil.example", "/dashboard"],
   ["/admin", "/dashboard"], ["/groups/new?bad=1", "/dashboard"],
@@ -274,4 +276,31 @@ test("registration retains the profile destination", async () => {
 test("dashboard leaves account navigation to the global header", async () => {
   state.user = { id: 7, name: "Owner" };
   assert.ok(!nodes(await Dashboard()).some(node => node.type?.name === "AccountMenu"));
+});
+
+test("security page rejects anonymous visitors and renders authenticated password form", async () => {
+  await assert.rejects(Security(), { destination: "/login?next=/profile/security" });
+  state.user = { id: 7, name: "Owner" };
+  assert.ok(nodes(await Security()).some(node => node.type === ChangePasswordForm));
+});
+test("password-change form labels, confirmation, duplicate prevention and successful reset/navigation", async () => {
+  state.cursor = 0; const tree = ChangePasswordForm();
+  const all = nodes(tree); const inputs = all.filter(n => n.type === "input");
+  assert.deepEqual(inputs.map(n => n.props.autoComplete), ["current-password", "new-password", "new-password"]);
+  assert.ok(inputs.every(n => all.some(label => label.type === "label" && label.props.htmlFor === n.props.id)));
+  let finish; let calls = 0; let resets = 0;
+  globalThis.fetch = () => { calls++; return new Promise(resolve => { finish = resolve; }); };
+  const event = { preventDefault() {}, currentTarget: { currentPassword: "original secure password", newPassword: "replacement secure password", confirmPassword: "replacement secure password", reset() { resets++; } } };
+  const submit = nodes(tree).find(n => n.type === "form").props.onSubmit;
+  const pending = submit(event); await submit(event); assert.equal(calls, 1);
+  finish({ ok: true }); await pending;
+  assert.equal(resets, 1); assert.deepEqual(navigations, ["/login?passwordChanged=1"]);
+});
+test("lost password-change response clears fields and explains uncertain outcome", async () => {
+  globalThis.fetch = async () => { throw new Error("private transport error"); };
+  state.cursor = 0; let resets = 0;
+  const tree = ChangePasswordForm();
+  await nodes(tree).find(n => n.type === "form").props.onSubmit({ preventDefault() {}, currentTarget: { currentPassword: "original secure password", newPassword: "replacement secure password", confirmPassword: "replacement secure password", reset() { resets++; } } });
+  state.cursor = 0; const message = text(ChangePasswordForm());
+  assert.match(message, /may have completed/); assert.doesNotMatch(message, /private transport/); assert.equal(resets, 1);
 });

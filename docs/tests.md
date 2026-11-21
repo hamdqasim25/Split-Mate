@@ -4,6 +4,16 @@ This document owns verification commands, coverage, reported evidence and remain
 
 ## Automated checkpoints
 
+**21 November 2026 - Phase 8.3 password management:** All 731 isolated tests passed with zero failures, cancellations or skips. Next.js route-type generation, TypeScript (`npx.cmd --no-install tsc --noEmit --incremental false`), lint and production build passed. `git diff --check` passed. Build/type-generation used process-local unusable loopback database URLs; application environment files and records were unchanged.
+
+All **31 real PostgreSQL integration tests** passed on the owned disposable PostgreSQL cluster (approximately 120 seconds): 26 existing cases plus five account-security cases. Identity and opt-in marker guards passed; migration status was up to date, schema verification passed and the full database marker matched the contract. No migration was applied. Separate workers and `pg_blocking_pids` established actual account-row contention for login-first, change-first and competing password changes. Tests also proved password/session rollback on injected revocation failure and preservation of an actual unrelated owner session and guest sessions. Cleanup found zero registered fixtures remaining.
+
+The first integration run exposed that this Prisma RC's single-row `delete()` left another owner session intact. The service now uses `deleteAll()` for account-wide revocation, and the isolated mock prevents treating a multi-row delete as a single-row operation. The final full PostgreSQL run above passed after correction. Startup required an approved outside-sandbox retry because Windows could not create a restricted token; shutdown also required an outside-sandbox retry and the cluster was successfully stopped.
+
+Isolated coverage includes new-password byte/character limits, exact confirmation, unchanged whitespace, wrong current password, unauthorized/expired/revoked/deleted/guest-only identity, same-origin and JSON/body guards, safe failures, session/cookie preservation on rollback, stale verified-login hashes, Security access, navigation, form labels, duplicate-submit blocking, successful field reset and uncertain-response guidance. The login success message is presentation only. The fresh-document navigation after password changes intentionally discards cached owner UI.
+
+Browser checks and hosted CI were not executed. Manually verify Security access and responsive light/dark layouts; wrong-current/short/oversized/mismatched passwords without session loss; a successful change in two signed-in owner browsers followed by denied old-session access; old-password rejection and new-password login; unaffected guest/unrelated-owner access; rapid submissions; expired-session feedback; a lost response followed by fresh login; keyboard focus, labels and screen-reader announcements. Phase 8 remains incomplete pending browser checks and remaining settings work.
+
 **21 November 2026 - global account navigation:** All 709 isolated tests passed with zero failures, cancellations or skips. Next.js route-type generation, TypeScript (`npx.cmd --no-install tsc --noEmit --incremental false`) and production build passed. Lint initially reported one unused landing-navigation style constant; removing that unused constant and rerunning lint produced no warnings or errors. `git diff --check` passed. Build/type-generation used process-local unusable loopback database URLs; environment files and application records were unchanged.
 
 Global-header tests execute real owner/guest session readers against isolated database/cookie doubles. They cover all three visitor states, owner precedence without guest reads, revoked owner with valid guest, expired/revoked/inactive/unclaimed/linked/malformed guest identities, missing groups, production cookie policy, read-only classification, minimal client props and accessible home branding. Menu tests cover public link ordering without owner actions alongside existing owner sign-out wiring, dismissal, focus restoration and theme labels. Root-layout coverage checks that the shared header applies to public and protected routes; page tests retain independent profile/appearance protections. No browser DOM or live-database verification is implied.
@@ -102,7 +112,7 @@ Each job uses GitHub-hosted Ubuntu 24.04, Node 24 and `npm ci`. Official `action
 | Lint | `npm run lint` | Existing ESLint configuration |
 | TypeScript | `npx --no-install tsc --noEmit --incremental false` | Runs `npx --no-install next typegen` first because a clean checkout lacks generated Next.js route types |
 | Production build | `npm run build` | Production compilation and static generation |
-| PostgreSQL 18 integration tests | `npm run test:integration` | Existing 26 real-database concurrency, persistence and rollback cases |
+| PostgreSQL 18 integration tests | `npm run test:integration` | 31 real-database concurrency, persistence and rollback cases |
 
 Quality jobs have a 20-minute total limit and their checks have 10-minute limits. The integration job has a 25-minute total limit, bounded setup/migration/cleanup steps and a 12-minute test step; the harness additionally enforces its own 10-minute suite limit. No failure is suppressed with `continue-on-error`. A failed command marks its step and check as failed; open the PR's Checks tab or **Actions → CI → run → failed job** for logs. Cancelled runs are not passing evidence. Branch protection/rulesets are separate repository settings: configure the five check names as required if merges must be blocked on failure.
 
@@ -124,7 +134,7 @@ Endpoint, credential-separation, live database identity and marker checks remain
 
 On 18 November 2026, a read-only GitHub API query independently confirmed that [run 43767547165](https://github.com/hamdqasim25/Split-Mate/actions/runs/43767547165) for `ci.yml` on `main`, commit `0e6244906caf87b00e78a2d129e8c5ae2ba04a62`, completed successfully on 15 November 2026 at 22:10 UTC. This confirms the hosted workflow's reported conclusion; individual job logs and test counts were not independently audited in this check. The earlier CI-preparation checkpoint records what was known before that hosted verification.
 
-For future runs, inspect all five checks. Verify that the integration log reports PostgreSQL 18, successful test-only migrations/verification, 26 passing tests and successful cleanup/stop. Check that the other jobs pass independently and that no credentials appear in logs. **Actions → CI → Run workflow** provides manual execution; pushes to `main` also run it automatically.
+For future runs, inspect all five checks. Verify that the integration log reports PostgreSQL 18, successful test-only migrations/verification, 31 passing tests and successful cleanup/stop. Check that the other jobs pass independently and that no credentials appear in logs. **Actions → CI → Run workflow** provides manual execution; pushes to `main` also run it automatically.
 
 The README now displays the live `ci.yml` badge for `main`, linked to the workflow's Actions page. Local results do not establish hosted success, and a passing badge does not verify uncommitted changes.
 
@@ -212,6 +222,8 @@ These tests exercise real validation, cryptographic helpers and business logic a
 Owner-detail authorization has targeted service/page coverage, not comprehensive HTTP/browser coverage. Simulated rollback, serialization and duplicate-key checks must not be labelled live database guarantees.
 
 ## User-reported browser evidence
+
+In the Phase 8.3 request, the user reported Phase 8.2 completed, manually verified and committed on `feat/profile-settings`. Individual browser scenarios were not supplied; this is user-reported evidence, not a new browser audit.
 
 These are user reports, not browser automation performed during consolidation. Dates were not supplied for every report.
 

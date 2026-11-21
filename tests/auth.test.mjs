@@ -137,7 +137,7 @@ test("wrong password, unknown email and invalid credential values share one logi
 test("session issuance stores only a SHA-256 hash and sets a host-only HTTP development cookie", async () => {
   addUser();
   const before = Date.now();
-  await createUserSession(7, "http://localhost:3000/api/auth/login");
+  await createUserSession(7, "http://localhost:3000/api/auth/login", passwordHash);
   const [cookie] = state.cookieWrites;
   const [session] = state.sessions;
   assert.equal(cookie.name, localCookie);
@@ -161,14 +161,14 @@ test("session issuance stores only a SHA-256 hash and sets a host-only HTTP deve
 
 test("HTTPS development and production always issue the secure __Host cookie", async () => {
   addUser();
-  await createUserSession(7, "https://localhost:3000/api/auth/login");
+  await createUserSession(7, "https://localhost:3000/api/auth/login", passwordHash);
   assert.equal(state.cookieWrites[0].name, secureCookie);
   assert.equal(state.cookieWrites[0].options.secure, true);
   assert.deepEqual(await getCurrentUser(), { id: 7, name: "Hamdi" });
   resetAuthEnvironment();
   addUser();
   process.env.NODE_ENV = "production";
-  await createUserSession(7, "http://internal-proxy/api/auth/login");
+  await createUserSession(7, "http://internal-proxy/api/auth/login", passwordHash);
   assert.equal(state.cookieWrites[0].name, secureCookie);
   assert.equal(state.cookieWrites[0].options.secure, true);
   assert.equal("domain" in state.cookieWrites[0].options, false);
@@ -177,7 +177,7 @@ test("HTTPS development and production always issue the secure __Host cookie", a
 test("login rotates the current token and revokes its previous database session", async () => {
   addUser();
   const oldToken = addSession();
-  await createUserSession(7, "http://localhost:3000/api/auth/login");
+  await createUserSession(7, "http://localhost:3000/api/auth/login", passwordHash);
   assert.equal(state.sessions.length, 1);
   assert.notEqual(state.cookieJar.get(localCookie), oldToken);
   const newToken = state.cookieJar.get(localCookie);
@@ -191,7 +191,7 @@ test("failed session creation rolls back old-session revocation and issues no co
   addUser();
   const oldToken = addSession();
   state.failAt = "sessions.create";
-  await assert.rejects(createUserSession(7, "http://localhost:3000/api/auth/login"), (error) => error === state.failure);
+  await assert.rejects(createUserSession(7, "http://localhost:3000/api/auth/login", passwordHash), (error) => error === state.failure);
   assert.equal(state.sessions.length, 1);
   assert.equal(state.cookieJar.get(localCookie), oldToken);
   assert.equal(state.cookieWrites.length, 0);

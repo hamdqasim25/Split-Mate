@@ -9,6 +9,7 @@ import { resetAuthEnvironment, state, db } from "./helpers/auth-environment.mjs"
 const hooks = registerHooks({
   resolve(specifier, context, nextResolve) {
     if (specifier === "@/components/account-menu") return { url: "data:text/javascript,export default function AccountMenu(){}", shortCircuit: true };
+    if (specifier === "@/components/auth/change-password-form") return { url: new URL("../src/components/auth/change-password-form.tsx", import.meta.url).href, shortCircuit: true };
     if (specifier === "@/components/theme-toggle") return { url: new URL("../src/components/theme-toggle.tsx", import.meta.url).href, shortCircuit: true };
     if (specifier === "server-only") return { url: "data:text/javascript,export {};", shortCircuit: true };
     if (["@/prisma/db", "next/headers"].includes(specifier)) return { url: new URL("./helpers/auth-environment.mjs", import.meta.url).href, shortCircuit: true };
@@ -25,6 +26,7 @@ const hooks = registerHooks({
 const { getCurrentAccount } = await import("../src/data/account.ts");
 const { default: Profile } = await import("../src/app/profile/page.tsx");
 const { default: Appearance } = await import("../src/app/profile/appearance/page.tsx");
+const { default: Security } = await import("../src/app/profile/security/page.tsx");
 hooks.deregister();
 const originalEnv = process.env.NODE_ENV;
 beforeEach(() => {
@@ -52,6 +54,7 @@ for (const kind of ["anonymous", "expired", "revoked", "guest-only", "deleted-ac
     assert.equal(await getCurrentAccount(), null);
     await assert.rejects(Profile(), { destination: "/login?next=/profile" });
     await assert.rejects(Appearance(), { destination: "/login?next=/profile/appearance" });
+    await assert.rejects(Security(), { destination: "/login?next=/profile/security" });
   });
 }
 test("profile reads each authenticated owner only and exposes no credentials", async () => {

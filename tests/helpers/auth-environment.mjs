@@ -55,11 +55,26 @@ function collection(model, getRows, fields, filter = {}) {
       state.events.push(`db:create:${model}`);
       return select(row, fields);
     },
+    async updateAll(values) {
+      if (state.failAt === `${model}.updateAll`) throw state.failure;
+      const rows = getRows()[model].filter(row => matches(row, filter));
+      for (const row of rows) Object.assign(row, values);
+      return rows.map(row => select(row, fields));
+    },
+    async deleteAll() {
+      state.events.push(`db:delete:${model}`);
+      if (state.failAt === `${model}.delete`) throw state.failure;
+      const rows = getRows()[model];
+      const removed = rows.filter(row => matches(row, filter));
+      getRows()[model] = rows.filter(row => !matches(row, filter));
+      return removed;
+    },
     async delete() {
       state.events.push(`db:delete:${model}`);
       if (state.failAt === `${model}.delete`) throw state.failure;
       const rows = getRows()[model];
       const removed = rows.filter((row) => matches(row, filter));
+      if (removed.length > 1) throw new Error("Single-row delete matched multiple records; use deleteAll");
       getRows()[model] = rows.filter((row) => !matches(row, filter));
       return removed;
     },

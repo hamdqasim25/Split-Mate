@@ -6,7 +6,7 @@ import { testConfig, assertTestDatabase } from "./config.mjs";
 // One connection per worker makes transaction connection ownership observable.
 let jar = {};
 export function setCookies(value) { jar = value ?? {}; }
-export async function cookies() { return { get: name => jar[name] ? { value: jar[name] } : undefined }; }
+export async function cookies() { return { get: name => jar[name] ? { value: jar[name] } : undefined, set: (name, value, options) => { if (options?.maxAge === 0) delete jar[name]; else jar[name] = value; } }; }
 
 export const pool = new pg.Pool({ connectionString: testConfig().url, max: 1,
   application_name: process.env.SPLITMATE_TEST_WORKER,

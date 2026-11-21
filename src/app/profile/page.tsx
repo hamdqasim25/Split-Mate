@@ -24,7 +24,8 @@ export default async function ProfilePage() {
         </section>
         <section aria-labelledby="account-security" className="mt-6 rounded-2xl border border-line bg-surface p-6">
           <h2 id="account-security" className="text-xl font-semibold">Account security</h2>
-          <p className="mt-3 leading-7 text-muted">Password management will be added in a later update.</p>
+          <p className="mt-3 leading-7 text-muted">Change your password and manage account security.</p>
+          <Link href="/profile/security" className="mt-3 inline-flex min-h-11 items-center rounded text-accent underline">Security settings</Link>
         </section>
       </div>
     </main>

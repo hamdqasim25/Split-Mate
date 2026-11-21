@@ -42,6 +42,7 @@ export default function AccountMenu({ visitor }: { visitor: "owner" | "guest" | 
         {visitor === "owner" ? <>
         <Link href="/profile" onClick={close} className={item}>Profile</Link>
         <Link href="/profile/appearance" onClick={close} className={item}>Appearance</Link>
+        <Link href="/profile/security" onClick={close} className={item}>Security</Link>
         <form action={signOut} className="mt-2 border-t border-line pt-2">
           <button type="submit" className={`${item} w-full cursor-pointer`}>Sign out</button>
         </form>

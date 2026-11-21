@@ -140,25 +140,28 @@ Phases 1–4 describe completed implementation milestones within the recorded ve
 
 ## Phase 8 — Profile and Account Settings
 
-**Status:** In progress: Phase 8.2 implemented; browser checks outstanding
+**Status:** In progress: Phase 8.3 implemented; password browser checks outstanding
 
 **Goal:** Give registered owners a clear, secure place to manage supported account settings.
 
 - [x] Review existing authentication and account architecture before designing changes.
 - [x] Implement a responsive, read-only owner profile page at `/profile`.
 - [x] Display the authenticated owner's name and email with server-side privacy checks.
-- [x] Add a global session-aware account disclosure: owner Profile/Appearance/sign out, guest Register-first and signed-out Log-in-first navigation.
+- [x] Add a global session-aware account disclosure: owner Profile/Appearance/Security/sign out, guest Register-first and signed-out Log-in-first navigation.
 - [x] Make shared logo/name branding one accessible home link and remove duplicate landing navigation.
 - [x] Provide a protected Appearance page and icon-only theme control using existing persistence.
-- [x] Retain an exact login/register return allowlist for profile and appearance.
-- [ ] Implement secure password changes.
+- [x] Retain an exact login/register return allowlist for profile, appearance and security.
+- [x] Implement secure password changes with current-password verification, shared validation and account-wide owner-session revocation.
 - [x] Organize profile and appearance navigation into dedicated pages.
-- [ ] Complete security navigation and remaining Phase 8.4 settings work.
+- [x] Add protected Security navigation and a password-change form.
+- [ ] Complete remaining Phase 8.4 settings work.
 - [x] Add profile authorization, privacy and return-navigation regression tests.
-- [ ] Add authorization and regression tests for password management and later settings.
+- [x] Add isolated password authorization, validation, session, rollback and UI regression tests.
+- [x] Verify both login/change orderings, competing changes, rollback and unrelated-session preservation on disposable PostgreSQL.
+- [ ] Add tests for any remaining Phase 8.4 settings work.
 - [ ] Complete browser and accessibility verification.
 
-**Outcome:** Owners can view account details, manage appearance and sign out through compact header navigation. Profile editing, Phase 8.3 password management and remaining Phase 8.4 work are not complete; browser verification remains outstanding.
+**Outcome:** Owners can view account details, manage appearance and sign out through compact header navigation. Password management is implemented; profile editing and remaining Phase 8.4 work are not complete. Password-change browser and accessibility verification remains outstanding.
 
 ## Phase 9 — Security Hardening and Release Verification
 
@@ -189,7 +192,7 @@ Phases 1–4 describe completed implementation milestones within the recorded ve
 | No restoration for deleted expenses; permanent group deletion removes history | These are deliberate current deletion semantics, not an archive or refund mechanism |
 | No live push updates | Another open browser must refresh after changes |
 | Complete-ledger reads grow with history | Financial reads use a group lock and memory proportional to history; dashboard groups are not one simultaneous snapshot |
-| Automated evidence has a defined scope | 670 isolated tests passed on 18 November 2026; 26 local PostgreSQL tests passed on 15 November 2026. Application schema/marker verification remains dated 28 October 2026 evidence. Full HTTP/browser journeys, production cookies and broad accessibility checks remain unverified. Hosted application checks are not applicable to the current local-only website; hosted CI is separately recorded |
+| Automated evidence has a defined scope | 731 isolated tests and 31 disposable PostgreSQL tests passed on 21 November 2026. Application schema/marker verification remains dated 28 October 2026 evidence. Full HTTP/browser journeys, production cookies and broad accessibility checks remain unverified. Hosted application checks are not applicable to the current local-only website; hosted CI is separately recorded |
 
 ## Future Proposals — Unprioritised
 

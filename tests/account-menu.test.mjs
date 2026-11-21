@@ -31,7 +31,7 @@ test("account disclosure uses ordinary links, native expanded semantics and exis
  state.slot = {}; const tree = AccountMenu({ visitor: "owner" }); const all = nodes(tree);
  assert.equal(tree.type, "details");
  assert.equal(all.find(n => n.type === "summary").props["aria-label"], "Account navigation");
- assert.deepEqual(all.filter(n => n.props?.href).map(n => n.props.href), ["/profile", "/profile/appearance"]);
+ assert.deepEqual(all.filter(n => n.props?.href).map(n => n.props.href), ["/profile", "/profile/appearance", "/profile/security"]);
  assert.equal(all.find(n => n.type === "form").props.action, signOut);
  assert.ok(!all.some(n => ["menu", "menuitem"].includes(n.props?.role)));
  state.ref.current = { open: true };

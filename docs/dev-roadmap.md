@@ -140,7 +140,7 @@ Phases 1–4 describe completed implementation milestones within the recorded ve
 
 ## Phase 8 — Profile and Account Settings
 
-**Status:** In progress: Phase 8.3 implemented; password browser checks outstanding
+**Status:** Implementation complete through Phase 8.4; final manual browser/accessibility confirmation outstanding
 
 **Goal:** Give registered owners a clear, secure place to manage supported account settings.
 
@@ -154,14 +154,15 @@ Phases 1–4 describe completed implementation milestones within the recorded ve
 - [x] Implement secure password changes with current-password verification, shared validation and account-wide owner-session revocation.
 - [x] Organize profile and appearance navigation into dedicated pages.
 - [x] Add protected Security navigation and a password-change form.
-- [ ] Complete remaining Phase 8.4 settings work.
+- [x] Standardize settings navigation, active-page indicators, responsive spacing and page/card typography.
+- [x] Improve password-form status announcements, associated feedback and explicit POST fallback.
 - [x] Add profile authorization, privacy and return-navigation regression tests.
 - [x] Add isolated password authorization, validation, session, rollback and UI regression tests.
 - [x] Verify both login/change orderings, competing changes, rollback and unrelated-session preservation on disposable PostgreSQL.
-- [ ] Add tests for any remaining Phase 8.4 settings work.
+- [x] Verify settings links/current-page indicators, protected access, long read-only details and form accessibility with isolated tests.
 - [ ] Complete browser and accessibility verification.
 
-**Outcome:** Owners can view account details, manage appearance and sign out through compact header navigation. Password management is implemented; profile editing and remaining Phase 8.4 work are not complete. Password-change browser and accessibility verification remains outstanding.
+**Outcome:** Owners can view account details, manage appearance and sign out through compact header navigation. Phase 8.4 implementation and automated checks are complete. Profile editing remains outside the implemented scope. Phase 8 stays open until the user confirms final browser and accessibility checks.
 
 ## Phase 9 — Security Hardening and Release Verification
 

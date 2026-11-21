@@ -41,17 +41,18 @@ export default function ChangePasswordForm() {
     } catch { form.reset(); setMessage(uncertain); }
     finally { submitting.current = false; setPending(false); }
   }
-  return <form onSubmit={submit} className="mt-6 rounded-2xl border border-line bg-surface p-6" aria-busy={pending}>
+  return <form onSubmit={submit} method="post" action="/api/auth/change-password" className="mt-6 rounded-2xl border border-line bg-surface p-4 sm:p-6" aria-busy={pending}>
     <fieldset disabled={pending || success} className="space-y-5 disabled:opacity-70">
       <legend className="sr-only">Change your password</legend>
       {([ ["currentPassword", "Current password", "current-password"], ["newPassword", "New password", "new-password"], ["confirmPassword", "Confirm new password", "new-password"] ] as const).map(([name, label, autocomplete]) => <div key={name}>
         <label htmlFor={name} className="text-sm font-semibold">{label}</label>
-        <input id={name} name={name} type="password" autoComplete={autocomplete} required aria-describedby={name === "newPassword" ? "password-guidance" : undefined} className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-3 focus-visible:outline-2 focus-visible:outline-accent" />
+        <input id={name} name={name} type="password" autoComplete={autocomplete} required aria-describedby={[name === "newPassword" ? "password-guidance" : "", message ? "password-feedback" : ""].filter(Boolean).join(" ") || undefined} className="mt-2 min-h-11 w-full min-w-0 rounded-xl border border-line bg-surface px-4 py-3 focus-visible:outline-2 focus-visible:outline-accent" />
       </div>)}
       <p id="password-guidance" className="text-sm text-muted">{guidance} Passwords are not trimmed or changed.</p>
       <button type="submit" className="min-h-11 w-full cursor-pointer rounded-full bg-emerald-800 px-6 py-3 font-semibold text-white hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-wait" disabled={pending || success}>{pending ? "Changing password..." : "Change password"}</button>
     </fieldset>
-    {message && <p role={success ? "status" : "alert"} className="mt-4 text-sm">{message}</p>}
+    <p role="status" className="sr-only">{pending ? "Changing password. Please wait." : ""}</p>
+    <p id="password-feedback" role={success ? "status" : "alert"} aria-atomic="true" className={message ? `mt-4 rounded-xl p-3 text-sm ${success ? "bg-accent-soft text-accent" : "bg-danger-soft text-danger"}` : undefined}>{message}</p>
     {message && <Link href="/login" className="mt-4 inline-flex min-h-11 items-center text-accent underline">Sign in</Link>}
   </form>;
 }

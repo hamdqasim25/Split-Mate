@@ -286,6 +286,8 @@ test("security page rejects anonymous visitors and renders authenticated passwor
 test("password-change form labels, confirmation, duplicate prevention and successful reset/navigation", async () => {
   state.cursor = 0; const tree = ChangePasswordForm();
   const all = nodes(tree); const inputs = all.filter(n => n.type === "input");
+  assert.equal(tree.props.method, "post");
+  assert.equal(tree.props.action, "/api/auth/change-password");
   assert.deepEqual(inputs.map(n => n.props.autoComplete), ["current-password", "new-password", "new-password"]);
   assert.ok(inputs.every(n => all.some(label => label.type === "label" && label.props.htmlFor === n.props.id)));
   let finish; let calls = 0; let resets = 0;
@@ -293,6 +295,8 @@ test("password-change form labels, confirmation, duplicate prevention and succes
   const event = { preventDefault() {}, currentTarget: { currentPassword: "original secure password", newPassword: "replacement secure password", confirmPassword: "replacement secure password", reset() { resets++; } } };
   const submit = nodes(tree).find(n => n.type === "form").props.onSubmit;
   const pending = submit(event); await submit(event); assert.equal(calls, 1);
+  state.cursor = 0;
+  assert.ok(nodes(ChangePasswordForm()).some(node => node.props?.role === "status" && text(node).includes("Please wait")));
   finish({ ok: true }); await pending;
   assert.equal(resets, 1); assert.deepEqual(navigations, ["/login?passwordChanged=1"]);
 });
@@ -303,4 +307,10 @@ test("lost password-change response clears fields and explains uncertain outcome
   await nodes(tree).find(n => n.type === "form").props.onSubmit({ preventDefault() {}, currentTarget: { currentPassword: "original secure password", newPassword: "replacement secure password", confirmPassword: "replacement secure password", reset() { resets++; } } });
   state.cursor = 0; const message = text(ChangePasswordForm());
   assert.match(message, /may have completed/); assert.doesNotMatch(message, /private transport/); assert.equal(resets, 1);
+  state.cursor = 0; const all = nodes(ChangePasswordForm());
+  assert.ok(all.some(node => node.props?.id === "password-feedback" && node.props.role === "alert" && node.props["aria-atomic"] === "true"));
+  for (const input of all.filter(node => node.type === "input")) {
+    assert.ok(input.props["aria-describedby"].split(" ").includes("password-feedback"));
+    for (const id of input.props["aria-describedby"].split(" ")) assert.ok(all.some(node => node.props?.id === id));
+  }
 });

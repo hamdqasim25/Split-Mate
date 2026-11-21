@@ -35,6 +35,8 @@ Financial actions require an active member identity in the same group. A member 
 
 ### Owner profile
 
+Profile, Appearance and Security share a server-rendered `SettingsNavigation` component, a dashboard return link, the same content width and consistent page/card spacing. Settings links stack on small screens and form three columns from the small-screen breakpoint. The active link has `aria-current="page"`, a border and underline; these are ordinary navigation links, not stateful tabs. Sign out remains solely in the global account dropdown. Profile details remain read-only and wrap long values.
+
 Owners use the header account disclosure to open Profile (`/profile`), Appearance (`/profile/appearance`), Security (`/profile/security`) or the existing secure sign-out action. Profile remains a read-only name/email page with dashboard navigation. Appearance reuses the existing theme control and browser-local persistence; it does not guess the current preference on the server. Security provides authenticated password changes; account editing and password recovery remain unavailable.
 
 The root layout renders one shared server-side `AppHeader` on public, guest and owner routes. Its branding combines the existing logo and name into one accessible home link. The landing page no longer duplicates that navigation bar.
@@ -59,7 +61,7 @@ A successful change signs that account out of every existing owner session, incl
 
 Password verification and new hashing occur before the short database transaction. Login issuance and password change both take a no-op `User` primary-key update through `lockAccount` using the pinned Prisma `updateAll()` API. This obtains a PostgreSQL row lock until commit. Login compares the password hash it verified with the hash returned under the lock before creating a session. Password change rechecks its owner session and observed hash under the same lock, then updates the hash and deletes **all** matching UserSession rows with `deleteAll()` in one transaction. An older login either commits first and has its session revoked, or waits and fails its hash recheck. Competing changes cannot both use the same revoked session. Failed transactions roll back both credentials and revocation.
 
-The endpoint reuses same-origin POST checks and bounded JSON parsing. Only password fields are accepted; safe errors reveal no hashes, tokens or database details. Owner cookies are cleared only after committed revocation. The browser resets the form after success and performs a fresh login-page navigation to discard cached owner UI. No reset-email, recovery, account-deletion or new session-lifetime policy is introduced.
+The endpoint reuses same-origin POST checks and bounded JSON parsing. Only password fields are accepted; safe errors reveal no hashes, tokens or database details. Owner cookies are cleared only after committed revocation. The browser resets the form after success and performs a fresh login-page navigation to discard cached owner UI. Pending work is announced through a status region, and feedback is associated with password fields using `aria-describedby`. An explicit POST form action prevents native pre-hydration submission from putting passwords in a URL; the existing endpoint rejects non-JSON fallback requests. No reset-email, recovery, account-deletion or new session-lifetime policy is introduced.
 
 ## Creating and joining a group
 

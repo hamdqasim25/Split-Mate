@@ -11,6 +11,7 @@ const hooks = registerHooks({
     if (specifier === "@/components/account-menu") return { url: "data:text/javascript,export default function AccountMenu(){}", shortCircuit: true };
     if (specifier === "@/components/auth/change-password-form") return { url: new URL("../src/components/auth/change-password-form.tsx", import.meta.url).href, shortCircuit: true };
     if (specifier === "@/components/theme-toggle") return { url: new URL("../src/components/theme-toggle.tsx", import.meta.url).href, shortCircuit: true };
+    if (specifier === "@/components/settings-navigation") return { url: new URL("../src/components/settings-navigation.tsx", import.meta.url).href, shortCircuit: true };
     if (specifier === "server-only") return { url: "data:text/javascript,export {};", shortCircuit: true };
     if (["@/prisma/db", "next/headers"].includes(specifier)) return { url: new URL("./helpers/auth-environment.mjs", import.meta.url).href, shortCircuit: true };
     if (specifier === "next/navigation") return { url: "data:text/javascript,export function redirect(destination){throw Object.assign(new Error('redirect'),{destination})}", shortCircuit: true };
@@ -43,7 +44,7 @@ function session(userId = 7, expiresAt = new Date(Date.now() + 60000).toISOStrin
 }
 function nodes(tree) {
   if (Array.isArray(tree)) return tree.flatMap(nodes);
-  return tree && typeof tree === "object" ? [tree, ...nodes(tree.props?.children)] : [];
+  return tree && typeof tree === "object" ? [tree, ...nodes(tree.type?.name === "SettingsNavigation" ? tree.type(tree.props) : tree.props?.children)] : [];
 }
 for (const kind of ["anonymous", "expired", "revoked", "guest-only", "deleted-account"]) {
   test(`profile rejects ${kind} access`, async () => {
@@ -97,4 +98,25 @@ test("appearance is protected and reuses theme control without account details",
   assert.ok(!nodes(tree).some(node => node.type?.name === "AccountMenu"));
   assert.ok(nodes(tree).some(node => node.type?.name === "ThemeToggle"));
   assert.doesNotMatch(JSON.stringify(tree), /seven@example|passwordHash/);
+});
+
+for (const [Page, path] of [[Profile, "/profile"], [Appearance, "/profile/appearance"], [Security, "/profile/security"]]) {
+  test(`${path} shares accessible settings links with exactly one current page`, async () => {
+    session(); const all = nodes(await Page());
+    const nav = all.find(node => node.type === "nav" && node.props["aria-label"] === "Account settings");
+    assert.ok(nav);
+    assert.deepEqual(nodes(nav).filter(node => node.props?.href).map(node => node.props.href), ["/dashboard", "/profile", "/profile/appearance", "/profile/security"]);
+    const current = nodes(nav).filter(node => node.props?.["aria-current"] === "page");
+    assert.equal(current.length, 1); assert.equal(current[0].props.href, path);
+    assert.equal(all.filter(node => node.type === "h1").length, 1);
+    assert.ok(!nodes(nav).some(node => node.props?.role === "tab"));
+    for (const link of nodes(nav).filter(node => node.props?.href)) assert.match(link.props.className, /min-h-11/);
+  });
+}
+test("long account details remain complete with wrapping and no editing controls", async () => {
+  session(); state.users[0].name = "N".repeat(100); state.users[0].email = "e".repeat(240) + "@example.com";
+  const all = nodes(await Profile()); const values = all.filter(node => node.type === "dd");
+  assert.deepEqual(values.map(node => node.props.children), [state.users[0].name, state.users[0].email]);
+  assert.ok(values.every(node => node.props.className.includes("overflow-wrap:anywhere")));
+  assert.ok(!all.some(node => node.type === "input" || node.type === "form"));
 });
